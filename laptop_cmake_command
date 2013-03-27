@@ -1,0 +1,1 @@
+cmake -D BOOST_ROOT:FILEPATH="/usr/include/boost" -D Trilinos_PREFIX:FILEPATH="/home/mrobins/pkg/Trilinos/debug" ..
