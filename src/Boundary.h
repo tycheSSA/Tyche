@@ -82,6 +82,11 @@ std::ostream& operator<< (std::ostream& out, JumpBoundary<T> &b) {
 	return out << "\tJump Boundary at "<< b.geometry;
 }
 
+template<typename T>
+JumpBoundary<T> create_jump_boundary(T& geometry, const Vect3d jump_by) {
+	return JumpBoundary<T>(geometry,jump_by);
+}
+
 
 template<typename T>
 class DiffusionCorrectedBoundary: public Boundary<T> {
@@ -123,6 +128,29 @@ protected:
 };
 
 template<typename T>
+class RemoveBoundaryWithCorrection: public DiffusionCorrectedBoundary<T> {
+public:
+	RemoveBoundaryWithCorrection(const T& geometry):
+		DiffusionCorrectedBoundary<T>(geometry) {}
+	void operator()(const double dt);
+	void add_species(Species& s);
+	Molecules& get_removed(Species& s);
+private:
+	std::vector<Molecules> removed_molecules;
+};
+
+template<typename T>
+std::ostream& operator<< (std::ostream& out, RemoveBoundaryWithCorrection<T> &b) {
+	return out << "\tRemove Boundary With Correction at "<< b.geometry;
+}
+
+template<typename T>
+RemoveBoundaryWithCorrection<T> create_remove_boundary_corrected(T& geometry) {
+	return RemoveBoundaryWithCorrection<T>(geometry);
+}
+
+
+template<typename T>
 class JumpBoundaryWithCorrection: public DiffusionCorrectedBoundary<T> {
 public:
 	JumpBoundaryWithCorrection(const T& geometry, const Vect3d jump_by):
@@ -139,6 +167,11 @@ std::ostream& operator<< (std::ostream& out, JumpBoundaryWithCorrection<T> &b) {
 	return out << "\tJump Boundary With Correction at "<< b.geometry;
 }
 
+template<typename T>
+JumpBoundaryWithCorrection<T> create_jump_boundary_corrected(T& geometry, const Vect3d jump_by) {
+	return JumpBoundaryWithCorrection<T>(geometry,jump_by);
+}
+
 
 template<typename T>
 class ReflectiveBoundary: public Boundary<T> {
@@ -152,6 +185,11 @@ public:
 template<typename T>
 std::ostream& operator<< (std::ostream& out, ReflectiveBoundary<T> &b) {
 	return out << "\tReflective Boundary at "<< b.geometry;
+}
+
+template<typename T>
+ReflectiveBoundary<T> create_reflective_boundary(T& geometry) {
+	return ReflectiveBoundary<T>(geometry);
 }
 
 class FluxBoundary: public Boundary<NullGeometry> {

@@ -119,7 +119,40 @@ void JumpBoundaryWithCorrection<T>::operator ()(const double dt) {
 	Operator::stop_timer();
 }
 
+template<typename T>
+void RemoveBoundaryWithCorrection<T>::add_species(Species& s) {
+	DiffusionCorrectedBoundary<T>::add_species(s);
+	removed_molecules.push_back(Molecules());
+}
 
+template<typename T>
+Molecules& RemoveBoundaryWithCorrection<T>::get_removed(Species& s) {
+	const int s_i = Operator::get_species_index(s);
+	return removed_molecules[s_i];
+}
+
+template<typename T>
+void RemoveBoundaryWithCorrection<T>::operator ()(const double dt) {
+	Operator::resume_timer();
+	LOG(2, "Starting Operator: " << *this);
+	DiffusionCorrectedBoundary<T>::timestep_initialise(dt);
+
+	const int s_n = this->all_species.size();
+	for (int s_i = 0; s_i < s_n; ++s_i) {
+		Species &s = *(this->all_species[s_i]);
+		const int p_n = s.mols.size();
+		for (int p_i = 0; p_i < p_n; ++p_i) {
+			if (DiffusionCorrectedBoundary<T>::particle_crossed_boundary(p_i, s_i)) {
+				s.mols.mark_for_deletion(p_i);
+				removed_molecules[s_i].add_molecule(s.mols.r[p_i]);
+			}
+		}
+		s.mols.delete_molecules();
+	}
+	DiffusionCorrectedBoundary<T>::timestep_finalise();
+	LOG(2, "Stopping Operator: " << *this);
+	Operator::stop_timer();
+}
 
 template<typename T>
 void ReflectiveBoundary<T>::operator ()(const double dt) {

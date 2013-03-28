@@ -31,6 +31,9 @@
 #include "Vector.h"
 #include "StructuredGrid.h"
 
+#include <vtkUnstructuredGrid.h>
+#include <vtkSmartPointer.h>
+
 namespace Tyche {
 
 #define DATA_typename MolData
@@ -50,9 +53,11 @@ public:
 	int add_molecule(const Vect3d& position);
 	int mark_for_deletion(const unsigned int i);
 	void save_indicies();
+	vtkSmartPointer<vtkUnstructuredGrid> get_vtk_grid();
 private:
 	int next_id;
 };
+
 
 
 const int SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE = -1;
@@ -78,6 +83,7 @@ public:
 	void fill_uniform(const Vect3d low, const Vect3d high, const unsigned int N);
 	void get_concentrations(const StructuredGrid& calc_grid, std::vector<double>& mol_concentrations, std::vector<double>& compartment_concentrations) const;
 	void get_concentration(const StructuredGrid& calc_grid, std::vector<double>& concentration) const;
+	std::string get_status_string();
 
 	double D;
 	Molecules mols;

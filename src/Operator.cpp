@@ -9,6 +9,7 @@
 #include <sstream>
 #include <string>
 #include <algorithm>
+#include "Log.h"
 
 namespace Tyche {
 //boost::timer::cpu_timer Operator::global_timer;
@@ -21,6 +22,17 @@ Operator::Operator() {
 	time = 0;
 	all_species.clear();
 
+}
+
+int Operator::get_species_index(Species& s) {
+	const int n = all_species.size();
+	for (int i = 0; i < n; ++i) {
+		if (all_species[i] == &s) {
+			return i;
+		}
+	}
+	ERROR("did not find species index");
+	return -1;
 }
 
 void Operator::add_species(Species& s) {

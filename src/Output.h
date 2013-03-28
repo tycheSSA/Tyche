@@ -30,10 +30,11 @@
 #include <iomanip>
 #include <map>
 
-
 #include "Operator.h"
 
 namespace Tyche {
+
+
 
 class Output: public Operator {
 public:

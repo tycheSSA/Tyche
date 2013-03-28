@@ -31,6 +31,6 @@ enable_testing()
 # Recurse into the "Hello" and "Demo" subdirectories. This does not actually 
 # cause another cmake executable to run. The same process will walk through 
 # the project's entire directory structure. 
-set(Tyche_INCLUDE_DIRECTORIES  ${Tyche_SOURCE_DIR}/src ${Tyche_SOURCE_DIR}/eigen3 ${Tyche_SOURCE_DIR}/smoldyn ${VTK_INCLUDE_DIRS})
+set(Tyche_INCLUDE_DIRECTORIES  ${Tyche_SOURCE_DIR}/src ${Tyche_SOURCE_DIR}/eigen3 ${Tyche_SOURCE_DIR}/smoldyn ${Boost_INCLUDE_DIR} ${VTK_INCLUDE_DIRS})
 add_subdirectory (src)
 #add_subdirectory (examples)

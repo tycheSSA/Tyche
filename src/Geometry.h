@@ -35,6 +35,15 @@ public:
 	NullGeometry() {}
 };
 
+class Cuboid {
+public:
+	Cuboid(const Vect3d min, const Vect3d max);
+	bool at_boundary(const Vect3d r) const;
+private:
+	Vect3d min,max;
+
+};
+
 template<int DIM>
 class AxisAlignedRectangle;
 

@@ -1,36 +1,37 @@
 /* 
- * Tyche.cpp
+ * io.h
  *
  * Copyright 2012 Martin Robinson
  *
- * This file is part of Tyche.
+ * This file is part of PDE_BD.
  *
- * Tyche is free software: you can redistribute it and/or modify
+ * PDE_BD is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * Tyche is distributed in the hope that it will be useful,
+ * PDE_BD is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public License
- * along with Tyche.  If not, see <http://www.gnu.org/licenses/>.
+ * along with PDE_BD.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  Created on: Mar 28, 2013
+ *  Created on: Feb 16, 2013
  *      Author: mrobins
  */
 
-#include <time.h>
-#include "Tyche.h"
+#ifndef IO_H_
+#define IO_H_
+
+#include <string>
+#include <vtkUnstructuredGrid.h>
 
 namespace Tyche {
-
-base_generator_type generator;
-
-void init(int argc, char *argv[]) {
-	generator.seed(time(NULL));
+	void write_grid(std::string filename, vtkUnstructuredGrid* grid);
 }
 
-}
+
+
+#endif /* IO_H_ */

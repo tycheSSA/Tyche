@@ -39,6 +39,7 @@ public:
 	std::string get_global_time();
 	std::string get_time_percentage();
 	void reset();
+	int get_species_index(Species& s);
 protected:
 	void resume_timer();
 	void stop_timer();

@@ -13,6 +13,25 @@ namespace Tyche {
 int Species::species_count = 0;
 Species null_species(0);
 
+vtkSmartPointer<vtkUnstructuredGrid> Molecules::get_vtk_grid() {
+	/*
+	 * setup points
+	 */
+	vtkSmartPointer<vtkPoints> newPts = vtkSmartPointer<vtkPoints>::New();
+	const int num_points = r.size();
+	for (int i = 0; i < num_points; i++) {
+		newPts->InsertNextPoint(r[i][0],r[i][1],r[i][2]);
+	}
+
+	/*
+	 * setup grid
+	 */
+	vtkSmartPointer<vtkUnstructuredGrid> vtk_grid = vtkSmartPointer<vtkUnstructuredGrid>::New();
+	vtk_grid->SetPoints(newPts);
+
+	return vtk_grid;
+}
+
 
 int Molecules::delete_molecule(const unsigned int i) {
 	const int last_index = this->size()-1;
@@ -116,6 +135,13 @@ void Species::get_concentration(const StructuredGrid& calc_grid,
 	}
 }
 
+std::string Species::get_status_string() {
+	std::ostringstream ss;
+	ss << "Molecular Status:" << std::endl;
+	ss << "\t" << mols.size() << " particles." << std::endl;
+
+	return ss.str();
+}
 
 }
 

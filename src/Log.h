@@ -45,7 +45,12 @@
             std::cerr << "Assertion `" #condition "` failed in " << __FILE__ \
                       << " line " << __LINE__ << ": " << message << std::endl; \
             raise(SIGTRAP); \
-        } \
+        }
+
+#define ERROR(message) \
+            std::cerr << "Error at " << __FILE__ \
+                      << " line " << __LINE__ << ": " << message << std::endl; \
+            raise(SIGTRAP);
 
 //std::exit(EXIT_FAILURE);
 

@@ -34,6 +34,7 @@
 #include "Reaction.h"
 #include "ReactionEquation.h"
 #include "Run.h"
+#include "Io.h"
 #include "Vector.h"
 #include "Union.h"
 #include "Output.h"
@@ -42,7 +43,7 @@
 
 namespace Tyche {
 
-void init();
+void init(int argc, char *argv[]);
 
 }
 
