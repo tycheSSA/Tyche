@@ -20,6 +20,7 @@ History: Started 3/02, converted to a separate file 5/31/03.
 #define PI 3.14159265358979323846
 #define SQRT2PI 2.50662827462
 
+
 double rxnparam_erfccD(double x);
 
 
@@ -558,6 +559,5 @@ void rdfmaketable() {
 	free(rdfa);
 	free(rdfd);
 	return; }
-
 
 

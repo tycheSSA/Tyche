@@ -25,12 +25,10 @@
 #ifndef REACTIONEQUATION_H_
 #define REACTIONEQUATION_H_
 
-#include "Molecules.h"
-
+#include "Species.h"
 namespace Tyche {
-
 struct ReactionComponent {
-	ReactionComponent(int multiplier, Molecules& species_ref, int compartment_index):
+	ReactionComponent(int multiplier, Species& species_ref, int compartment_index):
 		multiplier(multiplier),
 		species(&species_ref),
 		compartment_index(compartment_index) {}
@@ -51,7 +49,7 @@ struct ReactionComponent {
 		return species > arg.species;
 	}
 	int multiplier;
-	Molecules* species;
+	Species* species;
 	int compartment_index;
 };
 
@@ -102,33 +100,31 @@ struct ReactionEquation {
 std::ostream& operator<< (std::ostream& out, const ReactionSide &side);
 std::ostream& operator<< (std::ostream& out, const ReactionEquation &eq);
 
-ReactionComponent operator*(const int mult, Molecules& s);
+ReactionComponent operator*(const int mult, Species& s);
 ReactionSide operator+(const ReactionComponent& arg1, const ReactionComponent& arg2);
-ReactionSide operator+(Molecules& arg1, const ReactionComponent& arg2);
-ReactionSide operator+(const ReactionComponent& arg1, Molecules& arg2);
-ReactionSide operator+(Molecules& arg1, Molecules& arg2);
+ReactionSide operator+(Species& arg1, const ReactionComponent& arg2);
+ReactionSide operator+(const ReactionComponent& arg1, Species& arg2);
+ReactionSide operator+(Species& arg1, Species& arg2);
 ReactionSide& operator+(ReactionSide& side, const ReactionComponent& comp);
-ReactionSide& operator+(ReactionSide& side, Molecules& s);
+ReactionSide& operator+(ReactionSide& side, Species& s);
 ReactionEquation operator>>(const ReactionSide& lhs, const ReactionSide& rhs);
 ReactionEquation operator>>(const ReactionSide& lhs, const ReactionComponent& rhs);
-ReactionEquation operator>>(const ReactionSide& lhs, Molecules& rhs);
+ReactionEquation operator>>(const ReactionSide& lhs, Species& rhs);
 ReactionEquation operator>>(const ReactionSide& lhs, const int rhs);
 ReactionEquation operator>>(const ReactionComponent& lhs, const ReactionSide& rhs);
 ReactionEquation operator>>(const ReactionComponent& lhs, const ReactionComponent& rhs);
-ReactionEquation operator>>(const ReactionComponent& lhs, Molecules& rhs);
+ReactionEquation operator>>(const ReactionComponent& lhs, Species& rhs);
 ReactionEquation operator>>(const ReactionComponent& lhs, const int rhs);
-ReactionEquation operator>>(Molecules& lhs, const ReactionSide& rhs);
-ReactionEquation operator>>(Molecules& lhs, const ReactionComponent& rhs);
-ReactionEquation operator>>(Molecules& lhs, Molecules& rhs);
-ReactionEquation operator>>(Molecules& lhs, const int rhs);
+ReactionEquation operator>>(Species& lhs, const ReactionSide& rhs);
+ReactionEquation operator>>(Species& lhs, const ReactionComponent& rhs);
+ReactionEquation operator>>(Species& lhs, Species& rhs);
+ReactionEquation operator>>(Species& lhs, const int rhs);
 ReactionEquation operator>>(const int lhs, const ReactionSide& rhs);
 ReactionEquation operator>>(const int lhs, const ReactionComponent& rhs);
-ReactionEquation operator>>(const int lhs, Molecules& rhs);
+ReactionEquation operator>>(const int lhs, Species& rhs);
 
 
-ReactionEquation unimolecular_reaction(const int i1, Molecules& s1, const int i2, Molecules& s2);
-ReactionEquation bimolecular_reaction(const int i1, Molecules& s1, const int i2, Molecules& s2, const int i3, Molecules& s3);
-
+ReactionEquation unimolecular_reaction(const int i1, Species& s1, const int i2, Species& s2);
+ReactionEquation bimolecular_reaction(const int i1, Species& s1, const int i2, Species& s2, const int i3, Species& s3);
 }
-
 #endif /* REACTIONEQUATION_H_ */

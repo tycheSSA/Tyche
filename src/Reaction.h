@@ -26,8 +26,10 @@
 #define REACTION_H_
 
 
-#include "Molecules.h"
+#include "Species.h"
+#include "Constants.h"
 #include "BucketSort.h"
+#include "Operator.h"
 #include "ReactionEquation.h"
 #include "Log.h"
 #include <vector>
@@ -35,11 +37,18 @@
 
 namespace Tyche {
 
-class UniMolecularReaction {
+class Reaction: public Operator {
 public:
-	UniMolecularReaction(const double rate,const ReactionEquation& eq):rate(rate) {
+	Reaction(const double rate):rate(rate) {};
+protected:
+	const double rate;
+};
+
+class UniMolecularReaction: public Reaction {
+public:
+	UniMolecularReaction(const double rate,const ReactionEquation& eq):Reaction(rate) {
 		CHECK((eq.lhs.size()==1) && (eq.lhs[0].multiplier == 1), "Reaction equation is not unimolecular!");
-		species = eq.lhs[0].species;
+		this->add_species(*(eq.lhs[0].species));
 		product_list.push_back(eq.rhs);
 		probabilities.push_back(0);
 		total_rate = rate;
@@ -47,7 +56,7 @@ public:
 	};
 	void add_reaction(const double rate, const ReactionEquation& eq) {
 		CHECK((eq.lhs.size()==1) && (eq.lhs[0].multiplier == 1), "Reaction equation is not unimolecular!");
-		CHECK(eq.lhs[0].species == species, "Reactant is different from previous equation");
+		CHECK(eq.lhs[0].species == all_species[0], "Reactant is different from previous equation");
 		product_list.push_back(eq.rhs);
 		probabilities.push_back(0);
 		rates.push_back(rate);
@@ -63,14 +72,13 @@ private:
 	std::vector<double> rates;
 	double total_probability;
 	double total_rate;
-	double rate;
-	Molecules* species;
 };
 
 std::ostream& operator<< (std::ostream& out, UniMolecularReaction &r);
 
 
-class BiMolecularReaction {
+template<typename T>
+class BiMolecularReaction: public Reaction {
 public:
 	BiMolecularReaction(const double rate, const ReactionEquation& eq, const double dt, Vect3d low, Vect3d high, Vect3b periodic);
 	void operator()(const double dt);
@@ -80,9 +88,8 @@ protected:
 	double binding_radius_dt;
 	ReactionSide products;
 	double binding_radius, binding_radius2;
-	BucketSort neighbourhood_search;
+	T neighbourhood_search;
 	bool self_reaction;
-	double rate;
 };
 
 template<typename T>
@@ -90,5 +97,4 @@ std::ostream& operator<< (std::ostream& out, BiMolecularReaction<T> &r) {
 	return out << "\tBimolecular Reaction with rate = "<<r.get_rate()<<" and binding radius = "<<r.get_binding_radius();
 }
 }
-
 #endif /* REACTION_H_ */

@@ -8,6 +8,7 @@ for documentation. */
 #ifndef __rxnparam_h
 #define __rxnparam_h
 
+
 /***  LOOK-UP FUNCTIONS FOR REACTION RATES AND BINDING AND UNBINDING RADII  ***/
 
 double numrxnrate(double step,double a,double b);
@@ -22,5 +23,7 @@ void rdfdiffuse(double *r,double *rdfa,double *rdfd,int n,double step);
 void rdfreverserxn(double *r,double *rdf,int n,double step,double b,double flux);
 double rdfsteadystate(double *r,double *rdfa,double *rdfd,int n,double step,double b,double eps);
 void rdfmaketable();
+
+
 
 #endif

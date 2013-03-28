@@ -6,11 +6,12 @@
  */
 
 #include "Reaction.h"
+extern "C" {
 #include "rxnparam.h"
+}
 #include <map>
 
 namespace Tyche {
-
 void UniMolecularReaction::calculate_probabilities(const double dt) {
 	total_probability = (1.0-exp(-dt*total_rate));
 	const int n = probabilities.size();
@@ -90,39 +91,12 @@ std::ostream& operator<< (std::ostream& out, UniMolecularReaction &r) {
 }
 
 
+template<typename T>
+void BiMolecularReaction<T>::operator ()(const double dt) {
+	Operator::resume_timer();
+	LOG(2, "Starting Operator: " << *this);
+	//std::cout << "there are " << s1.size() << " and " << s2.size() << " molecules" << ". self reaction = "<<self_reaction << std::endl;
 
-BiMolecularReaction::BiMolecularReaction(const double rate, const ReactionEquation& eq, const double dt, Vect3d low, Vect3d high, Vect3b periodic):
-		rate(rate),
-		products(eq.rhs),
-		binding_radius_dt(dt),
-		neighbourhood_search(low,high,periodic) {
-	if (eq.lhs.size() == 1) {
-		CHECK(eq.lhs[0].multiplier == 2, "Reaction equation is not bimolecular!");
-		this->add_species(*(eq.lhs[0].species));
-		this->add_species(*(eq.lhs[0].species));
-	} else {
-		CHECK((eq.lhs.size()==2) && (eq.lhs[0].multiplier == 1) && (eq.lhs[1].multiplier == 1), "Reaction equation is not bimolecular!");
-		this->add_species(*(eq.lhs[0].species));
-		this->add_species(*(eq.lhs[1].species));
-	}
-
-	if (all_species[0] == all_species[1]) {
-		self_reaction = true;
-	} else {
-		self_reaction = false;
-	}
-
-	binding_radius = bindingradius(rate,dt,all_species[0]->D+all_species[1]->D,-1,0);
-	binding_radius2 = binding_radius*binding_radius;
-
-	LOG(2,"Binding radius for reaction "<<eq<<" with rate = "<<rate<<" is calculated as r = "<<binding_radius);
-	LOG(2,"Ratio between rms diffusion step (D1+D2) and binding radius is rms/br = "<<sqrt(2.0*(all_species[0]->D+all_species[1]->D)*dt)/binding_radius);
-
-	neighbourhood_search.reset(neighbourhood_search.get_low(), neighbourhood_search.get_high(), binding_radius);
-}
-
-
-void BiMolecularReaction::operator ()(const double dt) {
 	if (dt != binding_radius_dt) {
 		LOG(2, "dt has changed, recalculating binding radius....");
 		binding_radius = bindingradius(rate,dt,all_species[0]->D+all_species[1]->D,-1,0);
@@ -161,6 +135,42 @@ void BiMolecularReaction::operator ()(const double dt) {
 	}
 	mols1.delete_molecules();
 	mols2.delete_molecules();
+	LOG(2, "Stopping Operator: " << *this);
+	Operator::stop_timer();
 }
 
+template<typename T>
+BiMolecularReaction<T>::BiMolecularReaction(const double rate, const ReactionEquation& eq, const double dt, Vect3d low, Vect3d high, Vect3b periodic):
+		Reaction(rate),
+		products(eq.rhs),
+		binding_radius_dt(dt),
+		neighbourhood_search(low,high,periodic) {
+	if (eq.lhs.size() == 1) {
+		CHECK(eq.lhs[0].multiplier == 2, "Reaction equation is not bimolecular!");
+		this->add_species(*(eq.lhs[0].species));
+		this->add_species(*(eq.lhs[0].species));
+	} else {
+		CHECK((eq.lhs.size()==2) && (eq.lhs[0].multiplier == 1) && (eq.lhs[1].multiplier == 1), "Reaction equation is not bimolecular!");
+		this->add_species(*(eq.lhs[0].species));
+		this->add_species(*(eq.lhs[1].species));
+	}
+
+	if (all_species[0] == all_species[1]) {
+		self_reaction = true;
+	} else {
+		self_reaction = false;
+	}
+
+	binding_radius = bindingradius(rate,dt,all_species[0]->D+all_species[1]->D,-1,0);
+	binding_radius2 = binding_radius*binding_radius;
+
+	LOG(2,"Binding radius for reaction "<<eq<<" with rate = "<<rate<<" is calculated as r = "<<binding_radius);
+	LOG(2,"Ratio between rms diffusion step (D1+D2) and binding radius is rms/br = "<<sqrt(2.0*(all_species[0]->D+all_species[1]->D)*dt)/binding_radius);
+
+	neighbourhood_search.reset(neighbourhood_search.get_low(), neighbourhood_search.get_high(), binding_radius);
+};
+
+template class BiMolecularReaction<BucketSort>;
 }
+
+

@@ -25,19 +25,17 @@
 #ifndef BUCKETSORT_H_
 #define BUCKETSORT_H_
 
+#include "Vector.h"
+#include "Constants.h"
 #include "Log.h"
 #include <vector>
 #include <iostream>
-#include <array>
 
 namespace Tyche {
 
 const int CELL_EMPTY = -1;
 
 class BucketSort {
-	typedef std::array<double,3> Vect3d;
-	typedef std::array<int,3> Vect3i;
-	typedef std::array<bool,3> Vect3b;
 public:
 	BucketSort(Vect3d low, Vect3d high, Vect3b periodic):
 		low(low),high(high),domain_size(high-low),periodic(periodic) {

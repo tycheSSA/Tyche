@@ -157,4 +157,3 @@ Vect3d BucketSort::correct_position_for_periodicity(const Vect3d& source_r, cons
 }
 
 
-

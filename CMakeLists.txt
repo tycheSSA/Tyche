@@ -8,6 +8,8 @@ cmake_minimum_required (VERSION 2.8)
 FIND_PACKAGE(PythonInterp REQUIRED)
 FIND_PACKAGE(PythonLibs REQUIRED)
 FIND_PACKAGE(Boost COMPONENTS python REQUIRED)
+find_package(VTK REQUIRED)
+
 
 set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-Wno-deprecated -std=c++0x")
 
@@ -29,6 +31,6 @@ enable_testing()
 # Recurse into the "Hello" and "Demo" subdirectories. This does not actually 
 # cause another cmake executable to run. The same process will walk through 
 # the project's entire directory structure. 
-set(Tyche_INCLUDE_DIRECTORIES  ${Tyche_SOURCE_DIR}/src)
+set(Tyche_INCLUDE_DIRECTORIES  ${Tyche_SOURCE_DIR}/src ${Tyche_SOURCE_DIR}/eigen3 ${Tyche_SOURCE_DIR}/smoldyn ${VTK_INCLUDE_DIRS})
 add_subdirectory (src)
 #add_subdirectory (examples)

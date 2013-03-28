@@ -8,7 +8,6 @@
 #include "ReactionEquation.h"
 
 namespace Tyche {
-
 ReactionComponent operator*(const int mult, Species& s) {
 	return ReactionComponent(mult,s,0);
 }
@@ -158,8 +157,6 @@ ReactionEquation bimolecular_reaction(const int i1, Species& s1, const int i2, S
 	return ReactionEquation(*lhs,*rhs);
 }
 
-
-
 std::ostream& operator<< (std::ostream& out, const ReactionSide &side) {
 	const int n = side.size();
 	for (int i = 0; i < n; ++i) {
@@ -173,5 +170,4 @@ std::ostream& operator<< (std::ostream& out, const ReactionSide &side) {
 std::ostream& operator<< (std::ostream& out, const ReactionEquation &eq) {
 	return out << eq.lhs << " >> " << eq.rhs;
 }
-
 }
