@@ -117,6 +117,7 @@ ReactionEquation ReactionList::pick_random_reaction(const double rand) {
 	for (int i = 0; i < n; i++) {
 		sum_propensities += propensities[i];
 		if (rand_times_total_propensity < sum_propensities) {
+			ASSERT(propensities[i] > 0, "chosen reaction with propensity less than or equal to zero");
 			const double scaled_rand = (rand_times_total_propensity-last_sum_propensities)/(sum_propensities-last_sum_propensities);
 			return ReactionEquation(reactions[i].lhs,reactions[i].pick_random_rhs(scaled_rand));
 		}
@@ -139,8 +140,15 @@ double ReactionList::recalculate_propensities() {
 		double& propensity = propensities[i];
 		const int n = rs.lhs.size();
 		propensity = 1.0;
+		int beta = 0;
 		BOOST_FOREACH(ReactionComponent rc, rs.lhs) {
 			int copy_number = rc.species->copy_numbers[rc.compartment_index];
+			beta += rc.multiplier;
+			ASSERT(copy_number >= 0, "copy number is less than zero!!");
+			if (copy_number < rc.multiplier) {
+				propensity = 0.0;
+				break;
+			}
 			for (int k = 1; k < rc.multiplier; ++k) {
 				copy_number *= copy_number-k;
 			}
@@ -190,7 +198,16 @@ void  NextSubvolumeMethod::add_reaction(const double rate, ReactionEquation eq) 
 void  NextSubvolumeMethod::add_reaction_to_compartment(const double rate, ReactionEquation eq, const int i) {
 	eq.lhs.set_compartment_index(i);
 	eq.rhs.set_compartment_index(i);
-	subvolume_reactions[i].add_reaction(rate*pow(subvolumes.get_cell_volume(i),1-eq.lhs.get_num_reactants()),eq);
+	const int beta = eq.lhs.get_num_reactants();
+	if (beta == 0) {
+		subvolume_reactions[i].add_reaction(rate*subvolumes.get_cell_volume(i),eq);
+
+	} else if (beta == 1) {
+		subvolume_reactions[i].add_reaction(rate,eq);
+
+	} else {
+		subvolume_reactions[i].add_reaction(rate*pow(subvolumes.get_cell_volume(i),1-eq.lhs.get_num_reactants()),eq);
+	}
 }
 
 void NextSubvolumeMethod::add_diffusion(Species &s, const double rate) {

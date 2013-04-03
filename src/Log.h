@@ -55,10 +55,10 @@
 //std::exit(EXIT_FAILURE);
 
 #ifndef LOG_LEVEL
-#	ifdef DEBUG
-#		define LOG_LEVEL 2
-#	else
+#	ifdef NDEBUG
 #		define LOG_LEVEL 1
+#	else
+#		define LOG_LEVEL 2
 #	endif
 #endif
 

@@ -149,6 +149,40 @@ RemoveBoundaryWithCorrection<T> create_remove_boundary_corrected(T& geometry) {
 	return RemoveBoundaryWithCorrection<T>(geometry);
 }
 
+template<typename T>
+RemoveBoundaryWithCorrection<T> create_remove_boundary_corrected(T& geometry, Species& s) {
+	RemoveBoundaryWithCorrection<T> to_return(geometry); to_return.add_species(s);
+	return to_return;
+}
+
+template<typename T>
+class RemoveBoundary: public Boundary<T> {
+public:
+	RemoveBoundary(const T& geometry):
+		Boundary<T>(geometry) {}
+	void operator()(const double dt);
+	void add_species(Species& s);
+	Molecules& get_removed(Species& s);
+private:
+	std::vector<Molecules> removed_molecules;
+};
+
+template<typename T>
+std::ostream& operator<< (std::ostream& out, RemoveBoundary<T> &b) {
+	return out << "\tRemove Boundary at "<< b.geometry;
+}
+
+template<typename T>
+RemoveBoundary<T> create_remove_boundary(T& geometry) {
+	return RemoveBoundary<T>(geometry);
+}
+
+template<typename T>
+RemoveBoundary<T> create_remove_boundary(T& geometry, Species& s) {
+	RemoveBoundary<T> to_return(geometry); to_return.add_species(s);
+	return to_return;
+}
+
 
 template<typename T>
 class JumpBoundaryWithCorrection: public DiffusionCorrectedBoundary<T> {
@@ -190,6 +224,12 @@ std::ostream& operator<< (std::ostream& out, ReflectiveBoundary<T> &b) {
 template<typename T>
 ReflectiveBoundary<T> create_reflective_boundary(T& geometry) {
 	return ReflectiveBoundary<T>(geometry);
+}
+
+template<typename T>
+ReflectiveBoundary<T> create_reflective_boundary(T& geometry, Species& s) {
+	ReflectiveBoundary<T> to_return(geometry); to_return.add_species(s);
+	return to_return;
 }
 
 class FluxBoundary: public Boundary<NullGeometry> {

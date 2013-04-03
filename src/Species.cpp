@@ -54,8 +54,17 @@ void Molecules::fill_uniform(const Vect3d low, const Vect3d high,
 
 void Species::fill_uniform(const Vect3d low, const Vect3d high, const unsigned int N) {
 	LOG(2,"Adding "<<N<<" molecules of Species ("<<id<<") within the rectangle defined by "<<low<<" and "<<high);
-		mols.fill_uniform(low,high,N);
+	boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni(generator, boost::uniform_real<>(0,1));
+	const Vect3d dist = high-low;
+	for(int i=0;i<N;i++) {
+		const Vect3d pos = Vect3d(uni()*dist[0],uni()*dist[1],uni()*dist[2])+low;
+		if (grid.is_in(pos)) {
+			copy_numbers[grid.get_cell_index(pos)]++;
+		} else {
+			mols.add_molecule(pos);
+		}
 	}
+}
 
 void Species::fill_uniform(const int n) {
 	boost::uniform_int<> uni_dist(0,copy_numbers.size()-1);

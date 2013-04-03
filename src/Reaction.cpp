@@ -54,7 +54,15 @@ void UniMolecularReaction::operator ()(const double dt) {
 			ReactionSide& products = get_random_reaction(rand);
 			BOOST_FOREACH(ReactionComponent component, products) {
 				for (int j = 0; j < component.multiplier; ++j) {
-					component.species->mols.add_molecule(mols.r[i]);
+					if (j==0) {
+						component.species->mols.add_molecule(mols.r[i]);
+					} else {
+					const double angle = 2.0*PI*uni();
+					const double angle2 = 2.0*PI*uni();
+					component.species->mols.add_molecule(mols.r[i] + Vect3d(init_radii[0]*sin(angle)*cos(angle2),
+																			init_radii[0]*sin(angle)*sin(angle2),
+																			init_radii[0]*cos(angle)));
+					}
 #ifdef DEBUG
 					//LOG(2,"adding molecule of species "<<component.species->id);
 					it = count.find(component.species->id);
@@ -171,6 +179,51 @@ BiMolecularReaction<T>::BiMolecularReaction(const double rate, const ReactionEqu
 };
 
 template class BiMolecularReaction<BucketSort>;
+
+
+void ZeroOrderMolecularReaction::add_species(Species& s) {
+	Reaction::add_species(s);
+	rates.push_back(rate);
 }
 
+void ZeroOrderMolecularReaction::add_species(const double _rate, Species& s) {
+	Reaction::add_species(s);
+	rates.push_back(_rate);
+}
+
+void ZeroOrderMolecularReaction::operator ()(const double dt) {
+	Operator::resume_timer();
+	LOG(2, "Starting Operator: " << *this);
+	boost::uniform_real<> p_dist(0,1);
+	boost::variate_generator<base_generator_type&, boost::uniform_real<> > N(generator, p_dist);
+	const Vect3d max_minus_min = max-min;
+	const double volume = max_minus_min.squaredNorm();
+	const int n_s = all_species.size();
+	for (int i_s = 0; i_s < n_s; ++i_s) {
+		boost::poisson_distribution<> p_dist(rates[i_s]*volume*dt);
+		boost::variate_generator<base_generator_type&, boost::poisson_distribution<> > P(generator, p_dist);
+
+		Molecules &mols = all_species[i_s]->mols;
+		const int num_created = P();
+		for (int i = 0; i < num_created; ++i) {
+			const Vect3d new_position = min + max_minus_min.cwiseProduct(Vect3d(N(),N(),N()));
+			mols.add_molecule(new_position);
+		}
+	}
+	LOG(2, "Stopping Operator: " << *this);
+	Operator::stop_timer();
+}
+
+
+std::ostream& operator <<(std::ostream& out, ZeroOrderMolecularReaction& r) {
+	out << "\tZero order molecular Reaction with reactants:";
+	const int n = r.all_species.size();
+	for (int i = 0; i < n; ++i) {
+		out << "\t\tid = "<<r.all_species[i]->id<<" (rate = "<<r.rates[i]<<")";
+	}
+	return out;
+}
+
+
+}
 

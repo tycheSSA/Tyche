@@ -61,14 +61,15 @@ void run(Species& s, double for_time, double dt BOOST_PP_COMMA_IF(n) BOOST_PP_EN
 				exit(-1);
 			}
 		}
-		timer.restart();
-		s.mols.save_indicies();
-		BOOST_PP_REPEAT(n, RUN_execute, none)
 		if ((it_per_out==0)||(i%it_per_out==0)) {
 			LOG(1, "Simulation " << double(i)/iterations*100 << "% complete. There are " << s.mols.r.size() <<
 					" molecules in free space and " << std::accumulate(s.copy_numbers.begin(),s.copy_numbers.end(),0) <<
 					" molecules in " << (unsigned int)s.copy_numbers.size() << " compartments");
 		}
+		timer.restart();
+		s.mols.save_indicies();
+		BOOST_PP_REPEAT(n, RUN_execute, none)
+
 		time += timer.elapsed();
 	}
 

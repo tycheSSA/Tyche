@@ -37,6 +37,11 @@ void Diffusion::add_species(Species& s) {
 	Operator::add_species(s);
 }
 
+Diffusion create_diffusion(Species &s) {
+	Diffusion to_return; to_return.add_species(s);
+	return to_return;
+}
+
 void Diffusion1D::operator ()(const double dt) {
 	Operator::resume_timer();
 	LOG(2, "Starting Operator: " << *this);

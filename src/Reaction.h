@@ -44,22 +44,41 @@ protected:
 	const double rate;
 };
 
+class ZeroOrderMolecularReaction: public Reaction {
+public:
+	ZeroOrderMolecularReaction(const double rate, const Vect3d min, const Vect3d max):
+		Reaction(rate),min(min),max(max) {
+	};
+	void add_species(Species& s);
+	void add_species(const double rate, Species& s);
+
+	void operator()(const double dt);
+	friend std::ostream& operator<< (std::ostream& out, ZeroOrderMolecularReaction &r);
+private:
+	std::vector<double> rates;
+	Vect3d min,max;
+};
+
+std::ostream& operator<< (std::ostream& out, ZeroOrderMolecularReaction &r);
+
 class UniMolecularReaction: public Reaction {
 public:
-	UniMolecularReaction(const double rate,const ReactionEquation& eq):Reaction(rate) {
+	UniMolecularReaction(const double rate,const ReactionEquation& eq, const double init_radius=0.0):Reaction(rate) {
 		CHECK((eq.lhs.size()==1) && (eq.lhs[0].multiplier == 1), "Reaction equation is not unimolecular!");
 		this->add_species(*(eq.lhs[0].species));
 		product_list.push_back(eq.rhs);
 		probabilities.push_back(0);
+		init_radii.push_back(init_radius);
 		total_rate = rate;
 		rates.push_back(rate);
 	};
-	void add_reaction(const double rate, const ReactionEquation& eq) {
+	void add_reaction(const double rate, const ReactionEquation& eq, const double init_radius=0.0) {
 		CHECK((eq.lhs.size()==1) && (eq.lhs[0].multiplier == 1), "Reaction equation is not unimolecular!");
 		CHECK(eq.lhs[0].species == all_species[0], "Reactant is different from previous equation");
 		product_list.push_back(eq.rhs);
 		probabilities.push_back(0);
 		rates.push_back(rate);
+		init_radii.push_back(init_radius);
 		total_rate += rate;
 	}
 	void operator()(const double dt);
@@ -70,6 +89,7 @@ private:
 	std::vector<ReactionSide> product_list;
 	std::vector<double> probabilities;
 	std::vector<double> rates;
+	std::vector<double> init_radii;
 	double total_probability;
 	double total_rate;
 };
