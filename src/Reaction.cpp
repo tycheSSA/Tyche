@@ -33,6 +33,40 @@ ReactionSide& UniMolecularReaction::get_random_reaction(const double rand) {
 	return product_list[n_minus_one];
 }
 
+UniMolecularReaction::UniMolecularReaction(const double rate,const ReactionEquation& eq, const double dt, const double reverse_rate):Reaction(rate) {
+	CHECK((eq.lhs.size()==1) && (eq.lhs[0].multiplier == 1), "Reaction equation is not unimolecular!");
+	this->add_species(*(eq.lhs[0].species));
+	product_list.push_back(eq.rhs);
+	probabilities.push_back(0);
+	if (dt>0) {
+		double difc;
+		if (eq.rhs.size()==1) {
+			difc = 2.0*eq.rhs[0].species->D;
+		} else {
+			difc = eq.rhs[0].species->D+eq.rhs[1].species->D;
+		}
+		const double binding_radius = bindingradius(reverse_rate,dt,difc,-1,0);
+		LOG(2,"reverse binding radius for reaction "<<eq<<" with reverse rate = "<<reverse_rate<<" is calculated as r = "<<binding_radius);
+//		const double unbinding_radius = unbindingradius(0.5,dt,difc,binding_radius);
+//		LOG(2,"unbinding radius for reaction "<<eq<<" with reverse rate = "<<reverse_rate<<" is calculated as r = "<<unbinding_radius);
+
+		init_radii.push_back(2.0*binding_radius);
+	} else {
+		init_radii.push_back(0);
+	}
+	total_rate = rate;
+	rates.push_back(rate);
+};
+
+void UniMolecularReaction::add_reaction(const double rate, const ReactionEquation& eq, const double init_radius) {
+		CHECK((eq.lhs.size()==1) && (eq.lhs[0].multiplier == 1), "Reaction equation is not unimolecular!");
+		CHECK(eq.lhs[0].species == all_species[0], "Reactant is different from previous equation");
+		product_list.push_back(eq.rhs);
+		probabilities.push_back(0);
+		rates.push_back(rate);
+		init_radii.push_back(init_radius);
+		total_rate += rate;
+	}
 
 void UniMolecularReaction::operator ()(const double dt) {
 	Operator::resume_timer();

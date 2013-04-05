@@ -32,6 +32,7 @@
 #include "Operator.h"
 #include "ReactionEquation.h"
 #include "Log.h"
+
 #include <vector>
 #include <boost/random.hpp>
 
@@ -63,24 +64,8 @@ std::ostream& operator<< (std::ostream& out, ZeroOrderMolecularReaction &r);
 
 class UniMolecularReaction: public Reaction {
 public:
-	UniMolecularReaction(const double rate,const ReactionEquation& eq, const double init_radius=0.0):Reaction(rate) {
-		CHECK((eq.lhs.size()==1) && (eq.lhs[0].multiplier == 1), "Reaction equation is not unimolecular!");
-		this->add_species(*(eq.lhs[0].species));
-		product_list.push_back(eq.rhs);
-		probabilities.push_back(0);
-		init_radii.push_back(init_radius);
-		total_rate = rate;
-		rates.push_back(rate);
-	};
-	void add_reaction(const double rate, const ReactionEquation& eq, const double init_radius=0.0) {
-		CHECK((eq.lhs.size()==1) && (eq.lhs[0].multiplier == 1), "Reaction equation is not unimolecular!");
-		CHECK(eq.lhs[0].species == all_species[0], "Reactant is different from previous equation");
-		product_list.push_back(eq.rhs);
-		probabilities.push_back(0);
-		rates.push_back(rate);
-		init_radii.push_back(init_radius);
-		total_rate += rate;
-	}
+	UniMolecularReaction(const double rate,const ReactionEquation& eq, const double dt=0, const double reverse_rate=0.0);
+	void add_reaction(const double rate, const ReactionEquation& eq, const double init_radius=0.0);
 	void operator()(const double dt);
 	friend std::ostream& operator<< (std::ostream& out, UniMolecularReaction &r);
 private:
