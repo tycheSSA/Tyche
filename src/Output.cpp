@@ -111,8 +111,8 @@ void OutputConcentrations::operator ()(const double dt) {
 			data["x"].push_back(cc[0]);
 			data["y"].push_back(cc[1]);
 			data["z"].push_back(cc[2]);
-			data["Concentration (M)"].push_back(mol_con[i]);
-			data["Concentration (C)"].push_back(comp_con[i]);
+			data["Concentration(M)"].push_back(mol_con[i]);
+			data["Concentration(C)"].push_back(comp_con[i]);
 			data["Concentration"].push_back(mol_con[i] + comp_con[i]);
 		}
 		write(time);

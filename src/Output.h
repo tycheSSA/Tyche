@@ -134,8 +134,8 @@ public:
 		data.insert(std::pair<std::string,std::vector<double> >("x",std::vector<double>()));
 		data.insert(std::pair<std::string,std::vector<double> >("y",std::vector<double>()));
 		data.insert(std::pair<std::string,std::vector<double> >("z",std::vector<double>()));
-		data.insert(std::pair<std::string,std::vector<double> >("Concentration (M)",std::vector<double>()));
-		data.insert(std::pair<std::string,std::vector<double> >("Concentration (C)",std::vector<double>()));
+		data.insert(std::pair<std::string,std::vector<double> >("Concentration(M)",std::vector<double>()));
+		data.insert(std::pair<std::string,std::vector<double> >("Concentration(C)",std::vector<double>()));
 		data.insert(std::pair<std::string,std::vector<double> >("Concentration",std::vector<double>()));
 	}
 	void operator()(const double dt);
