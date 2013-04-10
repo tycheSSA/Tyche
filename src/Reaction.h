@@ -64,7 +64,7 @@ std::ostream& operator<< (std::ostream& out, ZeroOrderMolecularReaction &r);
 
 class UniMolecularReaction: public Reaction {
 public:
-	UniMolecularReaction(const double rate,const ReactionEquation& eq, const double dt=0, const double reverse_rate=0.0);
+	UniMolecularReaction(const double rate,const ReactionEquation& eq, const double init_radius=0.0);
 	void add_reaction(const double rate, const ReactionEquation& eq, const double init_radius=0.0);
 	void operator()(const double dt);
 	friend std::ostream& operator<< (std::ostream& out, UniMolecularReaction &r);
@@ -85,14 +85,21 @@ std::ostream& operator<< (std::ostream& out, UniMolecularReaction &r);
 template<typename T>
 class BiMolecularReaction: public Reaction {
 public:
-	BiMolecularReaction(const double rate, const ReactionEquation& eq, const double dt, Vect3d low, Vect3d high, Vect3b periodic);
+	BiMolecularReaction(const double rate, const ReactionEquation& eq,
+			const double lambda,
+			const double alpha,
+			Vect3d low, Vect3d high, Vect3b periodic,
+			const bool reversible=false);
 	void operator()(const double dt);
 	double get_rate() {return this->rate;}
 	double get_binding_radius() {return binding_radius;}
+	double get_unbinding_radius() {return unbinding_radius;}
+
 protected:
 	double binding_radius_dt;
 	ReactionSide products;
-	double binding_radius, binding_radius2;
+	double binding_radius,unbinding_radius;
+	double lambda;
 	T neighbourhood_search;
 	bool self_reaction;
 };

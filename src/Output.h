@@ -39,7 +39,7 @@ namespace Tyche {
 class Output: public Operator {
 public:
 	typedef std::map<std::string, std::vector<double> > DataType;
-	Output(const char* filename, const double execute_dt):filename(filename),execute_dt(execute_dt) {
+	Output(const std::string filename, const double execute_dt):filename(filename),execute_dt(execute_dt) {
 		next_execute = time + execute_dt;
 	}
 	~Output() {
@@ -59,7 +59,7 @@ public:
 		}
 		return false;
 	}
-	const std::vector<double>& get_data(const char* name) {
+	const std::vector<double>& get_data(const std::string name) {
 		ASSERT(data.find(name)!=data.end(), "cannot find name");
 		return data[name];
 	}
@@ -73,7 +73,7 @@ protected:
 
 class OutputMultiFilename: public Operator {
 public:
-   OutputMultiFilename(const char* filename, const double dt):filename(filename),execute_dt(dt) {
+   OutputMultiFilename(const std::string filename, const double dt):filename(filename),execute_dt(dt) {
 	   next_output = 0;
    }
    void reset() {
@@ -103,7 +103,7 @@ protected:
 
 class OutputMolecularConcentrations: public OutputMultiFilename {
 public:
-	OutputMolecularConcentrations(const char* filename, const double dt, const double low, const double high, const int num_bins):
+	OutputMolecularConcentrations(const std::string filename, const double dt, const double low, const double high, const int num_bins):
       OutputMultiFilename(filename,dt),num_bins(num_bins),
       low(low),high(high) {}
    void operator()(const double dt);
@@ -117,7 +117,7 @@ std::ostream& operator<< (std::ostream& out, OutputMolecularConcentrations& b);
 
 class OutputCompartmentConcentrations: public OutputMultiFilename {
 public:
-	OutputCompartmentConcentrations(const char* filename, const double dt):
+	OutputCompartmentConcentrations(const std::string filename, const double dt):
       OutputMultiFilename(filename, dt) {}
    void operator()(const double dt);
 private:
@@ -128,7 +128,7 @@ std::ostream& operator<< (std::ostream& out, OutputCompartmentConcentrations& b)
 
 class OutputConcentrations: public Output {
 public:
-	OutputConcentrations(const char* filename, const double dt, const StructuredGrid& grid):
+	OutputConcentrations(const std::string filename, const double dt, const StructuredGrid& grid):
 		Output(filename, dt),grid(grid) {
 		//std::vector<double> tmp;
 		data.insert(std::pair<std::string,std::vector<double> >("x",std::vector<double>()));
@@ -149,7 +149,7 @@ std::ostream& operator<< (std::ostream& out, OutputConcentrations& b);
 template<typename T>
 class OutputCompareWithFunction: public Output {
 public:
-	OutputCompareWithFunction(const char* filename,
+	OutputCompareWithFunction(const std::string filename,
 			const double calc_dt, const double start_time, const int average_over,
 			const StructuredGrid& grid, T calc_error):
 				Output(filename, calc_dt),
@@ -162,7 +162,7 @@ public:
 	}
 
 	void operator()(const double dt);
-	void set_param(const char* name, const double value);
+	void set_param(const std::string name, const double value);
 	void reset();
 private:
 	const double start_time;

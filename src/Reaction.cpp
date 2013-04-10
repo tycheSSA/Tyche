@@ -10,6 +10,7 @@ extern "C" {
 #include "rxnparam.h"
 }
 #include <map>
+#include <boost/math/tools/roots.hpp>
 
 namespace Tyche {
 void UniMolecularReaction::calculate_probabilities(const double dt) {
@@ -33,27 +34,12 @@ ReactionSide& UniMolecularReaction::get_random_reaction(const double rand) {
 	return product_list[n_minus_one];
 }
 
-UniMolecularReaction::UniMolecularReaction(const double rate,const ReactionEquation& eq, const double dt, const double reverse_rate):Reaction(rate) {
+UniMolecularReaction::UniMolecularReaction(const double rate,const ReactionEquation& eq, const double init_radius):Reaction(rate) {
 	CHECK((eq.lhs.size()==1) && (eq.lhs[0].multiplier == 1), "Reaction equation is not unimolecular!");
 	this->add_species(*(eq.lhs[0].species));
 	product_list.push_back(eq.rhs);
 	probabilities.push_back(0);
-	if (dt>0) {
-		double difc;
-		if (eq.rhs.size()==1) {
-			difc = 2.0*eq.rhs[0].species->D;
-		} else {
-			difc = eq.rhs[0].species->D+eq.rhs[1].species->D;
-		}
-		const double binding_radius = bindingradius(reverse_rate,dt,difc,-1,0);
-		LOG(2,"reverse binding radius for reaction "<<eq<<" with reverse rate = "<<reverse_rate<<" is calculated as r = "<<binding_radius);
-//		const double unbinding_radius = unbindingradius(0.5,dt,difc,binding_radius);
-//		LOG(2,"unbinding radius for reaction "<<eq<<" with reverse rate = "<<reverse_rate<<" is calculated as r = "<<unbinding_radius);
-
-		init_radii.push_back(2.0*binding_radius);
-	} else {
-		init_radii.push_back(0);
-	}
+	init_radii.push_back(init_radius);
 	total_rate = rate;
 	rates.push_back(rate);
 };
@@ -86,13 +72,16 @@ void UniMolecularReaction::operator ()(const double dt) {
 		const double rand = uni();
 		if (rand < total_probability) {
 			ReactionSide& products = get_random_reaction(rand);
+			const double angle = 2.0*PI*uni();
+			const double angle2 = 2.0*PI*uni();
 			BOOST_FOREACH(ReactionComponent component, products) {
 				for (int j = 0; j < component.multiplier; ++j) {
 					if (j==0) {
+						Vect3d new_pos(init_radii[0]*sin(angle)*cos(angle2),
+									   init_radii[0]*sin(angle)*sin(angle2),
+									   init_radii[0]*cos(angle));
 						component.species->mols.add_molecule(mols.r[i]);
 					} else {
-					const double angle = 2.0*PI*uni();
-					const double angle2 = 2.0*PI*uni();
 					component.species->mols.add_molecule(mols.r[i] + Vect3d(init_radii[0]*sin(angle)*cos(angle2),
 																			init_radii[0]*sin(angle)*sin(angle2),
 																			init_radii[0]*cos(angle)));
@@ -132,22 +121,78 @@ std::ostream& operator<< (std::ostream& out, UniMolecularReaction &r) {
 	return out;
 }
 
+//class reversiblef {
+//public:
+//	reversiblef(const double alpha, const double kappa):alpha(alpha),kappa(kappa) {}
+//    double operator()(const double beta) {
+//        return 4.0*PI*alpha*(beta - std::tanh(beta)) / (std::cosh(beta-beta*alpha)*std::tanh(beta) - std::sinh(beta-beta*alpha)) - kappa;
+//    }
+//    const double alpha;
+//    const double kappa;
+//};
+//
+//class irreversiblef {
+//public:
+//	irreversiblef(const double kappa):kappa(kappa) {}
+//    double operator()(const double beta) {
+//        return 4.0*PI*(1.0-std::tanh(beta)/beta) - kappa;
+//    }
+//    const double kappa;
+//};
+
+class reversiblef {
+public:
+	reversiblef(const double alpha, const double kappa_constant):alpha(alpha),kappa_constant(kappa_constant) {}
+    double operator()(const double beta) {
+    	const double kappa = kappa_constant/beta;
+        return 4.0*PI*alpha*(beta - std::tanh(beta)) / (std::cosh(beta-beta*alpha)*std::tanh(beta) - std::sinh(beta-beta*alpha)) - kappa;
+    }
+    const double alpha;
+    const double kappa_constant;
+
+};
+
+class irreversiblef {
+public:
+	irreversiblef( const double kappa_constant):kappa_constant(kappa_constant) {}
+    double operator()(const double beta) {
+    	const double kappa = kappa_constant/beta;
+        return 4.0*PI*(1.0-std::tanh(beta)/beta) - kappa;
+    }
+    const double kappa_constant;
+
+
+};
 
 template<typename T>
 void BiMolecularReaction<T>::operator ()(const double dt) {
 	Operator::resume_timer();
 	LOG(2, "Starting Operator: " << *this);
-	//std::cout << "there are " << s1.size() << " and " << s2.size() << " molecules" << ". self reaction = "<<self_reaction << std::endl;
 
-	if (dt != binding_radius_dt) {
-		LOG(2, "dt has changed, recalculating binding radius....");
-		binding_radius = bindingradius(rate,dt,all_species[0]->D+all_species[1]->D,-1,0);
-		binding_radius2 = binding_radius*binding_radius;
-		neighbourhood_search.reset(neighbourhood_search.get_low(), neighbourhood_search.get_high(), binding_radius);
-	}
+//	if (dt != binding_radius_dt) {
+//		LOG(2, "dt has changed, recalculating binding radius....");
+//		const double difc = all_species[0]->D + all_species[1]->D;
+//		/*
+//		 * try to set lambda with unbinding radius = 0
+//		 */
+//		const double kapa = rate / (binding_radius*difc);
+//
+//		CHECK(kapa < 0.1, "failed to set bimolecular parameters with unbinding radius = 0");
+//
+//
+//
+//		neighbourhood_search.reset(neighbourhood_search.get_low(), neighbourhood_search.get_high(), binding_radius);
+//	}
 
 	Molecules &mols1 = all_species[0]->mols;
 	Molecules &mols2 = all_species[1]->mols;
+
+	boost::uniform_real<> uni_dist(0.0,1.0);
+	boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni(generator, uni_dist);
+
+	const double binding_radius2 = binding_radius*binding_radius;
+	const double dt_lambda = dt*lambda;
+	LOG(2,"binding radius = " <<binding_radius << " dt*lambda = " << dt_lambda);
 
 	neighbourhood_search.embed_points(mols1.r);
 	const int n = mols2.size();
@@ -165,13 +210,15 @@ void BiMolecularReaction<T>::operator ()(const double dt) {
 			const int id1 = mols1.id[mols1_i];
 			if (self_reaction && (id1==id2)) continue;
 			if ((pos2-neighbourhood_search.correct_position_for_periodicity(pos2, pos1)).squaredNorm() < binding_radius2) {
-				BOOST_FOREACH(ReactionComponent component, products) {
-					for (int i = 0; i < component.multiplier; ++i) {
-						component.species->mols.add_molecule(0.5*(pos1+pos2));
+				if (uni() < dt_lambda) {
+					BOOST_FOREACH(ReactionComponent component, products) {
+						for (int i = 0; i < component.multiplier; ++i) {
+							component.species->mols.add_molecule(0.5*(pos1+pos2));
+						}
 					}
+					mols1.mark_for_deletion(mols1_i);
+					mols2.mark_for_deletion(mols2_i);
 				}
-				mols1.mark_for_deletion(mols1_i);
-				mols2.mark_for_deletion(mols2_i);
 			}
 		}
 	}
@@ -181,11 +228,18 @@ void BiMolecularReaction<T>::operator ()(const double dt) {
 	Operator::stop_timer();
 }
 
+
+
 template<typename T>
-BiMolecularReaction<T>::BiMolecularReaction(const double rate, const ReactionEquation& eq, const double dt, Vect3d low, Vect3d high, Vect3b periodic):
+BiMolecularReaction<T>::BiMolecularReaction(const double rate, const ReactionEquation& eq,
+			const double lambda,
+			const double alpha,
+			Vect3d low, Vect3d high, Vect3b periodic,
+			const bool reversible):
 		Reaction(rate),
+		lambda(lambda),
 		products(eq.rhs),
-		binding_radius_dt(dt),
+		binding_radius_dt(0),
 		neighbourhood_search(low,high,periodic) {
 	if (eq.lhs.size() == 1) {
 		CHECK(eq.lhs[0].multiplier == 2, "Reaction equation is not bimolecular!");
@@ -203,12 +257,65 @@ BiMolecularReaction<T>::BiMolecularReaction(const double rate, const ReactionEqu
 		self_reaction = false;
 	}
 
-	binding_radius = bindingradius(rate,dt,all_species[0]->D+all_species[1]->D,-1,0);
-	binding_radius2 = binding_radius*binding_radius;
+	const double difc = all_species[0]->D + all_species[1]->D;
 
-	LOG(2,"Binding radius for reaction "<<eq<<" with rate = "<<rate<<" is calculated as r = "<<binding_radius);
-	LOG(2,"Ratio between rms diffusion step (D1+D2) and binding radius is rms/br = "<<sqrt(2.0*(all_species[0]->D+all_species[1]->D)*dt)/binding_radius);
+//	const double lambda_min = std::numeric_limits<double>::min()/dt;
+//	const double lambda_max = (1.0-std::numeric_limits<double>::min())/dt;
+	double beta_min =  std::sqrt(std::numeric_limits<double>::min())/(4.0*PI*alpha);
+	double beta_max = std::numeric_limits<double>::max_exponent/4.0-std::log10(4.0*PI*alpha);
+	LOG(2,"beta_min = "<<beta_min<<" and beta_max = "<<beta_max);
 
+	unsigned int maximum_iterations = 50000;
+	boost::uintmax_t max_iter = maximum_iterations;
+	boost::math::tools::eps_tolerance<double> tol(30);
+	const double kappa_constant = rate*sqrt(lambda)/difc;
+	std::pair<double, double> r;
+	if (reversible) {
+		CHECK(alpha < 1.0, "unbinding radius must be less than binding radius");
+		reversiblef f(alpha,kappa_constant);
+		CHECK(f(beta_min)*f(beta_max) < 0, "brackets of root not valid. f(beta_min) = "<<f(beta_min)<<" and f(beta_max) = "<<f(beta_max));
+		while (std::isinf(f(beta_max))) {
+			const double middle = 0.5*(beta_max-beta_min);
+			if (f(beta_min)*f(middle) < 0) {
+				beta_max = middle;
+			} else {
+				beta_min = middle;
+			}
+		}
+		LOG(2,"solving root with f(beta_min) = "<<f(beta_min)<<" and f(beta_max) = "<<f(beta_max));
+
+		r = boost::math::tools::toms748_solve(
+									f,
+									beta_min, beta_max, tol, max_iter);
+	} else {
+		irreversiblef f(kappa_constant);
+		CHECK(f(beta_min)*f(beta_max) < 0, "brackets of root not valid. f(beta_min) = "<<f(beta_min)<<" and f(beta_max) = "<<f(beta_max));
+		while (std::isinf(f(beta_max))) {
+			const double middle = 0.5*(beta_max-beta_min);
+			if (f(beta_min)*f(middle) < 0) {
+				beta_max = middle;
+			} else {
+				beta_min = middle;
+			}
+		}
+		LOG(2,"solving root with f(beta_min) = "<<f(beta_min)<<" and f(beta_max) = "<<f(beta_max));
+		r = boost::math::tools::toms748_solve(
+									f,
+									beta_min, beta_max, tol, max_iter);
+	}
+	CHECK(max_iter < maximum_iterations, "could not solve for root. beta_min = "<<r.first<<" and beta_max = "<<r.second);
+	const double beta = 0.5*(r.first + r.second);
+	binding_radius = beta/std::sqrt(lambda/difc);
+	binding_radius_dt = binding_radius;
+	unbinding_radius = alpha*binding_radius;
+	//lambda = pow(beta / binding_radius,2)*difc;
+	double germinate;
+	if (reversible) {
+		germinate = 1.0 - std::sinh(alpha*beta) / (alpha*beta*std::cosh(beta));
+	} else {
+		germinate = 0.0;
+	}
+	LOG(1,"created bimolecular reaction with eq: " << eq <<" binding radius = " << binding_radius <<" unbinding radius = "<<unbinding_radius<< " lambda = " << lambda <<" and germinate recombination probability = " << germinate);
 	neighbourhood_search.reset(neighbourhood_search.get_low(), neighbourhood_search.get_high(), binding_radius);
 };
 

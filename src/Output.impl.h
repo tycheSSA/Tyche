@@ -42,7 +42,7 @@ void OutputCompareWithFunction<T>::operator()(const double dt) {
 
 
 template<typename T>
-void OutputCompareWithFunction<T>::set_param(const char* name, const double value) {
+void OutputCompareWithFunction<T>::set_param(const std::string name, const double value) {
 	std::map<std::string, double>::iterator val = params.find(name);
 	if (val==params.end()) {
 		ASSERT(data.size() == 0, "Can only add new parameters if no data exists");
