@@ -228,7 +228,18 @@ void BiMolecularReaction<T>::operator ()(const double dt) {
 	Operator::stop_timer();
 }
 
+template<typename T>
+void BiMolecularReaction<T>::report_dt_suitability(const double dt) {
+	LOG(1,"probability of reaction (per timestep) = "<<
+			     dt*lambda<<". ratio of diffusion step to binding radius = "<<
+				std::sqrt(2.0*(all_species[0]->D + all_species[1]->D)*dt)/binding_radius);
+}
 
+void UniMolecularReaction::report_dt_suitability(const double dt) {
+	calculate_probabilities(dt);
+	LOG(1,"probability of reaction (per timestep) = "<<
+			     total_probability);
+}
 
 template<typename T>
 BiMolecularReaction<T>::BiMolecularReaction(const double rate, const ReactionEquation& eq,

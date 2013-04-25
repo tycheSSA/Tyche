@@ -68,6 +68,7 @@ public:
 	void add_reaction(const double rate, const ReactionEquation& eq, const double init_radius=0.0);
 	void operator()(const double dt);
 	friend std::ostream& operator<< (std::ostream& out, UniMolecularReaction &r);
+	void report_dt_suitability(const double dt);
 private:
 	void calculate_probabilities(const double dt);
 	ReactionSide& get_random_reaction(const double rand);
@@ -94,6 +95,7 @@ public:
 	double get_rate() {return this->rate;}
 	double get_binding_radius() {return binding_radius;}
 	double get_unbinding_radius() {return unbinding_radius;}
+	void report_dt_suitability(const double dt);
 
 protected:
 	double binding_radius_dt;
