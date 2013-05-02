@@ -142,13 +142,23 @@ std::ostream& operator<< (std::ostream& out, UniMolecularReaction &r) {
 
 class reversiblef {
 public:
-	reversiblef(const double alpha, const double kappa_constant):alpha(alpha),kappa_constant(kappa_constant) {}
-    double operator()(const double beta) {
-    	const double kappa = kappa_constant/beta;
-        return 4.0*PI*alpha*(beta - std::tanh(beta)) / (std::cosh(beta-beta*alpha)*std::tanh(beta) - std::sinh(beta-beta*alpha)) - kappa;
+	reversiblef(const double unbinding,
+			const double rate,
+			const double lambda,
+			const double difc) {
+		ub = unbinding;
+		lhs = rate/(4.0*PI*ub*difc);
+		s = std::sqrt(lambda/difc);
+	}
+    double operator()(const double b) {
+//        return 4.0*PI*alpha*(beta - std::tanh(beta)) / (std::cosh(beta-beta*alpha)*std::tanh(beta) - std::sinh(beta-beta*alpha)) - kappa;
+    	const double bs = b*s;
+    	const double bubs = (b-ub)*s;
+    	return (bs - std::tanh(bs)) / (std::cosh(bubs)*std::tanh(bs) - std::sinh(bubs)) - lhs;
     }
-    const double alpha;
-    const double kappa_constant;
+    double lhs;
+    double s;
+    double ub;
 
 };
 
@@ -244,7 +254,7 @@ void UniMolecularReaction::report_dt_suitability(const double dt) {
 template<typename T>
 BiMolecularReaction<T>::BiMolecularReaction(const double rate, const ReactionEquation& eq,
 			const double lambda,
-			const double alpha,
+			const double unbinding,
 			Vect3d low, Vect3d high, Vect3b periodic,
 			const bool reversible):
 		Reaction(rate),
@@ -270,55 +280,57 @@ BiMolecularReaction<T>::BiMolecularReaction(const double rate, const ReactionEqu
 
 	const double difc = all_species[0]->D + all_species[1]->D;
 
-//	const double lambda_min = std::numeric_limits<double>::min()/dt;
-//	const double lambda_max = (1.0-std::numeric_limits<double>::min())/dt;
-	double beta_min =  std::sqrt(std::numeric_limits<double>::min())/(4.0*PI*alpha);
-	double beta_max = std::numeric_limits<double>::max_exponent/4.0-std::log10(4.0*PI*alpha);
-	LOG(2,"beta_min = "<<beta_min<<" and beta_max = "<<beta_max);
+	double binding_min =  std::sqrt(std::numeric_limits<double>::min());
+	double binding_max = (neighbourhood_search.get_high()-neighbourhood_search.get_low()).minCoeff();
+//	double binding_min = binding_max * 0.000001;
+	LOG(2,"binding_min = "<<binding_min<<" and binding_max = "<<binding_max);
 
 	unsigned int maximum_iterations = 50000;
 	boost::uintmax_t max_iter = maximum_iterations;
-	boost::math::tools::eps_tolerance<double> tol(30);
-	const double kappa_constant = rate*sqrt(lambda)/difc;
+	boost::math::tools::eps_tolerance<double> tol(60);
 	std::pair<double, double> r;
 	if (reversible) {
-		CHECK(alpha < 1.0, "unbinding radius must be less than binding radius");
-		reversiblef f(alpha,kappa_constant);
-		CHECK(f(beta_min)*f(beta_max) < 0, "brackets of root not valid. f(beta_min) = "<<f(beta_min)<<" and f(beta_max) = "<<f(beta_max));
-		while (std::isinf(f(beta_max))) {
-			const double middle = 0.5*(beta_max-beta_min);
-			if (f(beta_min)*f(middle) < 0) {
-				beta_max = middle;
+		reversiblef fop(unbinding,rate,lambda,difc);
+		CHECK(fop(binding_min)*fop(binding_max) < 0, "brackets of root not valid. f(binding_min) = "<<fop(binding_min)<<" and f(binding_max) = "<<fop(binding_max));
+		while (std::isinf(fop(binding_max))) {
+			const double middle = 0.5*(binding_max-binding_min);
+			if (fop(binding_min)*fop(middle) < 0) {
+				binding_max = middle;
 			} else {
-				beta_min = middle;
+				binding_min = middle;
 			}
 		}
-		LOG(2,"solving root with f(beta_min) = "<<f(beta_min)<<" and f(beta_max) = "<<f(beta_max));
+		LOG(2,"solving root with f(binding_min) = "<<fop(binding_min)<<" and f(binding_max) = "<<fop(binding_max));
 
 		r = boost::math::tools::toms748_solve(
-									f,
-									beta_min, beta_max, tol, max_iter);
+									fop,
+									binding_min, binding_max, tol, max_iter);
+		LOG(1,"f(binding) = "<<fop(0.5*(r.first + r.second)));
+
 	} else {
-		irreversiblef f(kappa_constant);
-		CHECK(f(beta_min)*f(beta_max) < 0, "brackets of root not valid. f(beta_min) = "<<f(beta_min)<<" and f(beta_max) = "<<f(beta_max));
-		while (std::isinf(f(beta_max))) {
-			const double middle = 0.5*(beta_max-beta_min);
-			if (f(beta_min)*f(middle) < 0) {
-				beta_max = middle;
-			} else {
-				beta_min = middle;
-			}
-		}
-		LOG(2,"solving root with f(beta_min) = "<<f(beta_min)<<" and f(beta_max) = "<<f(beta_max));
-		r = boost::math::tools::toms748_solve(
-									f,
-									beta_min, beta_max, tol, max_iter);
+//		irreversiblef f(kappa_constant);
+//		CHECK(f(beta_min)*f(beta_max) < 0, "brackets of root not valid. f(beta_min) = "<<f(beta_min)<<" and f(beta_max) = "<<f(beta_max));
+//		while (std::isinf(f(beta_max))) {
+//			const double middle = 0.5*(beta_max-beta_min);
+//			if (f(beta_min)*f(middle) < 0) {
+//				beta_max = middle;
+//			} else {
+//				beta_min = middle;
+//			}
+//		}
+//		LOG(2,"solving root with f(beta_min) = "<<f(beta_min)<<" and f(beta_max) = "<<f(beta_max));
+//		r = boost::math::tools::toms748_solve(
+//									f,
+//									beta_min, beta_max, tol, max_iter);
 	}
-	CHECK(max_iter < maximum_iterations, "could not solve for root. beta_min = "<<r.first<<" and beta_max = "<<r.second);
-	const double beta = 0.5*(r.first + r.second);
-	binding_radius = beta/std::sqrt(lambda/difc);
+	CHECK(max_iter < maximum_iterations, "could not solve for root. binding_min = "<<r.first<<" and binding_max = "<<r.second);
+	binding_radius = 0.5*(r.first + r.second);
 	binding_radius_dt = binding_radius;
-	unbinding_radius = alpha*binding_radius;
+	unbinding_radius = unbinding;
+	const double alpha = unbinding/binding_radius;
+	const double beta = binding_radius*std::sqrt(lambda/difc);
+	CHECK(alpha < 1.0, "unbinding radius must be less than binding radius = "<<binding_radius);
+
 	//lambda = pow(beta / binding_radius,2)*difc;
 	double germinate;
 	if (reversible) {
@@ -327,6 +339,7 @@ BiMolecularReaction<T>::BiMolecularReaction(const double rate, const ReactionEqu
 		germinate = 0.0;
 	}
 	LOG(1,"created bimolecular reaction with eq: " << eq <<" binding radius = " << binding_radius <<" unbinding radius = "<<unbinding_radius<< " lambda = " << lambda <<" and germinate recombination probability = " << germinate);
+
 	neighbourhood_search.reset(neighbourhood_search.get_low(), neighbourhood_search.get_high(), binding_radius);
 };
 

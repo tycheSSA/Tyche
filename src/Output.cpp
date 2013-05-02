@@ -24,72 +24,6 @@
 
 namespace Tyche {
 
-void OutputMolecularConcentrations::operator ()(const double dt) {
-	Operator::resume_timer();
-	OutputMultiFilename::operator ()(dt);
-	if (f.is_open()) {
-		LOG(2, "Starting Operator: " << *this);
-		const int n = all_species.size();
-		ASSERT(n==1,"OutputConcentrations only implemented for one species");
-		Species &s = *(all_species[0]);
-
-		bins.assign(num_bins,0);
-		const double scale = num_bins/(high-low);
-		BOOST_FOREACH(Vect3d r,s.mols.r) {
-			const double scaled_position = (r[0]-low)*scale;
-			if ((scaled_position < 0) || (scaled_position > num_bins)) {
-				//printf("outside area: position = (%f %f %f)\n",r[0],r[1],r[2]);
-				continue;
-			}
-			const int index = int(scaled_position);
-			bins[index]++;
-		}
-
-		for (int i = 0; i < num_bins; ++i) {
-			f << (i+0.5)*(high-low)/num_bins + low << " 0 0 " << bins[i] << std::endl;
-		}
-
-		LOG(2, "Stopping Operator: " << *this);
-	}
-	Operator::stop_timer();
-}
-
-std::ostream& operator <<(std::ostream& out, OutputMolecularConcentrations& b) {
-	return out << "\tOutput molecular concentrations";
-}
-
-void OutputCompartmentConcentrations::operator ()(const double dt) {
-	Operator::resume_timer();
-	OutputMultiFilename::operator ()(dt);
-	if (f.is_open()) {
-		LOG(2, "Starting Operator: " << *this);
-		const int n = all_species.size();
-		ASSERT(n==1,"OutputConcentrations only implemented for one species");
-		Species &s = *(all_species[0]);
-		const int num_bins = s.grid.get_cells_along_axes()[0];
-		bins.assign(num_bins,0);
-		const int nc = s.grid.size();
-		for(int i = 0; i < nc; i++) {
-			Vect3i cell_indices = s.grid.get_cell_indicies(i);
-			bins[cell_indices[0]] += s.copy_numbers[i];
-			//if ((cell_indices[0]==5)||(cell_indices[0]==4))  std::cout <<  "copy number for "<<cell_indices[0]<<" = " << s.copy_numbers[i] << std::endl;
-		}
-
-		const double low = s.grid.get_low()[0];
-		const double high = s.grid.get_high()[0];
-		for (int i = 0; i < num_bins; ++i) {
-			f << (i+0.5)*(high-low)/num_bins + low << " 0 0 " << bins[i] << std::endl;
-		}
-
-		LOG(2, "Stopping Operator: " << *this);
-	}
-	Operator::stop_timer();
-}
-
-std::ostream& operator <<(std::ostream& out,
-		OutputCompartmentConcentrations& b) {
-	return out << "\tOutput compartments concentrations";
-}
 
 void OutputConcentrations::operator ()(const double dt) {
 	Operator::resume_timer();
@@ -125,7 +59,39 @@ std::ostream& operator <<(std::ostream& out, OutputConcentrations& b) {
 	return out << "\tOutput concentrations";
 }
 
+void OutputSumConcentrations::operator ()(const double dt) {
+	Operator::resume_timer();
+	Output::operator ()(dt);
+	if (is_execute_time()) {
+		LOG(2, "Starting Operator: " << *this);
+		const int n = all_species.size();
+		ASSERT(n==1,"OutputConcentrations only implemented for one species");
+		Species &s = *(all_species[0]);
+		std::vector<double> mol_con, comp_con;
+		s.get_concentrations(grid,mol_con,comp_con);
+		ASSERT(grid.size()==mol_con.size(), "copy numbers size is not the same as grid!");
+		const int ngrid = mol_con.size();
+		double sum_m = 0;
+		double sum_c = 0;
+		for (int i = 0; i < ngrid; ++i) {
+			sum_m += mol_con[i]*grid.get_cell_volume(i);
+			sum_c += comp_con[i]*grid.get_cell_volume(i);
+		}
 
+		data["Time"].push_back(time);
+		data["Concentration(M)"].push_back(sum_m);
+		data["Concentration(C)"].push_back(sum_c);
+		data["Concentration"].push_back(sum_m+sum_c);
+
+		write();
+		LOG(2, "Stopping Operator: " << *this);
+	}
+	Operator::stop_timer();
+}
+
+std::ostream& operator <<(std::ostream& out, OutputSumConcentrations& b) {
+	return out << "\tOutput sum concentrations";
+}
 
 void Output::write() {
 	write(filename + ".dat");

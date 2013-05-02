@@ -79,6 +79,9 @@ public:
 	inline double get_cell_volume(const int i) const {
 		return cell_volume;
 	}
+	inline double get_total_volume() const {
+		return cell_volume*num_cells;
+	}
 	inline int size() const {
 		return num_cells;
 	}

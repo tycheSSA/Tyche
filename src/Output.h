@@ -71,60 +71,6 @@ protected:
 	std::ofstream f;
 };
 
-class OutputMultiFilename: public Operator {
-public:
-   OutputMultiFilename(const std::string filename, const double dt):filename(filename),execute_dt(dt) {
-	   next_output = 0;
-   }
-   void reset() {
-	   Operator::reset();
-	   next_output = time + execute_dt;
-   }
-   void operator()(const double dt) {
-	   Operator::operator()(dt);
-	   if (f.is_open()) f.close();
-	   if (time >= next_output) {
-		   std::stringstream ss;
-		   ss << std::setprecision (3) << std::fixed <<  time;
-		   f.open((filename+"time_"+ss.str()+".dat").c_str());
-		   next_output = time + execute_dt;
-	   }
-   }
-   ~OutputMultiFilename() {
-      f.close();
-   }
-
-protected:
-   std::string filename;
-   std::ofstream f;
-   double execute_dt,next_output;
-};
-
-
-class OutputMolecularConcentrations: public OutputMultiFilename {
-public:
-	OutputMolecularConcentrations(const std::string filename, const double dt, const double low, const double high, const int num_bins):
-      OutputMultiFilename(filename,dt),num_bins(num_bins),
-      low(low),high(high) {}
-   void operator()(const double dt);
-private:
-   const int num_bins;
-   const double low,high;
-   std::vector<int> bins;
-};
-
-std::ostream& operator<< (std::ostream& out, OutputMolecularConcentrations& b);
-
-class OutputCompartmentConcentrations: public OutputMultiFilename {
-public:
-	OutputCompartmentConcentrations(const std::string filename, const double dt):
-      OutputMultiFilename(filename, dt) {}
-   void operator()(const double dt);
-private:
-   std::vector<int> bins;
-};
-
-std::ostream& operator<< (std::ostream& out, OutputCompartmentConcentrations& b);
 
 class OutputConcentrations: public Output {
 public:
@@ -144,7 +90,22 @@ protected:
 };
 
 std::ostream& operator<< (std::ostream& out, OutputConcentrations& b);
-                                                                                    \
+
+class OutputSumConcentrations: public Output {
+public:
+	OutputSumConcentrations(const std::string filename, const double dt, const StructuredGrid& grid):
+		Output(filename, dt),grid(grid) {
+		data.insert(std::pair<std::string,std::vector<double> >("Time",std::vector<double>()));
+		data.insert(std::pair<std::string,std::vector<double> >("Concentration(M)",std::vector<double>()));
+		data.insert(std::pair<std::string,std::vector<double> >("Concentration(C)",std::vector<double>()));
+		data.insert(std::pair<std::string,std::vector<double> >("Concentration",std::vector<double>()));
+	}
+	void operator()(const double dt);
+protected:
+	const StructuredGrid& grid;
+};
+
+std::ostream& operator<< (std::ostream& out, OutputSumConcentrations& b);
 
 template<typename T>
 class OutputCompareWithFunction: public Output {
