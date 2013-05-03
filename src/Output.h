@@ -102,7 +102,6 @@ public:
 	}
 	void operator()(const double dt);
 	void add_species(Species &s);
-	void add_species(std::initializer_list<Species> s);
 protected:
 	const StructuredGrid& grid;
 };

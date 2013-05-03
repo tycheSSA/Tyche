@@ -39,12 +39,6 @@ void Operator::add_species(Species& s) {
 	all_species.push_back(&s);
 }
 
-void Operator::add_species(std::initializer_list<Species> s) {
-	for (auto i=s.begin(); i != s.end(); i++) {
-		Species* ptr = &(*i);
-		all_species.push_back(ptr);
-	}
-}
 
 void Operator::resume_timer() {
 //	timer.resume();

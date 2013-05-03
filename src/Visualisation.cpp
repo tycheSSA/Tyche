@@ -100,7 +100,7 @@ void Visualisation::operator ()(const double dt) {
 	if (time > next_vis) {
 		LOG(2, "Starting Operator: " << *this);
 		my_vtk_data->renderer->RemoveAllViewProps();
-		BOOST_FOREACH(Species *s, this->all_species) {
+		BOOST_FOREACH(Species* s, this->all_species) {
 			add_molecules_to_vis(*s);
 			add_compartments_to_vis(*s);
 		}

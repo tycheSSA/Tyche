@@ -111,12 +111,6 @@ void OutputSumConcentrations::add_species(Species &s) {
 	Operator::add_species(s);
 }
 
-void OutputSumConcentrations::add_species(std::initializer_list<Species> s) {
-	for (auto i=s.begin(); i != s.end(); i++) {
-		add_species(*i);
-	}
-}
-
 std::ostream& operator <<(std::ostream& out, OutputSumConcentrations& b) {
 	return out << "\tOutput sum concentrations";
 }

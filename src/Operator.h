@@ -35,7 +35,6 @@ class Operator {
 public:
 	Operator();
 	void add_species(Species &s);
-	void add_species(std::initializer_list<Species> s);
 
 	void operator()(const double dt);
 	std::string get_time();
