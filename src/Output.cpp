@@ -64,29 +64,57 @@ void OutputSumConcentrations::operator ()(const double dt) {
 	Output::operator ()(dt);
 	if (is_execute_time()) {
 		LOG(2, "Starting Operator: " << *this);
+		double sumsum_m = 0;
+		double sumsum_c = 0;
 		const int n = all_species.size();
-		ASSERT(n==1,"OutputConcentrations only implemented for one species");
-		Species &s = *(all_species[0]);
-		std::vector<double> mol_con, comp_con;
-		s.get_concentrations(grid,mol_con,comp_con);
-		ASSERT(grid.size()==mol_con.size(), "copy numbers size is not the same as grid!");
-		const int ngrid = mol_con.size();
-		double sum_m = 0;
-		double sum_c = 0;
-		for (int i = 0; i < ngrid; ++i) {
-			sum_m += mol_con[i]*grid.get_cell_volume(i);
-			sum_c += comp_con[i]*grid.get_cell_volume(i);
+		for (int i = 0; i < n; ++i) {
+			Species &s = *(all_species[i]);
+
+			std::vector<double> mol_con, comp_con;
+			s.get_concentrations(grid,mol_con,comp_con);
+			ASSERT(grid.size()==mol_con.size(), "copy numbers size is not the same as grid!");
+			const int ngrid = mol_con.size();
+			double sum_m = 0;
+			double sum_c = 0;
+			for (int i = 0; i < ngrid; ++i) {
+				sum_m += mol_con[i]*grid.get_cell_volume(i);
+				sum_c += comp_con[i]*grid.get_cell_volume(i);
+			}
+
+			std::ostringstream ss;
+			ss << s.id;
+			data["Concentration(M)("+ss.str()+")"].push_back(sum_m);
+			data["Concentration(C)("+ss.str()+")"].push_back(sum_c);
+			data["Concentration("+ss.str()+")"].push_back(sum_m+sum_c);
+
+			sumsum_m += sum_m;
+			sumsum_c += sum_c;
 		}
 
 		data["Time"].push_back(time);
-		data["Concentration(M)"].push_back(sum_m);
-		data["Concentration(C)"].push_back(sum_c);
-		data["Concentration"].push_back(sum_m+sum_c);
+		data["Concentration(M)"].push_back(sumsum_m);
+		data["Concentration(C)"].push_back(sumsum_c);
+		data["Concentration"].push_back(sumsum_m+sumsum_c);
 
 		write();
 		LOG(2, "Stopping Operator: " << *this);
 	}
 	Operator::stop_timer();
+}
+
+void OutputSumConcentrations::add_species(Species &s) {
+	std::ostringstream ss;
+	ss << s.id;
+	data.insert(std::pair<std::string,std::vector<double> >("Concentration(M)("+ss.str()+")",std::vector<double>()));
+	data.insert(std::pair<std::string,std::vector<double> >("Concentration(C)("+ss.str()+")",std::vector<double>()));
+	data.insert(std::pair<std::string,std::vector<double> >("Concentration("+ss.str()+")",std::vector<double>()));
+	Operator::add_species(s);
+}
+
+void OutputSumConcentrations::add_species(std::initializer_list<Species> s) {
+	for (auto i=s.begin(); i != s.end(); i++) {
+		add_species(*i);
+	}
 }
 
 std::ostream& operator <<(std::ostream& out, OutputSumConcentrations& b) {

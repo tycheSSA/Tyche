@@ -27,6 +27,7 @@
 
 #include "Species.h"
 #include <boost/timer.hpp>
+#include <initializer_list>
 
 namespace Tyche {
 
@@ -34,6 +35,8 @@ class Operator {
 public:
 	Operator();
 	void add_species(Species &s);
+	void add_species(std::initializer_list<Species> s);
+
 	void operator()(const double dt);
 	std::string get_time();
 	std::string get_global_time();

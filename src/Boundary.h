@@ -206,6 +206,12 @@ JumpBoundaryWithCorrection<T> create_jump_boundary_corrected(T& geometry, const 
 	return JumpBoundaryWithCorrection<T>(geometry,jump_by);
 }
 
+template<typename T>
+JumpBoundaryWithCorrection<T> create_jump_boundary_corrected(T& geometry, const Vect3d jump_by, Species& s) {
+	JumpBoundaryWithCorrection<T> to_return(geometry,jump_by); to_return.add_species(s);
+	return to_return;
+}
+
 
 template<typename T>
 class ReflectiveBoundary: public Boundary<T> {
