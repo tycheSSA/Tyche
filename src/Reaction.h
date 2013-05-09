@@ -87,8 +87,8 @@ template<typename T>
 class BiMolecularReaction: public Reaction {
 public:
 	BiMolecularReaction(const double rate, const ReactionEquation& eq,
-			const double lambda,
-			const double alpha,
+			const double binding,
+			const double unbinding,
 			Vect3d low, Vect3d high, Vect3b periodic,
 			const bool reversible=false);
 	void operator()(const double dt);

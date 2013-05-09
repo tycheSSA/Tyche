@@ -50,6 +50,7 @@ protected:
 std::ostream& operator<< (std::ostream& out, Diffusion &b);
 
 Diffusion create_diffusion(Species &s);
+Diffusion create_diffusion();
 
 class Diffusion1D: public Diffusion {
 public:

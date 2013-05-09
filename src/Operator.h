@@ -42,6 +42,7 @@ public:
 	std::string get_time_percentage();
 	void reset();
 	int get_species_index(Species& s);
+	std::vector<Species*>& get_species() {return all_species;}
 protected:
 	void resume_timer();
 	void stop_timer();
