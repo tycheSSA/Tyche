@@ -278,6 +278,39 @@ void UniMolecularReaction::report_dt_suitability(const double dt) {
 }
 
 template<typename T>
+BiMolecularReaction<T>::BiMolecularReaction(const double rate, const ReactionEquation& eq, const double dt,
+			Vect3d low, Vect3d high, Vect3b periodic):
+		Reaction(rate),
+		products(eq.rhs),
+		binding_radius_dt(0),
+		neighbourhood_search(low,high,periodic) {
+	if (eq.lhs.size() == 1) {
+		CHECK(eq.lhs[0].multiplier == 2, "Reaction equation is not bimolecular!");
+		this->add_species(*(eq.lhs[0].species));
+		this->add_species(*(eq.lhs[0].species));
+	} else {
+		CHECK((eq.lhs.size()==2) && (eq.lhs[0].multiplier == 1) && (eq.lhs[1].multiplier == 1), "Reaction equation is not bimolecular!");
+		this->add_species(*(eq.lhs[0].species));
+		this->add_species(*(eq.lhs[1].species));
+	}
+
+	if (all_species[0] == all_species[1]) {
+		self_reaction = true;
+	} else {
+		self_reaction = false;
+	}
+
+	const double difc = all_species[0]->D + all_species[1]->D;
+	binding_radius = bindingradius(rate,dt,difc,-1,-1);
+
+	lambda = 1.0/dt;
+	binding_radius_dt = binding_radius;
+
+	LOG(1,"created bimolecular reaction with eq: " << eq <<" binding radius = " << binding_radius);
+	neighbourhood_search.reset(neighbourhood_search.get_low(), neighbourhood_search.get_high(), binding_radius);
+};
+
+template<typename T>
 BiMolecularReaction<T>::BiMolecularReaction(const double rate, const ReactionEquation& eq,
 			const double binding,
 			const double unbinding,

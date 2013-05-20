@@ -91,6 +91,8 @@ public:
 			const double unbinding,
 			Vect3d low, Vect3d high, Vect3b periodic,
 			const bool reversible=false);
+	BiMolecularReaction(const double rate, const ReactionEquation& eq, const double dt,
+				Vect3d low, Vect3d high, Vect3b periodic);
 	void operator()(const double dt);
 	double get_rate() {return this->rate;}
 	double get_binding_radius() {return binding_radius;}
