@@ -41,6 +41,7 @@ AxisAlignedRectangle<DIM> StructuredGrid::get_intersection_of_cell(const int i,
 	const double dim_map[3][2] = {{1,2},{0,2},{0,1}};
 	Vect3d low_point = index_to_vect(i).cast<double>().cwiseProduct(cell_size)+low;
 	Vect3d high_point = low_point + cell_size;
+	low_point[DIM] -= tolerance;
 	const double dist = geometry.distance_to_boundary(low_point);
 	low_point[DIM] += std::abs(dist);
 	high_point[DIM] = low_point[DIM];
