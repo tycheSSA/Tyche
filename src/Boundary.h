@@ -113,6 +113,7 @@ protected:
    void recalc_constants(Species &s, const double new_dt) {
       D_dt = s.D*new_dt;
       test_this_distance_from_wall = 5.0*sqrt(2.0*s.D*new_dt);
+      //test_this_distance_from_wall = 0;
    }
    void init_prev_distance(Molecules& mols, std::vector<double>& prev_distance) {
       const int n = mols.size();

@@ -74,18 +74,14 @@ void UniMolecularReaction::operator ()(const double dt) {
 			ReactionSide& products = get_random_reaction(rand);
 			const double angle = 2.0*PI*uni();
 			const double angle2 = 2.0*PI*uni();
+			Vect3d new_pos(0.5*init_radii[0]*sin(angle)*cos(angle2),
+					0.5*init_radii[0]*sin(angle)*sin(angle2),
+					0.5*init_radii[0]*cos(angle));
 			BOOST_FOREACH(ReactionComponent component, products) {
 				for (int j = 0; j < component.multiplier; ++j) {
-					if (j==0) {
-						Vect3d new_pos(init_radii[0]*sin(angle)*cos(angle2),
-									   init_radii[0]*sin(angle)*sin(angle2),
-									   init_radii[0]*cos(angle));
-						component.species->mols.add_molecule(mols.r[i]);
-					} else {
-					component.species->mols.add_molecule(mols.r[i] + Vect3d(init_radii[0]*sin(angle)*cos(angle2),
-																			init_radii[0]*sin(angle)*sin(angle2),
-																			init_radii[0]*cos(angle)));
-					}
+					component.species->mols.add_molecule(mols.r[i] + new_pos);
+					new_pos = -new_pos;
+
 #ifdef DEBUG
 					//LOG(2,"adding molecule of species "<<component.species->id);
 					it = count.find(component.species->id);
@@ -200,6 +196,182 @@ public:
 
 };
 
+double K(const double r1, const double r2, const double gamma) {
+	return (r2/(r1*gamma*sqrt(2.0*PI)))*(exp(-pow(r1-r2,2)/(2.0*pow(gamma,2)))-exp(-pow(r1+r2,2)/(2.0*pow(gamma,2))));
+}
+
+double integral_K(const double r_i, const double S, const double gamma) {
+	return (pow(gamma,2)*K(r_i,S,gamma)/S) + 1.0 - 0.5*erf((S-r_i)/(gamma*sqrt(2.0))) - 0.5*erf((S+r_i)/(gamma*sqrt(2.0)));
+}
+
+class calculate_kappa_reversible {
+public:
+	calculate_kappa_reversible(const double gamma, const double alpha, const double goal_kappa) :gamma(gamma),alpha(alpha),goal_kappa(goal_kappa) {}
+    double operator()(const double P_lambda) {
+    	const int N1 = 200;
+    	const int N2 = 200;
+    	const double S = 10.0;
+    	const double dx1 = 1.0/N1;
+    	const double dx2 = (S-1.0)/N2;
+
+    	Eigen::MatrixXd A(N1+N2,N1+N2);
+    	Eigen::VectorXd b(N1+N2);
+
+    	for (int i = 1; i <= N1+N2; ++i) {
+    		double r_i;
+    		if (i <= N1) {
+    			r_i = i*dx1;
+    		} else {
+    			r_i = 1.0 + (i-N1)*dx2;
+    		}
+    		b[i-1] = integral_K(r_i,S,gamma);
+
+			for (int j = 1; j <= N1+N2; ++j) {
+				if (j <= N1) {
+					const double r_j = j*dx1;
+					A(i-1,j-1) = -((1.0-P_lambda)/N1) * K(r_i,r_j,gamma) -
+							(P_lambda*K(r_i,alpha,gamma)/(pow(alpha,2)*N1)) * pow(r_j,2);
+				} else {
+					const double r_j = 1.0 + (j-N1)*dx2;
+					A(i-1,j-1) = -((S-1.0)/N2) * K(r_i,r_j,gamma);
+				}
+				if (i==j) {
+					A(i-1,j-1) += 1.0;
+				}
+			}
+		}
+    	Eigen::VectorXd x = A.fullPivLu().solve(b);
+//    	const double relative_error = (A*x - b).norm() / b.norm(); // norm() is L2 norm
+//    	std::cout << "The relative error is:\n" << relative_error << std::endl;
+
+    	double calc_kappa = 0;
+    	for (int i = 1; i <= N1; ++i) {
+    		const double r_i = i*dx1;
+    		calc_kappa += pow(r_i,2)*x[i-1];
+    	}
+    	calc_kappa -= 0.5*x[N1-1];
+    	calc_kappa *= P_lambda * 4.0*PI / N1;
+
+    	return calc_kappa-goal_kappa;
+    }
+    const double gamma;
+    const double alpha;
+    const double goal_kappa;
+};
+
+class calculate_kappa_irreversible {
+public:
+	calculate_kappa_irreversible(const double gamma, const double goal_kappa) :gamma(gamma),goal_kappa(goal_kappa) {}
+    double operator()(const double P_lambda) {
+    	const int N1 = 100;
+    	const int N2 = 100;
+    	const double S = 100.0;
+    	const double dx1 = 1.0/N1;
+    	const double dx2 = (S-1.0)/N2;
+
+    	Eigen::MatrixXd A(N1+N2,N1+N2);
+    	Eigen::VectorXd b(N1+N2);
+
+    	for (int i = 1; i <= N1+N2; ++i) {
+    		double r_i;
+    		if (i <= N1) {
+    			r_i = i*dx1;
+    		} else {
+    			r_i = 1.0 + (i-N1)*dx2;
+    		}
+    		b[i-1] = integral_K(r_i,S,gamma);
+
+			for (int j = 1; j <= N1+N2; ++j) {
+				if (j <= N1) {
+					const double r_j = j*dx1;
+					A(i-1,j-1) = -((1.0-P_lambda)/N1) * K(r_i,r_j,gamma);
+				} else {
+					const double r_j = 1.0 + (j-N1)*dx2;
+					A(i-1,j-1) = -((S-1.0)/N2) * K(r_i,r_j,gamma);
+				}
+				if (i==j) {
+					A(i-1,j-1) += 1.0;
+				}
+			}
+		}
+    	Eigen::VectorXd x = A.fullPivLu().solve(b);
+//    	const double relative_error = (A*x - b).norm() / b.norm(); // norm() is L2 norm
+//    	std::cout << "The relative error is:\n" << relative_error << std::endl;
+
+    	double calc_kappa = 0;
+    	for (int i = 1; i <= N1; ++i) {
+    		const double r_i = i*dx1;
+    		calc_kappa += pow(r_i,2)*x[i-1];
+    	}
+    	calc_kappa -= 0.5*x[N1-1];
+    	calc_kappa *= P_lambda * 4.0*PI / N1;
+
+    	return calc_kappa-goal_kappa;
+    }
+    const double gamma;
+    const double goal_kappa;
+};
+
+template<typename T>
+double BiMolecularReaction<T>::calculate_lambda_reversible(const double dt) {
+	double P_lambda_min = 0;
+	double P_lambda_max = 1;
+
+	unsigned int maximum_iterations = 100;
+	boost::uintmax_t max_iter = maximum_iterations;
+	boost::math::tools::eps_tolerance<double> tol(30);
+	std::pair<double, double> r;
+
+	const double alpha = unbinding_radius/binding_radius;
+	const double goal_kappa = rate*dt/pow(binding_radius,3);
+	const double difc = all_species[0]->D + all_species[1]->D;
+	const double gamma = sqrt(2.0*difc*dt)/binding_radius;
+	calculate_kappa_reversible f(gamma,alpha,goal_kappa);
+	CHECK(f(P_lambda_min)*f(P_lambda_max) < 0, "brackets of root not valid. f(P_lambda_min) = "<<f(P_lambda_min)<<" and f(P_lambda_max) = "<<f(P_lambda_max));
+
+	LOG(1,"solving root with f(P_lambda_min) = "<<f(P_lambda_min)<<" and f(P_lambda_max) = "<<f(P_lambda_max));
+
+	r = boost::math::tools::toms748_solve(f,
+			P_lambda_min, P_lambda_max, tol, max_iter);
+	CHECK(max_iter < maximum_iterations, "could not solve for root. binding_min = "<<r.first<<" and binding_max = "<<r.second);
+
+	LOG(1,"f(binding) = f("<<0.5*(r.first+r.second)<<") = "<<f(0.5*(r.first + r.second)));
+	LOG(1,"f(first) = f("<<r.first<<") = "<<f(r.first));
+	LOG(1,"f(second) = f("<<r.second<<") = "<< f(r.second));
+
+	return 0.5*(r.first + r.second);
+
+}
+
+template<typename T>
+double BiMolecularReaction<T>::calculate_lambda_irreversible(const double dt) {
+	double P_lambda_min = 0;
+	double P_lambda_max = 1;
+
+	unsigned int maximum_iterations = 100;
+	boost::uintmax_t max_iter = maximum_iterations;
+	boost::math::tools::eps_tolerance<double> tol(30);
+	std::pair<double, double> r;
+
+	const double goal_kappa = rate*dt/pow(binding_radius,3);
+	const double difc = all_species[0]->D + all_species[1]->D;
+	const double gamma = sqrt(2.0*difc*dt)/binding_radius;
+	calculate_kappa_irreversible f(gamma,goal_kappa);
+	CHECK(f(P_lambda_min)*f(P_lambda_max) < 0, "brackets of root not valid. f(P_lambda_min) = "<<f(P_lambda_min)<<" and f(P_lambda_max) = "<<f(P_lambda_max));
+
+	LOG(1,"solving root with f(P_lambda_min) = "<<f(P_lambda_min)<<" and f(P_lambda_max) = "<<f(P_lambda_max));
+
+	r = boost::math::tools::toms748_solve(f,
+			P_lambda_min, P_lambda_max, tol, max_iter);
+	LOG(1,"f(binding) = f("<<0.5*(r.first+r.second)<<") = "<<f(0.5*(r.first + r.second)));
+	CHECK(max_iter < maximum_iterations, "could not solve for root. binding_min = "<<r.first<<" and binding_max = "<<r.second);
+
+	LOG(1,"f(first) = f("<<r.first<<") = "<<f(r.first));
+	LOG(1,"f(second) = f("<<r.second<<") = "<< f(r.second));
+
+	return 0.5*(r.first + r.second);
+}
+
 template<typename T>
 void BiMolecularReaction<T>::operator ()(const double dt) {
 	Operator::resume_timer();
@@ -227,9 +399,6 @@ void BiMolecularReaction<T>::operator ()(const double dt) {
 	boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni(generator, uni_dist);
 
 	const double binding_radius2 = binding_radius*binding_radius;
-	const double dt_lambda = dt*lambda;
-	ASSERT(dt_lambda <= 1.0, "probabilty of reaction greater than 1.0. reduce dt");
-	LOG(2,"binding radius = " <<binding_radius << " dt*lambda = " << dt_lambda);
 
 	neighbourhood_search.embed_points(mols1.r);
 	const int n = mols2.size();
@@ -246,7 +415,7 @@ void BiMolecularReaction<T>::operator ()(const double dt) {
 			const int id1 = mols1.id[mols1_i];
 			if (self_reaction && (id1==id2)) continue;
 			if ((pos2-neighbourhood_search.correct_position_for_periodicity(pos2, pos1)).squaredNorm() < binding_radius2) {
-				if (uni() < dt_lambda) {
+				if (uni() < P_lambda) {
 					for (auto component : products) {
 						for (int i = 0; i < component.multiplier; ++i) {
 							component.species->mols.add_molecule(0.5*(pos1+pos2));
@@ -267,7 +436,7 @@ void BiMolecularReaction<T>::operator ()(const double dt) {
 template<typename T>
 void BiMolecularReaction<T>::report_dt_suitability(const double dt) {
 	LOG(1,"probability of reaction (per timestep) = "<<
-			     dt*lambda<<". ratio of diffusion step to binding radius = "<<
+			     P_lambda<<". ratio of diffusion step to binding radius = "<<
 				std::sqrt(2.0*(all_species[0]->D + all_species[1]->D)*dt)/binding_radius);
 }
 
@@ -303,7 +472,7 @@ BiMolecularReaction<T>::BiMolecularReaction(const double rate, const ReactionEqu
 	const double difc = all_species[0]->D + all_species[1]->D;
 	binding_radius = bindingradius(rate,dt,difc,-1,-1);
 
-	lambda = 1.0/dt;
+	P_lambda = 1.0;
 	binding_radius_dt = binding_radius;
 
 	LOG(1,"created bimolecular reaction with eq: " << eq <<" binding radius = " << binding_radius);
@@ -314,11 +483,15 @@ template<typename T>
 BiMolecularReaction<T>::BiMolecularReaction(const double rate, const ReactionEquation& eq,
 			const double binding,
 			const double unbinding,
+			const double dt,
 			Vect3d low, Vect3d high, Vect3b periodic,
 			const bool reversible):
 		Reaction(rate),
 		products(eq.rhs),
-		binding_radius_dt(0),
+		binding_radius(binding),
+		unbinding_radius(unbinding),
+		binding_radius_dt(dt),
+		reversible(reversible),
 		neighbourhood_search(low,high,periodic) {
 	if (eq.lhs.size() == 1) {
 		CHECK(eq.lhs[0].multiplier == 2, "Reaction equation is not bimolecular!");
@@ -336,71 +509,76 @@ BiMolecularReaction<T>::BiMolecularReaction(const double rate, const ReactionEqu
 		self_reaction = false;
 	}
 
-	const double difc = all_species[0]->D + all_species[1]->D;
+//	const double difc = all_species[0]->D + all_species[1]->D;
 
-	double lambda_min =  std::sqrt(std::numeric_limits<double>::min());
-	double lambda_max = 0.1*difc * pow(std::numeric_limits<double>::max_exponent,2) / pow(binding,2);
-//	double binding_min = binding_max * 0.000001;
-	LOG(1,"lambda_min = "<<lambda_min<<" and lambda_max = "<<lambda_max);
-	unsigned int maximum_iterations = 50000;
-	boost::uintmax_t max_iter = maximum_iterations;
-	boost::math::tools::eps_tolerance<double> tol(60);
-	std::pair<double, double> r;
-	if (reversible) {
-		reversiblef fop(rate,unbinding,binding,difc);
-
-		CHECK(fop(lambda_min)*fop(lambda_max) < 0, "brackets of root not valid. f(lambda_min) = "<<fop(lambda_min)<<" and f(lambda_max) = "<<fop(lambda_max));
-		while (std::isinf(fop(lambda_max))) {
-			const double middle = 0.5*(lambda_max-lambda_min);
-			if (fop(lambda_min)*fop(middle) < 0) {
-				lambda_max = middle;
-			} else {
-				lambda_min = middle;
-			}
-		}
-		LOG(2,"solving root with f(lambda_min) = "<<fop(lambda_min)<<" and f(lambda_max) = "<<fop(lambda_max));
-
-		r = boost::math::tools::toms748_solve(
-									fop,
-									lambda_min, lambda_max, tol, max_iter);
-		LOG(1,"f(binding) = f("<<0.5*(r.first+r.second)<<") = "<<fop(0.5*(r.first + r.second)));
-		LOG(1,"f(first) = f("<<r.first<<") = "<<fop(r.first));
-		LOG(1,"f(second) = f("<<r.second<<") = "<< fop(r.second));
-
-	} else {
-//		irreversiblef f(kappa_constant);
-//		CHECK(f(beta_min)*f(beta_max) < 0, "brackets of root not valid. f(beta_min) = "<<f(beta_min)<<" and f(beta_max) = "<<f(beta_max));
-//		while (std::isinf(f(beta_max))) {
-//			const double middle = 0.5*(beta_max-beta_min);
-//			if (f(beta_min)*f(middle) < 0) {
-//				beta_max = middle;
+//	double lambda_min =  std::sqrt(std::numeric_limits<double>::min());
+//	double lambda_max = 0.1*difc * pow(std::numeric_limits<double>::max_exponent,2) / pow(binding,2);
+////	double binding_min = binding_max * 0.000001;
+//	LOG(1,"lambda_min = "<<lambda_min<<" and lambda_max = "<<lambda_max);
+//	unsigned int maximum_iterations = 50000;
+//	boost::uintmax_t max_iter = maximum_iterations;
+//	boost::math::tools::eps_tolerance<double> tol(60);
+//	std::pair<double, double> r;
+//	if (reversible) {
+//		reversiblef fop(rate,unbinding,binding,difc);
+//
+//		CHECK(fop(lambda_min)*fop(lambda_max) < 0, "brackets of root not valid. f(lambda_min) = "<<fop(lambda_min)<<" and f(lambda_max) = "<<fop(lambda_max));
+//		while (std::isinf(fop(lambda_max))) {
+//			const double middle = 0.5*(lambda_max-lambda_min);
+//			if (fop(lambda_min)*fop(middle) < 0) {
+//				lambda_max = middle;
 //			} else {
-//				beta_min = middle;
+//				lambda_min = middle;
 //			}
 //		}
-//		LOG(2,"solving root with f(beta_min) = "<<f(beta_min)<<" and f(beta_max) = "<<f(beta_max));
+//		LOG(2,"solving root with f(lambda_min) = "<<fop(lambda_min)<<" and f(lambda_max) = "<<fop(lambda_max));
+//
 //		r = boost::math::tools::toms748_solve(
-//									f,
-//									beta_min, beta_max, tol, max_iter);
-	}
-	CHECK(max_iter < maximum_iterations, "could not solve for root. binding_min = "<<r.first<<" and binding_max = "<<r.second);
-	lambda = 0.5*(r.first + r.second);
-	binding_radius = binding;
-	binding_radius_dt = binding_radius;
-	unbinding_radius = unbinding;
-	const double alpha = unbinding/binding_radius;
-	const double beta = binding_radius*std::sqrt(lambda/difc);
-	CHECK(alpha < 1.0, "unbinding radius must be less than binding radius = "<<binding_radius);
-
-	//lambda = pow(beta / binding_radius,2)*difc;
-	double germinate;
+//									fop,
+//									lambda_min, lambda_max, tol, max_iter);
+//		LOG(1,"f(binding) = f("<<0.5*(r.first+r.second)<<") = "<<fop(0.5*(r.first + r.second)));
+//		LOG(1,"f(first) = f("<<r.first<<") = "<<fop(r.first));
+//		LOG(1,"f(second) = f("<<r.second<<") = "<< fop(r.second));
+//
+//	} else {
+////		irreversiblef f(kappa_constant);
+////		CHECK(f(beta_min)*f(beta_max) < 0, "brackets of root not valid. f(beta_min) = "<<f(beta_min)<<" and f(beta_max) = "<<f(beta_max));
+////		while (std::isinf(f(beta_max))) {
+////			const double middle = 0.5*(beta_max-beta_min);
+////			if (f(beta_min)*f(middle) < 0) {
+////				beta_max = middle;
+////			} else {
+////				beta_min = middle;
+////			}
+////		}
+////		LOG(2,"solving root with f(beta_min) = "<<f(beta_min)<<" and f(beta_max) = "<<f(beta_max));
+////		r = boost::math::tools::toms748_solve(
+////									f,
+////									beta_min, beta_max, tol, max_iter);
+//	}
+//	CHECK(max_iter < maximum_iterations, "could not solve for root. binding_min = "<<r.first<<" and binding_max = "<<r.second);
+//	lambda = 0.5*(r.first + r.second);
+//	binding_radius = binding;
+//	binding_radius_dt = binding_radius;
+//	unbinding_radius = unbinding;
+//	const double alpha = unbinding/binding_radius;
+//	const double beta = binding_radius*std::sqrt(lambda/difc);
+//	CHECK(alpha < 1.0, "unbinding radius must be less than binding radius = "<<binding_radius);
+//
+//	//lambda = pow(beta / binding_radius,2)*difc;
+//	double germinate;
+//	if (reversible) {
+//		germinate = 1.0 - std::sinh(alpha*beta) / (alpha*beta*std::cosh(beta));
+//	} else {
+//		germinate = 0.0;
+//	}
 	if (reversible) {
-		germinate = 1.0 - std::sinh(alpha*beta) / (alpha*beta*std::cosh(beta));
+		P_lambda = calculate_lambda_reversible(dt);
 	} else {
-		germinate = 0.0;
+		P_lambda = calculate_lambda_irreversible(dt);
 	}
-	LOG(1,"created bimolecular reaction with eq: " << eq <<" binding radius = " << binding_radius <<" unbinding radius = "<<unbinding_radius<< " lambda = " << lambda <<" and germinate recombination probability = " << germinate);
-	LOG(1,"kappa  = " << rate / (binding * difc) << " beta = "<< binding * std::sqrt(lambda / difc));
+
+	LOG(1,"created bimolecular reaction with eq: " << eq <<" binding radius = " << binding_radius <<" unbinding radius = "<<unbinding_radius<< " P_lambda = " << P_lambda);
 
 	neighbourhood_search.reset(neighbourhood_search.get_low(), neighbourhood_search.get_high(), binding_radius);
 };

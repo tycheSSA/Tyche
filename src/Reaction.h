@@ -89,6 +89,7 @@ public:
 	BiMolecularReaction(const double rate, const ReactionEquation& eq,
 			const double binding,
 			const double unbinding,
+			const double dt,
 			Vect3d low, Vect3d high, Vect3b periodic,
 			const bool reversible=false);
 	BiMolecularReaction(const double rate, const ReactionEquation& eq, const double dt,
@@ -100,10 +101,15 @@ public:
 	void report_dt_suitability(const double dt);
 
 protected:
+
+	double calculate_lambda_reversible(const double dt);
+	double calculate_lambda_irreversible(const double dt);
+
 	double binding_radius_dt;
 	ReactionSide products;
+	bool reversible;
 	double binding_radius,unbinding_radius;
-	double lambda;
+	double P_lambda;
 	T neighbourhood_search;
 	bool self_reaction;
 };
