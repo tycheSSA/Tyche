@@ -26,7 +26,7 @@
 #define CONSTANTS_H_
 
 namespace Tyche {
-const int PI = 3.14159265359;
+const double PI = 3.14159265359;
 const int NDIM = 3;
 }
 #endif /* CONSTANTS_H_ */

@@ -202,14 +202,18 @@ double K(const double r1, const double r2, const double gamma) {
 
 double integral_K(const double r_i, const double S, const double gamma) {
 	return (pow(gamma,2)*K(r_i,S,gamma)/S) + 1.0 - 0.5*erf((S-r_i)/(gamma*sqrt(2.0))) - 0.5*erf((S+r_i)/(gamma*sqrt(2.0)));
+	//return (pow(gamma,2)*S*K(r_i,S,gamma));
+
 }
+
+
 
 class calculate_kappa_reversible {
 public:
 	calculate_kappa_reversible(const double gamma, const double alpha, const double goal_kappa) :gamma(gamma),alpha(alpha),goal_kappa(goal_kappa) {}
     double operator()(const double P_lambda) {
-    	const int N1 = 200;
-    	const int N2 = 200;
+    	const int N1 = 100;
+    	const int N2 = 100;
     	const double S = 10.0;
     	const double dx1 = 1.0/N1;
     	const double dx2 = (S-1.0)/N2;
@@ -225,24 +229,68 @@ public:
     			r_i = 1.0 + (i-N1)*dx2;
     		}
     		b[i-1] = integral_K(r_i,S,gamma);
-
+    		double rowsum = b[i-1];
 			for (int j = 1; j <= N1+N2; ++j) {
+				double r_j;
 				if (j <= N1) {
-					const double r_j = j*dx1;
+					r_j = j*dx1;
+				} else {
+					r_j = 1.0 + (j-N1)*dx2;
+				}
+				if (j < N1) {
 					A(i-1,j-1) = -((1.0-P_lambda)/N1) * K(r_i,r_j,gamma) -
 							(P_lambda*K(r_i,alpha,gamma)/(pow(alpha,2)*N1)) * pow(r_j,2);
+					//A(i-1,j-1) = -((1.0-P_lambda)/double(N1)) * K(r_i,r_j,gamma);
+					rowsum += ((1.0)/double(N1)) * K(r_i,r_j,gamma);
+
+				} else if (j==N1) {
+					A(i-1,j-1) = -0.5*((1.0-P_lambda)/double(N1)) * K(r_i,r_j,gamma) -
+							      0.5*(P_lambda*K(r_i,alpha,gamma)/(pow(alpha,2)*N1)) * pow(r_j,2) -
+							      0.5*((S-1.0)/double(N2)) * K(r_i,r_j,gamma);
+					rowsum += 0.5*((1.0)/double(N1)) * K(r_i,r_j,gamma) +
+												      0.5*((S-1.0)/double(N2)) * K(r_i,r_j,gamma);
+				} else if (j < N1+N2) {
+					A(i-1,j-1) = -((S-1.0)/double(N2)) * K(r_i,r_j,gamma);
+					rowsum += ((S-1.0)/double(N2)) * K(r_i,r_j,gamma);
+
 				} else {
-					const double r_j = 1.0 + (j-N1)*dx2;
-					A(i-1,j-1) = -((S-1.0)/N2) * K(r_i,r_j,gamma);
-				}
-				if (i==j) {
-					A(i-1,j-1) += 1.0;
+					A(i-1,j-1) = -0.5*((S-1.0)/double(N2)) * K(r_i,r_j,gamma);
+					rowsum += 0.5*((S-1.0)/double(N2)) * K(r_i,r_j,gamma);
+
 				}
 			}
+			A.row(i-1) /= rowsum;
+			b[i-1] /= rowsum;
+			A(i-1,i-1) += 1.0;
 		}
-    	Eigen::VectorXd x = A.fullPivLu().solve(b);
+    	//A.diagonal() = A.diagonal()+1.0;
+    	Eigen::VectorXd x = A.colPivHouseholderQr().solve(b);
+    	//Eigen::VectorXd x = A.llt().solve(b);
 //    	const double relative_error = (A*x - b).norm() / b.norm(); // norm() is L2 norm
 //    	std::cout << "The relative error is:\n" << relative_error << std::endl;
+//    	if (P_lambda==1.0) {
+//    		Eigen::VectorXd x2 = Eigen::VectorXd::Constant(N1+N2,1.0);
+//    		Eigen::VectorXd b2 = A*x2;
+//
+//    	std::ofstream myfile;
+//    	myfile.open ("test.txt");
+//    	for (int i = 1; i <= N1+N2; ++i) {
+//    		double r_i;
+//    		if (i <= N1) {
+//    			r_i = i*dx1;
+//    		} else {
+//    			r_i = 1.0 + (i-N1)*dx2;
+//    		}
+//    		myfile << r_i << ' '<< x[i-1] << ' ' << b[i-1] << ' ' << b2[i-1] << ' '<<"\n";
+//    	}
+//    	myfile.close();
+//
+//    	myfile.open ("test2.txt");
+//    	myfile << A;
+//    	myfile.close();
+//
+//    	std::cout << "done with test"<<std::endl;
+//    	}
 
     	double calc_kappa = 0;
     	for (int i = 1; i <= N1; ++i) {
@@ -265,7 +313,7 @@ public:
     double operator()(const double P_lambda) {
     	const int N1 = 100;
     	const int N2 = 100;
-    	const double S = 100.0;
+    	const double S = 10.0;
     	const double dx1 = 1.0/N1;
     	const double dx2 = (S-1.0)/N2;
 
@@ -280,23 +328,39 @@ public:
     			r_i = 1.0 + (i-N1)*dx2;
     		}
     		b[i-1] = integral_K(r_i,S,gamma);
+    		double rowsum = b[i-1];
+    		for (int j = 1; j <= N1+N2; ++j) {
+    			double r_j;
+    			if (j <= N1) {
+    				r_j = j*dx1;
+    			} else {
+    				r_j = 1.0 + (j-N1)*dx2;
+    			}
+    			if (j < N1) {
+    				A(i-1,j-1) = -((1.0-P_lambda)/double(N1)) * K(r_i,r_j,gamma);
+    				rowsum += ((1.0)/double(N1)) * K(r_i,r_j,gamma);
 
-			for (int j = 1; j <= N1+N2; ++j) {
-				if (j <= N1) {
-					const double r_j = j*dx1;
-					A(i-1,j-1) = -((1.0-P_lambda)/N1) * K(r_i,r_j,gamma);
-				} else {
-					const double r_j = 1.0 + (j-N1)*dx2;
-					A(i-1,j-1) = -((S-1.0)/N2) * K(r_i,r_j,gamma);
-				}
-				if (i==j) {
-					A(i-1,j-1) += 1.0;
-				}
-			}
-		}
-    	Eigen::VectorXd x = A.fullPivLu().solve(b);
-//    	const double relative_error = (A*x - b).norm() / b.norm(); // norm() is L2 norm
-//    	std::cout << "The relative error is:\n" << relative_error << std::endl;
+    			} else if (j==N1) {
+    				A(i-1,j-1) = -0.5*((1.0-P_lambda)/double(N1)) * K(r_i,r_j,gamma) -
+    						0.5*((S-1.0)/double(N2)) * K(r_i,r_j,gamma);
+    				rowsum += 0.5*((1.0)/double(N1)) * K(r_i,r_j,gamma) +
+    						0.5*((S-1.0)/double(N2)) * K(r_i,r_j,gamma);
+    			} else if (j < N1+N2) {
+    				A(i-1,j-1) = -((S-1.0)/double(N2)) * K(r_i,r_j,gamma);
+    				rowsum += ((S-1.0)/double(N2)) * K(r_i,r_j,gamma);
+
+    			} else {
+    				A(i-1,j-1) = -0.5*((S-1.0)/double(N2)) * K(r_i,r_j,gamma);
+    				rowsum += 0.5*((S-1.0)/double(N2)) * K(r_i,r_j,gamma);
+
+    			}
+    		}
+    		A.row(i-1) /= rowsum;
+    		b[i-1] /= rowsum;
+    		A(i-1,i-1) += 1.0;
+    	}
+
+    	Eigen::VectorXd x = A.colPivHouseholderQr().solve(b);
 
     	double calc_kappa = 0;
     	for (int i = 1; i <= N1; ++i) {
@@ -326,6 +390,7 @@ double BiMolecularReaction<T>::calculate_lambda_reversible(const double dt) {
 	const double goal_kappa = rate*dt/pow(binding_radius,3);
 	const double difc = all_species[0]->D + all_species[1]->D;
 	const double gamma = sqrt(2.0*difc*dt)/binding_radius;
+	std::cout << "gamma = "<<gamma<<std::endl;
 	calculate_kappa_reversible f(gamma,alpha,goal_kappa);
 	CHECK(f(P_lambda_min)*f(P_lambda_max) < 0, "brackets of root not valid. f(P_lambda_min) = "<<f(P_lambda_min)<<" and f(P_lambda_max) = "<<f(P_lambda_max));
 
