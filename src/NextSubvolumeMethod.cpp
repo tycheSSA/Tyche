@@ -177,7 +177,8 @@ NextSubvolumeMethod::NextSubvolumeMethod(const StructuredGrid& subvolumes):
 	//std::cout << "created "<<n<<" subvolumes"<<std::endl;
 	heap.clear();
 	for (int i = 0; i < n; ++i) {
-		subvolume_heap_handles.push_back(heap.push(HeapNode(time + LONGEST_TIME,i)));
+		//subvolume_heap_handles.push_back(heap.push(HeapNode(LONGEST_TIME,i)));
+		subvolume_heap_handles.push_back(HeapHandle());
 		subvolume_reactions.push_back(ReactionList());
 		saved_subvolume_reactions.push_back(ReactionList());
 	}
@@ -269,37 +270,53 @@ void NextSubvolumeMethod::reset_all_priorities() {
 }
 
 void NextSubvolumeMethod::reset_priority(const int i) {
+	const bool in_queue = subvolume_reactions[i].get_propensity()!=0;
 	const double inv_total_propensity = subvolume_reactions[i].recalculate_propensities();
-	HeapNode& h = *(subvolume_heap_handles[i]);
+
 	if (inv_total_propensity != 0) {
-		h.time_at_next_reaction = time - inv_total_propensity*log(uni());
+		const double time_at_next_reaction = time - inv_total_propensity*log(uni());
+		if (in_queue) {
+			(*subvolume_heap_handles[i]).time_at_next_reaction = time_at_next_reaction;
+			heap.update(subvolume_heap_handles[i]);
+		} else {
+			subvolume_heap_handles[i] = heap.push(HeapNode(time_at_next_reaction,i));
+		}
 	} else {
-		h.time_at_next_reaction = time + LONGEST_TIME;
+		if (in_queue) {
+			heap.erase(subvolume_heap_handles[i]);
+		}
 	}
 //	if (i==929) {
 //		std::cout <<"recalcing priority for 929: time to next react = "<<h.time_at_next_reaction<<" total propensity = "<<1.0/inv_total_propensity<<std::endl;
 //	}
-	heap.update(subvolume_heap_handles[i]);
+
 }
 
 void NextSubvolumeMethod::recalc_priority(const int i) {
 	const double old_propensity = subvolume_reactions[i].get_propensity();
+	const bool in_queue = old_propensity!=0;
 	const double inv_total_propensity = subvolume_reactions[i].recalculate_propensities();
-	HeapNode& h = *(subvolume_heap_handles[i]);
+	//HeapNode& h = *(subvolume_heap_handles[i]);
 	if (inv_total_propensity != 0) {
 		//const double time_to_next_reaction = -inv_total_propensity*log(uni());
-		if (old_propensity == 0) {
-			h.time_at_next_reaction = time - inv_total_propensity*log(uni());
+		if (in_queue) {
+			const double old_time = (*subvolume_heap_handles[i]).time_at_next_reaction;
+			const double new_time = time + old_propensity*inv_total_propensity*(old_time - time);
+			(*subvolume_heap_handles[i]).time_at_next_reaction = new_time;
+			heap.update(subvolume_heap_handles[i]);
 		} else {
-			h.time_at_next_reaction = time + old_propensity*inv_total_propensity*(h.time_at_next_reaction - time);;
+			const double new_time = time - inv_total_propensity*log(uni());
+			subvolume_heap_handles[i] = heap.push(HeapNode(new_time,i));
 		}
+
 	} else {
-		h.time_at_next_reaction = time + LONGEST_TIME;
+		if (in_queue) {
+			heap.erase(subvolume_heap_handles[i]);
+		}
 	}
 //	if (i==929) {
 //		std::cout <<"recalcing priority for 929: time to next react = "<<h.time_at_next_reaction<<" total propensity = "<<1.0/inv_total_propensity<<std::endl;
 //	}
-	heap.update(subvolume_heap_handles[i]);
 }
 
 void NextSubvolumeMethod::operator ()(const double dt) {

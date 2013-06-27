@@ -26,7 +26,7 @@ void OutputCompareWithFunction<T>::operator()(const double dt) {
 		errors.push_back(calc_error(time, concentrations,centers,volumes));
 		if (errors.size() >= average_over) {
 			data["Time"].push_back(time);
-			data["Error"].push_back(std::accumulate(errors.begin(),errors.end(),0)/average_over);
+			data["Error"].push_back(std::accumulate(errors.begin(),errors.end(),0.0)/double(average_over));
 			for (std::map<std::string,double>::const_iterator i = params.begin(); i != params.end(); i++) {
 				data[i->first].push_back(i->second);
 			}

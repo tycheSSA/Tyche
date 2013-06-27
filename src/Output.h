@@ -172,6 +172,28 @@ struct ScaledVarianceError {
 	}
 	T function;
 };
+
+template<typename T>
+struct halfSumError {
+	halfSumError(T function):function(function) {}
+	double operator()(const double time, std::vector<double>& concentrations, std::vector<Vect3d>& positions, std::vector<double>& volumes) {
+		const int n = concentrations.size();
+		ASSERT((n == positions.size()) && (n == volumes.size()), "all vectors assumed to be equal size");
+		double error = 0;
+		double halfsum = 0;
+		double fullsum = 0;
+		for (int i = 0; i < n; ++i) {
+			const double expectedN = function(time,positions[i])*volumes[i];
+			fullsum += expectedN;
+			if (positions[i][0] > 0.5) {
+				halfsum += expectedN;
+				error += concentrations[i]*volumes[i];
+			}
+		}
+		return (error - halfsum)/fullsum;
+	}
+	T function;
+};
 }
 #include "Output.impl.h"
 
