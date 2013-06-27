@@ -266,7 +266,7 @@ void CouplingBoundary_M_to_C<T>::operator ()(const double dt) {
 }
 
 template<typename T>
-inline void CouplingBoundary_C_to_M<T>::add_species(Species& s, const double dt) {
+void CouplingBoundary_C_to_M<T>::add_species(Species& s, const double dt) {
 	Boundary<T>::add_species(s);
 	/*
 	 * setup interface reactions in the boundary grid cells

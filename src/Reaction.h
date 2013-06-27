@@ -67,7 +67,12 @@ public:
 	UniMolecularReaction(const double rate,const ReactionEquation& eq, const double init_radius=0.0);
 	void add_reaction(const double rate, const ReactionEquation& eq, const double init_radius=0.0);
 	void operator()(const double dt);
-	friend std::ostream& operator<< (std::ostream& out, UniMolecularReaction &r);
+	virtual void print(std::ostream& out) {
+		out << "\tUnimolecular Reaction with reactions:";
+		BOOST_FOREACH(ReactionSide side, product_list) {
+			out << "\t1("<<all_species[0]->id<<") >> "<<side<<" (rate = "<<rate<<")";
+		}
+	}
 	void report_dt_suitability(const double dt);
 private:
 	void calculate_probabilities(const double dt);
@@ -80,7 +85,6 @@ private:
 	double total_rate;
 };
 
-std::ostream& operator<< (std::ostream& out, UniMolecularReaction &r);
 
 
 template<typename T>
@@ -94,7 +98,10 @@ public:
 			const bool reversible=false);
 	BiMolecularReaction(const double rate, const ReactionEquation& eq, const double dt,
 				Vect3d low, Vect3d high, Vect3b periodic);
-	void operator()(const double dt);
+	virtual void operator()(const double dt);
+	virtual void print(std::ostream& out) {
+		out << "\tBimolecular Reaction with rate = "<<get_rate()<<" and binding radius = "<<get_binding_radius();
+	}
 	double get_rate() {return this->rate;}
 	double get_binding_radius() {return binding_radius;}
 	double get_unbinding_radius() {return unbinding_radius;}
@@ -114,9 +121,5 @@ protected:
 	bool self_reaction;
 };
 
-template<typename T>
-std::ostream& operator<< (std::ostream& out, BiMolecularReaction<T> &r) {
-	return out << "\tBimolecular Reaction with rate = "<<r.get_rate()<<" and binding radius = "<<r.get_binding_radius();
-}
 }
 #endif /* REACTION_H_ */

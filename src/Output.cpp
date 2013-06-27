@@ -55,9 +55,6 @@ void OutputConcentrations::operator ()(const double dt) {
 	Operator::stop_timer();
 }
 
-std::ostream& operator <<(std::ostream& out, OutputConcentrations& b) {
-	return out << "\tOutput concentrations";
-}
 
 void OutputSumConcentrations::operator ()(const double dt) {
 	Operator::resume_timer();
@@ -111,9 +108,6 @@ void OutputSumConcentrations::add_species(Species &s) {
 	Operator::add_species(s);
 }
 
-std::ostream& operator <<(std::ostream& out, OutputSumConcentrations& b) {
-	return out << "\tOutput sum concentrations";
-}
 
 void Output::write() {
 	write(filename + ".dat");

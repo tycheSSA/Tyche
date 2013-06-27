@@ -85,11 +85,12 @@ public:
 		data.insert(std::pair<std::string,std::vector<double> >("Concentration",std::vector<double>()));
 	}
 	void operator()(const double dt);
+	virtual void print(std::ostream& out) {
+		out << "\tOutput concentrations";
+	}
 protected:
 	const StructuredGrid& grid;
 };
-
-std::ostream& operator<< (std::ostream& out, OutputConcentrations& b);
 
 class OutputSumConcentrations: public Output {
 public:
@@ -101,12 +102,14 @@ public:
 		data.insert(std::pair<std::string,std::vector<double> >("Concentration",std::vector<double>()));
 	}
 	void operator()(const double dt);
+	virtual void print(std::ostream& out) {
+		out << "\tOutput sum concentrations";
+	}
 	void add_species(Species &s);
 protected:
 	const StructuredGrid& grid;
 };
 
-std::ostream& operator<< (std::ostream& out, OutputSumConcentrations& b);
 
 template<typename T>
 class OutputCompareWithFunction: public Output {
@@ -124,6 +127,9 @@ public:
 	}
 
 	void operator()(const double dt);
+	virtual void print(std::ostream& out) {
+		out << "\tCompare concentration with exact function";
+	}
 	void set_param(const std::string name, const double value);
 	void reset();
 private:
@@ -135,11 +141,6 @@ private:
 	std::map<std::string, double> params;
 };
 
-
-template<typename T>
-std::ostream& operator<< (std::ostream& out, OutputCompareWithFunction<T>& b) {
-	return out << "\tCompare concentration with exact function";
-}
 
 template<typename T>
 struct rmsError {

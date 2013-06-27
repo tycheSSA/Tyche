@@ -25,10 +25,6 @@ void FluxBoundary::operator ()(const double dt) {
 }
 
 
-std::ostream& operator<< (std::ostream& out, FluxBoundary &b) {
-	return out << "\tFlux Boundary at (x,y,z) = " << b.p << " + s*" << b.t1 << " + t*" << b.t2 << " with s = (0 -> 1) and t = (0 -> 1)";
-}
-
 
 }
 

@@ -32,6 +32,7 @@ class Visualisation: public Operator {
 public:
 	Visualisation(const double dt);
 	void operator()(const double dt);
+	virtual void print(std::ostream& out);
 	void add_geometry(const xplane& geometry);
 	void add_geometry(const yplane& geometry);
 	void add_geometry(const zplane& geometry);
@@ -60,18 +61,17 @@ private:
 	double next_vis;
 	struct MyVTKdata;
 	MyVTKdata* my_vtk_data;
-	friend std::ostream& operator<< (std::ostream& out, const Visualisation& vis);
 };
 
-
-
-std::ostream& operator<< (std::ostream& out, const Visualisation& vis);
 
 class Plot2d: public Operator {
 public:
 	Plot2d(const double dt, const std::vector<double>& x, const std::vector<double>& y,
 			const char* x_label, const char* y_label, const char* title);
 	void operator()(const double dt);
+	virtual void print(std::ostream& out) {
+		out << "\t2d plot showing \"" << x_label << "\" versus \"" << y_label << "\" entitled \"" << title << "\"";
+	}
 	void reset() {
 		Operator::reset();
 		next_vis = time + vis_dt;
@@ -88,11 +88,7 @@ private:
 	double next_vis;
 	struct MyVTKdata;
 	MyVTKdata* my_vtk_data;
-	friend std::ostream& operator<< (std::ostream& out, const Plot2d& vis);
 };
 
-
-
-std::ostream& operator<< (std::ostream& out, const Plot2d& vis);
 }
 #endif /* VISUALISATION_H_ */

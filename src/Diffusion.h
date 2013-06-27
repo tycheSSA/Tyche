@@ -39,6 +39,9 @@ public:
 	Diffusion():norm(generator,boost::normal_distribution<>(0,1)) {}
 	void operator()(const double dt);
 	void add_species(Species &s);
+	virtual void print(std::ostream& out) {
+		out << "\tDiffusion";
+	}
 protected:
 	double calc_step_length(Species &s, const double dt) {
 		return sqrt(2.0*s.D*dt);
@@ -47,7 +50,6 @@ protected:
 	std::vector<int> compartment_rate_indicies;
 };
 
-std::ostream& operator<< (std::ostream& out, Diffusion &b);
 
 Diffusion create_diffusion(Species &s);
 Diffusion create_diffusion();
@@ -57,9 +59,10 @@ public:
 	Diffusion1D(const int dim):Diffusion(),dim(dim) {}
 	void operator()(const double dt);
 	const int dim;
+	virtual void print(std::ostream& out) {
+		out << "\t1D Diffusion along axis "<<dim;
+	}
 };
-
-std::ostream& operator<< (std::ostream& out, Diffusion1D &b);
 
 }
 

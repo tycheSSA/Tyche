@@ -418,42 +418,38 @@ void Plot2d::operator ()(const double dt) {
 	Operator::stop_timer();
 }
 
-std::ostream& operator<< (std::ostream& out, const Visualisation& vis) {
+virtual void print(std::ostream& out) {
 	out << "\tVisualisation showing:" << std::endl;
-	const int nplanes = vis.xplanes.size() + vis.yplanes.size() + vis.zplanes.size();
+	const int nplanes = xplanes.size() + yplanes.size() + zplanes.size();
 	if (nplanes > 0) {
 		cout << "\t\t Planes at:" << std::endl;
-		BOOST_FOREACH(xplane p, vis.xplanes) {
+		BOOST_FOREACH(xplane p, xplanes) {
 			out << "\t\t\t" << p << std::endl;
 		}
-		BOOST_FOREACH(yplane p, vis.yplanes) {
+		BOOST_FOREACH(yplane p, yplanes) {
 			out << "\t\t\t" << p << std::endl;
 		}
-		BOOST_FOREACH(zplane p, vis.zplanes) {
+		BOOST_FOREACH(zplane p, zplanes) {
 			out << "\t\t\t" << p << std::endl;
 		}
 	}
-	const int nslice = vis.compartment_slices_x.size() + vis.compartment_slices_y.size() + vis.compartment_slices_z.size();
+	const int nslice = compartment_slices_x.size() + compartment_slices_y.size() + compartment_slices_z.size();
 	if (nslice > 0) {
 		out << "\t\t Compartment slices at:" << std::endl;
-		BOOST_FOREACH(xplane p, vis.compartment_slices_x) {
+		BOOST_FOREACH(xplane p, compartment_slices_x) {
 			out << "\t\t\t" << p << std::endl;
 		}
-		BOOST_FOREACH(yplane p, vis.compartment_slices_y) {
+		BOOST_FOREACH(yplane p, compartment_slices_y) {
 			out << "\t\t\t" << p << std::endl;
 		}
-		BOOST_FOREACH(zplane p, vis.compartment_slices_z) {
+		BOOST_FOREACH(zplane p, compartment_slices_z) {
 			out << "\t\t\t" << p << std::endl;
 		}
 	}
-	BOOST_FOREACH(Species *s, vis.all_species) {
+	BOOST_FOREACH(Species *s, all_species) {
 		if (s->mols.size() > 0) out << "\t\t "<< s->mols.size() << " molecules from Species "<< s->id << std::endl;
 	}
-	return out;
 }
 
-std::ostream& operator <<(std::ostream& out, const Plot2d& vis) {
-	return out << "\t2d plot showing \"" << vis.x_label << "\" versus \"" << vis.y_label << "\" entitled \"" << vis.title << "\"";
-}
 }
 

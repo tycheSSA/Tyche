@@ -40,16 +40,11 @@ class Boundary: public Operator {
 public:
 	Boundary<T>(const T& geometry):geometry(geometry) {
 	}
-	void operator()(const double dt) {
+	virtual void operator()(const double dt) {
 	}
 
 	const T& geometry;
 };
-
-template<typename T>
-std::ostream& operator<< (std::ostream& out, Boundary<T> &b) {
-	return out << "\tBase Boundary at "<< b.geometry;
-}
 
 
 template<typename T>
@@ -57,30 +52,28 @@ class DestroyBoundary: public Boundary<T> {
 public:
 	DestroyBoundary(const T& geometry):
 		Boundary<T>(geometry) {}
-	void operator()(const double dt);
+	virtual void operator()(const double dt);
+	virtual void print(std::ostream& out) {
+		out << "\tDestroy Boundary at "<< this->geometry;
+	}
 
 };
 
-template<typename T>
-std::ostream& operator<< (std::ostream& out, DestroyBoundary<T> &b) {
-	return out << "\tDestroy Boundary at "<< b.geometry;
-}
 
 template<typename T>
 class JumpBoundary: public Boundary<T> {
 public:
 	JumpBoundary(const T& geometry, const Vect3d jump_by):
 		Boundary<T>(geometry),jump_by(jump_by) {}
-	void operator()(const double dt);
+	virtual void operator()(const double dt);
+	virtual void print(std::ostream& out) {
+		out << "\tJump Boundary at "<< this->geometry;
+	}
 protected:
 	const Vect3d jump_by;
 
 };
 
-template<typename T>
-std::ostream& operator<< (std::ostream& out, JumpBoundary<T> &b) {
-	return out << "\tJump Boundary at "<< b.geometry;
-}
 
 template<typename T>
 JumpBoundary<T> create_jump_boundary(T& geometry, const Vect3d jump_by) {
@@ -96,7 +89,7 @@ public:
       uni(generator,boost::uniform_real<>(0,1)) {
 
    }
-   ~DiffusionCorrectedBoundary() {
+   virtual ~DiffusionCorrectedBoundary() {
 	   BOOST_FOREACH(std::vector<double>* i, all_prev_distance) {
 		   delete i;
 	   }
@@ -104,7 +97,7 @@ public:
 		   delete i;
 	   }
    }
-   void add_species(Species &s);
+   virtual void add_species(Species &s);
 
 protected:
    void timestep_initialise(const double dt);
@@ -133,17 +126,17 @@ class RemoveBoundaryWithCorrection: public DiffusionCorrectedBoundary<T> {
 public:
 	RemoveBoundaryWithCorrection(const T& geometry):
 		DiffusionCorrectedBoundary<T>(geometry) {}
-	void operator()(const double dt);
-	void add_species(Species& s);
+	virtual void operator()(const double dt);
+	virtual void add_species(Species& s);
 	Molecules& get_removed(Species& s);
+	virtual void print(std::ostream& out) {
+		out << "\tRemove Boundary With Correction at "<< this->geometry;
+	}
+
 private:
 	std::vector<Molecules> removed_molecules;
 };
 
-template<typename T>
-std::ostream& operator<< (std::ostream& out, RemoveBoundaryWithCorrection<T> &b) {
-	return out << "\tRemove Boundary With Correction at "<< b.geometry;
-}
 
 template<typename T>
 RemoveBoundaryWithCorrection<T> create_remove_boundary_corrected(T& geometry) {
@@ -161,17 +154,16 @@ class RemoveBoundary: public Boundary<T> {
 public:
 	RemoveBoundary(const T& geometry):
 		Boundary<T>(geometry) {}
-	void operator()(const double dt);
-	void add_species(Species& s);
+	virtual void operator()(const double dt);
+	virtual void add_species(Species& s);
 	Molecules& get_removed(Species& s);
+	virtual void print(std::ostream& out) {
+		out << "\tRemove Boundary at "<< this->geometry;
+	}
 private:
 	std::vector<Molecules> removed_molecules;
 };
 
-template<typename T>
-std::ostream& operator<< (std::ostream& out, RemoveBoundary<T> &b) {
-	return out << "\tRemove Boundary at "<< b.geometry;
-}
 
 template<typename T>
 RemoveBoundary<T> create_remove_boundary(T& geometry) {
@@ -190,17 +182,16 @@ class JumpBoundaryWithCorrection: public DiffusionCorrectedBoundary<T> {
 public:
 	JumpBoundaryWithCorrection(const T& geometry, const Vect3d jump_by):
 		DiffusionCorrectedBoundary<T>(geometry),jump_by(jump_by) {}
-	void operator()(const double dt);
+	virtual void operator()(const double dt);
+	virtual void print(std::ostream& out) {
+		out << "\tJump Boundary With Correction at "<< this->geometry;
+	}
 
 protected:
    const Vect3d jump_by;
 
 };
 
-template<typename T>
-std::ostream& operator<< (std::ostream& out, JumpBoundaryWithCorrection<T> &b) {
-	return out << "\tJump Boundary With Correction at "<< b.geometry;
-}
 
 template<typename T>
 JumpBoundaryWithCorrection<T> create_jump_boundary_corrected(T& geometry, const Vect3d jump_by) {
@@ -219,14 +210,11 @@ class ReflectiveBoundary: public Boundary<T> {
 public:
 	ReflectiveBoundary(const T& geometry):
 		Boundary<T>(geometry) {}
-	void operator()(const double dt);
-
+	virtual void operator()(const double dt);
+	virtual void print(std::ostream& out) {
+		out << "\tReflective Boundary at "<< this->geometry;
+	}
 };
-
-template<typename T>
-std::ostream& operator<< (std::ostream& out, ReflectiveBoundary<T> &b) {
-	return out << "\tReflective Boundary at "<< b.geometry;
-}
 
 template<typename T>
 ReflectiveBoundary<T> create_reflective_boundary(T& geometry) {
@@ -250,31 +238,32 @@ public:
 		uni1(generator,boost::uniform_real<>(0,t1.norm())),
 		uni2(generator,boost::uniform_real<>(0,t2.norm()))
 		{}
-	void operator()(const double dt);
+	virtual void operator()(const double dt);
 	const double rate;
 	const Vect3d p,t1,t2;
+	virtual void print(std::ostream& out) {
+		out << "\tFlux Boundary at (x,y,z) = " << p << " + s*" << t1 << " + t*" << t2 << " with s = (0 -> 1) and t = (0 -> 1)";
+	}
 private:
 	boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni1, uni2;
 };
 
 
-std::ostream& operator<< (std::ostream& out, FluxBoundary &b);
 
 template<typename T>
 class CouplingBoundary_M_to_C: public DiffusionCorrectedBoundary<T> {
 public:
 	CouplingBoundary_M_to_C(const T& geometry, NextSubvolumeMethod& nsm):
 		DiffusionCorrectedBoundary<T>(geometry),nsm(nsm) {}
-	void operator()(const double dt);
+	virtual void operator()(const double dt);
+	virtual void print(std::ostream& out) {
+		out << "\tCoupling Boundary from Molecules to Compartments at "<< std::endl << "\t\t"<< this->geometry;
+	}
 private:
 	NextSubvolumeMethod& nsm;
 
 };
 
-template<typename T>
-std::ostream& operator<< (std::ostream& out, CouplingBoundary_M_to_C<T> &b) {
-	return out << "\tCoupling Boundary from Molecules to Compartments at "<< std::endl << "\t\t"<< b.geometry;
-}
 
 template<typename T>
 class CouplingBoundary_C_to_M: public Boundary<T> {
@@ -282,8 +271,11 @@ public:
 	CouplingBoundary_C_to_M(const T& geometry, NextSubvolumeMethod& nsm):
 		Boundary<T>(geometry),nsm(nsm),old_dt(0),
 		uni(generator,boost::uniform_real<>(0,1)) {}
-	void operator()(const double dt);
-	void add_species(Species &s, const double dt);
+	virtual void operator()(const double dt);
+	virtual void add_species(Species &s, const double dt);
+	virtual void print(std::ostream& out) {
+		out << "\tCoupling Boundary from Compartments to Molecules at "<< std::endl << "\t\t"<<this->geometry;
+	}
 private:
 	NextSubvolumeMethod& nsm;
 	double old_dt;
@@ -293,10 +285,6 @@ private:
 	boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni;
 };
 
-template<typename T>
-std::ostream& operator<< (std::ostream& out, CouplingBoundary_C_to_M<T> &b) {
-	return out << "\tCoupling Boundary from Compartments to Molecules at "<< std::endl << "\t\t"<<b.geometry;
-}
 
 }
 

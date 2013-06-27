@@ -29,9 +29,6 @@ void Diffusion::operator ()(const double dt) {
 }
 
 
-std::ostream& operator<< (std::ostream& out, Diffusion &b) {
-	return out << "\tDiffusion";
-}
 
 void Diffusion::add_species(Species& s) {
 	Operator::add_species(s);
@@ -59,10 +56,6 @@ void Diffusion1D::operator ()(const double dt) {
 	}
 	LOG(2, "Stopping Operator: " << *this);
 	Operator::stop_timer();
-}
-
-std::ostream& operator <<(std::ostream& out, Diffusion1D& b) {
-	return out << "\t1D Diffusion along axis "<<b.dim;
 }
 
 }

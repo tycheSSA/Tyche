@@ -109,13 +109,6 @@ void UniMolecularReaction::operator ()(const double dt) {
 	Operator::stop_timer();
 }
 
-std::ostream& operator<< (std::ostream& out, UniMolecularReaction &r) {
-	out << "\tUnimolecular Reaction with reactions:";
-	BOOST_FOREACH(ReactionSide side, r.product_list) {
-		out << "\t1("<<r.all_species[0]->id<<") >> "<<side<<" (rate = "<<r.rate<<")";
-	}
-	return out;
-}
 
 //class reversiblef {
 //public:

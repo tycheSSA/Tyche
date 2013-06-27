@@ -94,25 +94,26 @@ std::string Operator::get_time_percentage() {
 	return to_string(percent) + "%";
 }
 
-void CountMolsOnGrid::operator ()(const double dt) {
-	Operator::resume_timer();
-	LOG(2, "Starting Operator: " << *this);
-	const int n = all_species.size();
-	for (int i = 0; i < n; ++i) {
-		Species &s = *(all_species[i]);
-		std::fill(s.mol_copy_numbers.begin(),s.mol_copy_numbers.end(),0);
-		BOOST_FOREACH(Vect3d &r,s.mols.r) {
-			if (s.grid.is_in(r)) {
-				s.mol_copy_numbers[s.grid.get_cell_index(r)]++;
-			}
-		}
-	}
-}
 
-std::ostream& operator<< (std::ostream& out, CountMolsOnGrid& b) {
-	return out << "\tCount Molecules in Grid";
-}
 
+OperatorList operator+(Operator& arg1, Operator& arg2) {
+	OperatorList result;
+	result.push_back(&arg1);
+	result.push_back(&arg2);
+	return result;
+}
+OperatorList operator+(Operator& arg1, OperatorList& arg2) {
+	arg2.push_back(&arg1);
+	return arg2;
+}
+OperatorList operator+(OperatorList& arg1, Operator& arg2) {
+	arg1.push_back(&arg2);
+	return arg1;
+}
+OperatorList operator+(OperatorList& arg1, OperatorList& arg2) {
+	arg1.push_back(&arg2);
+	return arg1;
+}
 
 }
 

@@ -64,6 +64,9 @@ public:
 		last_check = 0;
 	}
 	void operator()(const double dt);
+	virtual void print(std::ostream& out) {
+		out << "\tGrowing/Shrinking Interface at "<< this->geometry;
+	}
 protected:
 	NextSubvolumeMethod& nsm;
 	const double check_dt;
@@ -73,10 +76,6 @@ protected:
 	double last_check;
 };
 
-template<typename T>
-std::ostream& operator<< (std::ostream& out, GrowingInterface<T> &b) {
-	return out << "\tGrowing/Shrinking Interface at "<< b.geometry;
-}
 
 }
 

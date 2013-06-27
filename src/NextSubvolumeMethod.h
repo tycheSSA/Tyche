@@ -180,6 +180,9 @@ public:
 		return heap.top().time_at_next_reaction;
 	}
 	void operator()(const double dt);
+	virtual void print(std::ostream& out) {
+		out << "\tNext Subvolume Method";
+	}
 
 private:
 	void add_reaction_to_compartment(const double rate, ReactionEquation eq, int i);
@@ -193,7 +196,6 @@ private:
 	boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni;
 };
 
-std::ostream& operator<< (std::ostream& out, NextSubvolumeMethod &b);
 }
 
 #endif /* NEXTSUBVOLUMEMETHD_H */

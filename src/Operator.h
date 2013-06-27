@@ -34,15 +34,21 @@ namespace Tyche {
 class Operator {
 public:
 	Operator();
-	void add_species(Species &s);
+	virtual ~Operator() {};
+	virtual void add_species(Species &s);
 
-	void operator()(const double dt);
+	virtual void operator()(const double dt);
 	std::string get_time();
 	std::string get_global_time();
 	std::string get_time_percentage();
-	void reset();
+	virtual void reset();
 	int get_species_index(Species& s);
 	std::vector<Species*>& get_species() {return all_species;}
+	friend std::ostream& operator<<( std::ostream& out, const Operator& b ) {
+		b.print(out);
+		return out;
+	}
+	virtual void print(std::ostream& out) const;
 protected:
 	void resume_timer();
 	void stop_timer();
@@ -62,6 +68,50 @@ public:
 };
 
 std::ostream& operator<< (std::ostream& out, CountMolsOnGrid& b);
-}
 
+
+class OperatorList: public Operator {
+public:
+	OperatorList() {}
+	OperatorList(Operator& o) {
+		list.push_back(&o);
+	}
+	virtual ~OperatorList() {}
+	virtual void operator()(const double dt) {
+		for (auto i : list) {
+		    i->operator ()(dt);
+		}
+	}
+	virtual void reset() {
+		for (auto i : list) {
+			i->reset();
+		}
+	}
+
+	void push_back(Operator* i) {
+		list.push_back(i);
+	}
+	void push_back(const OperatorList& i) {
+		for (Operator* j: i.list) {
+			list.push_back(j);
+		}
+	}
+	virtual void print(std::ostream& out) {
+		out << "List of "<<list.size()<< "Operators:" << std::endl;
+		for (auto i : list) {
+			out << "\t" << *i << std::endl;
+		}
+	}
+protected:
+	std::vector<Operator*> list;
+};
+
+
+OperatorList operator+(Operator& arg1, Operator& arg2);
+OperatorList operator+(Operator& arg1, OperatorList& arg2);
+OperatorList operator+(OperatorList& arg1, Operator& arg2);
+OperatorList operator+(OperatorList& arg1, OperatorList& arg2);
+
+
+}
 #endif /* OPERATOR_H_ */

@@ -440,8 +440,5 @@ void NextSubvolumeMethod::react(ReactionEquation& eq) {
 	if (eq.rhs.size() > 0) recalc_priority(eq.rhs[0].compartment_index);
 }
 
-std::ostream& operator<< (std::ostream& out, NextSubvolumeMethod &b) {
-	return out << "\tNext Subvolume Method";
-}
 
 }
