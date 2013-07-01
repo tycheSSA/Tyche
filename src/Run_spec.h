@@ -34,7 +34,7 @@
 #define RUN_(z, n, notused) BOOST_PP_CAT(T,n)& BOOST_PP_CAT(arg,n)
 #define RUN_reset(z, n, notused) BOOST_PP_CAT(arg,n).reset();
 #define RUN_execute(z, n, notused) BOOST_PP_CAT(arg,n)(dt);
-#define RUN_print_times(z, n, notused) BOOST_PP_CAT(arg,n) << "\t" << BOOST_PP_CAT(arg,n).get_time() << std::endl <<
+#define RUN_print_times(z, n, notused) BOOST_PP_CAT(arg,n) << "\t" << BOOST_PP_CAT(arg,n).get_time_string() << std::endl <<
 #define RUN_template(n) template <BOOST_PP_ENUM_PARAMS(n, typename T)>
 #define RUN_empty(n)
 

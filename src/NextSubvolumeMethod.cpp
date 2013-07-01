@@ -184,8 +184,7 @@ NextSubvolumeMethod::NextSubvolumeMethod(const StructuredGrid& subvolumes):
 	}
 }
 
-void NextSubvolumeMethod::reset() {
-	Operator::reset();
+void NextSubvolumeMethod::reset_execute() {
 	reset_all_priorities();
 }
 
@@ -319,9 +318,8 @@ void NextSubvolumeMethod::recalc_priority(const int i) {
 //	}
 }
 
-void NextSubvolumeMethod::operator ()(const double dt) {
-	Operator::resume_timer();
-	LOG(2, "Starting Operator: " << *this);
+void NextSubvolumeMethod::integrate(const double dt) {
+
 	const double final_time = time + dt;
 	while (get_next_event_time() < final_time) {
 		const int sv_i = heap.top().subvolume_index;
@@ -332,8 +330,7 @@ void NextSubvolumeMethod::operator ()(const double dt) {
 		react(r);
 	}
 	time = final_time;
-	LOG(2, "Stopping Operator: " << *this);
-	Operator::stop_timer();
+
 }
 
 void NextSubvolumeMethod::list_reactions() {

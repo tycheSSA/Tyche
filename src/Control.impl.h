@@ -28,16 +28,14 @@
 namespace Tyche {
 
 template<typename T>
-void GrowingInterface<T>::operator()(const double dt) {
-	Operator::resume_timer();
-	Operator::operator ()(dt);
-	LOG(2, "Starting Operator: " << *this);
+void GrowingInterface<T>::integrate(const double dt) {
+
 	//Operator::operator()();
 	if (last_check > check_dt) {
 		last_check = 0;
-		ASSERT(this->all_species.size() > 0,"no species!!");
+		ASSERT(this->get_species().size() > 0,"no species!!");
 		//TODO: assumes only one species;
-		Species &s = *(this->all_species[0]);
+		Species &s = *(this->get_species()[0]);
 
 		std::vector<int> grid_indices_current, grid_indices_shrink;
 		s.grid.get_slice(this->geometry,grid_indices_current);
@@ -123,8 +121,7 @@ void GrowingInterface<T>::operator()(const double dt) {
 	} else {
 		last_check += dt;
 	}
-	LOG(2, "Stopping Operator: " << *this);
-	Operator::stop_timer();
+
 }
 
 }

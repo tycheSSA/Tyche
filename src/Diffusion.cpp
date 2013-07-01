@@ -13,26 +13,20 @@
 
 namespace Tyche {
 
-void Diffusion::operator ()(const double dt) {
-	Operator::resume_timer();
-	LOG(2, "Starting Operator: " << *this);
-	const int n = all_species.size();
+void Diffusion::integrate(const double dt) {
+
+	const int n = get_species().size();
 	for (int i = 0; i < n; ++i) {
-		Species &s = *(all_species[i]);
+		Species &s = *(get_species()[i]);
 		const double step_length = calc_step_length(s, dt);
 		BOOST_FOREACH(Vect3d &r,s.mols.r) {
 			r += step_length * Vect3d(norm(),norm(),norm());
 		}
 	}
-	LOG(2, "Stopping Operator: " << *this);
-	Operator::stop_timer();
+
 }
 
 
-
-void Diffusion::add_species(Species& s) {
-	Operator::add_species(s);
-}
 
 Diffusion create_diffusion() {
 	return Diffusion();
@@ -43,19 +37,17 @@ Diffusion create_diffusion(Species &s) {
 	return to_return;
 }
 
-void Diffusion1D::operator ()(const double dt) {
-	Operator::resume_timer();
-	LOG(2, "Starting Operator: " << *this);
-	const int n = all_species.size();
+void Diffusion1D::integrate(const double dt) {
+
+	const int n = get_species().size();
 	for (int i = 0; i < n; ++i) {
-		Species &s = *(all_species[i]);
+		Species &s = *(get_species()[i]);
 		const double step_length = calc_step_length(s, dt);
 		BOOST_FOREACH(Vect3d &r,s.mols.r) {
 			r[dim] += step_length * norm();
 		}
 	}
-	LOG(2, "Stopping Operator: " << *this);
-	Operator::stop_timer();
+
 }
 
 }

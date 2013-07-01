@@ -3,15 +3,14 @@
 
 namespace Tyche {
 template<typename T>
-void OutputCompareWithFunction<T>::operator()(const double dt) {
-	Operator::resume_timer();
-	Output::operator ()(dt);
+void OutputCompareWithFunction<T>::integrate(const double dt) {
 
-	if (is_execute_time() && time > start_time) {
+
+	if (is_execute_time() && get_time() > start_time) {
 		LOG(2, "Starting Operator: " << *this);
-		const int n = all_species.size();
+		const int n = get_species().size();
 		ASSERT(n==1,"OutputConcentrations only implemented for one species");
-		Species &s = *(all_species[0]);
+		Species &s = *(get_species()[0]);
 		std::vector<double> concentrations;
 		s.get_concentration(grid,concentrations);
 		ASSERT(grid.size()==concentrations.size(), "copy numbers size is not the same as grid!");
@@ -23,9 +22,9 @@ void OutputCompareWithFunction<T>::operator()(const double dt) {
 			centers.push_back(grid.get_cell_centre(i));
 			volumes.push_back(grid.get_cell_volume(i));
 		}
-		errors.push_back(calc_error(time, concentrations,centers,volumes));
+		errors.push_back(calc_error(get_time(), concentrations,centers,volumes));
 		if (errors.size() >= average_over) {
-			data["Time"].push_back(time);
+			data["Time"].push_back(get_time());
 			data["Error"].push_back(std::accumulate(errors.begin(),errors.end(),0.0)/double(average_over));
 			for (std::map<std::string,double>::const_iterator i = params.begin(); i != params.end(); i++) {
 				data[i->first].push_back(i->second);
@@ -34,10 +33,9 @@ void OutputCompareWithFunction<T>::operator()(const double dt) {
 			write();
 		}
 
-		LOG(2, "Stopping Operator: " << *this);
 	}
 
-	Operator::stop_timer();
+
 }
 
 
@@ -54,8 +52,7 @@ void OutputCompareWithFunction<T>::set_param(const std::string name, const doubl
 }
 
 template<typename T>
-void OutputCompareWithFunction<T>::reset() {
-	Output::reset();
+void OutputCompareWithFunction<T>::reset_execute() {
 	errors.clear();
 }
 }

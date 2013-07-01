@@ -36,7 +36,9 @@ class Control: public Operator {
 public:
 	Control(T& geometry):geometry(geometry) {
 	}
-	void operator()(const double dt) {
+
+protected:
+	void integrate(const double dt) {
 	}
 
 
@@ -45,6 +47,7 @@ public:
 
 template<typename T>
 class GrowingInterface: public Control<T> {
+public:
 	struct my_accumulate {
 		my_accumulate(std::vector<int>& vect_to_sum):vect_to_sum(vect_to_sum) {}
 		int operator()(int x, int y) {
@@ -52,7 +55,7 @@ class GrowingInterface: public Control<T> {
 		}
 		std::vector<int>& vect_to_sum;
 	};
-public:
+
 	GrowingInterface(T& geometry, NextSubvolumeMethod& nsm,
 					   const double move_by, const T& shrink_to, const T& grow_to,
 					   const double check_dt,
@@ -63,11 +66,13 @@ public:
 		grow_threshold(grow_threshold),shrink_threshold(shrink_threshold) {
 		last_check = 0;
 	}
-	void operator()(const double dt);
+protected:
+	virtual void integrate(const double dt);
 	virtual void print(std::ostream& out) {
 		out << "\tGrowing/Shrinking Interface at "<< this->geometry;
 	}
-protected:
+
+
 	NextSubvolumeMethod& nsm;
 	const double check_dt;
 	const double move_by;

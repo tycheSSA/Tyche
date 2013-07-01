@@ -10,9 +10,9 @@
 
 namespace Tyche {
 
-void FluxBoundary::operator ()(const double dt) {
-	Operator::resume_timer();
-	BOOST_FOREACH(Species *s, all_species) {
+void FluxBoundary::integrate(const double dt) {
+
+	BOOST_FOREACH(Species *s, get_species()) {
 		Molecules& mols = s->mols;
 		boost::poisson_distribution<> p_dist(dt*rate);
 		boost::variate_generator<base_generator_type&, boost::poisson_distribution<> > poisson(generator, p_dist);
@@ -21,7 +21,6 @@ void FluxBoundary::operator ()(const double dt) {
 			mols.add_molecule(p + uni1()*t1 + uni2()*t2);
 		}
 	}
-	Operator::stop_timer();
 }
 
 

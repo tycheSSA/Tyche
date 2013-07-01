@@ -35,8 +35,15 @@ int Operator::get_species_index(Species& s) {
 	return -1;
 }
 
-void Operator::add_species(Species& s) {
+bool Operator::add_species(Species& s) {
+	for (auto i: all_species) {
+		if (&s == i) {
+			return false;
+		}
+	}
+	add_species_execute(s);
 	all_species.push_back(&s);
+	return true;
 }
 
 
@@ -47,10 +54,18 @@ void Operator::resume_timer() {
 }
 
 void Operator::operator ()(const double dt) {
-   time += dt;
+	Operator::resume_timer();
+	LOG(2, "Starting Operator: " << *this);
+
+	integrate(dt);
+
+	time += dt;
+	LOG(2, "Stopping Operator: " << *this);
+	Operator::stop_timer();
 }
 
 void Operator::reset() {
+	reset_execute();
 	time = 0;
 }
 
@@ -71,7 +86,7 @@ const std::string to_string(const T& data)
    return conv.str();
 }
 
-std::string Operator::get_time() {
+std::string Operator::get_time_string() {
 	//return timer.format();
 	return "Time to execute: " + to_string(total_time) + " s (" + get_time_percentage() + ")";
 }
@@ -92,6 +107,19 @@ std::string Operator::get_time_percentage() {
 
 	const double percent = 100*total_time/total_global_time;
 	return to_string(percent) + "%";
+}
+
+void Operator::add_species_execute(Species &s) {
+
+}
+void Operator::reset_execute() {
+
+}
+void Operator::integrate(const double dt) {
+
+}
+void Operator::print(std::ostream& out) const {
+	out << "Default Operator";
 }
 
 

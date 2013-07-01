@@ -25,14 +25,12 @@
 namespace Tyche {
 
 
-void OutputConcentrations::operator ()(const double dt) {
-	Operator::resume_timer();
-	Output::operator ()(dt);
+void OutputConcentrations::integrate(const double dt) {
+
 	if (is_execute_time()) {
-		LOG(2, "Starting Operator: " << *this);
-		const int n = all_species.size();
+		const int n = get_species().size();
 		ASSERT(n==1,"OutputConcentrations only implemented for one species");
-		Species &s = *(all_species[0]);
+		Species &s = *(get_species()[0]);
 		std::vector<double> mol_con, comp_con;
 		s.get_concentrations(grid,mol_con,comp_con);
 		ASSERT(grid.size()==mol_con.size(), "copy numbers size is not the same as grid!");
@@ -49,23 +47,19 @@ void OutputConcentrations::operator ()(const double dt) {
 			data["Concentration(C)"].push_back(comp_con[i]);
 			data["Concentration"].push_back(mol_con[i] + comp_con[i]);
 		}
-		write(time);
-		LOG(2, "Stopping Operator: " << *this);
+		write(get_time());
 	}
-	Operator::stop_timer();
 }
 
 
-void OutputSumConcentrations::operator ()(const double dt) {
-	Operator::resume_timer();
-	Output::operator ()(dt);
+void OutputSumConcentrations::integrate(const double dt) {
+
 	if (is_execute_time()) {
-		LOG(2, "Starting Operator: " << *this);
 		double sumsum_m = 0;
 		double sumsum_c = 0;
-		const int n = all_species.size();
+		const int n = get_species().size();
 		for (int i = 0; i < n; ++i) {
-			Species &s = *(all_species[i]);
+			Species &s = *(get_species()[i]);
 
 			std::vector<double> mol_con, comp_con;
 			s.get_concentrations(grid,mol_con,comp_con);
@@ -88,24 +82,22 @@ void OutputSumConcentrations::operator ()(const double dt) {
 			sumsum_c += sum_c;
 		}
 
-		data["Time"].push_back(time);
+		data["Time"].push_back(get_time());
 		data["Concentration(M)"].push_back(sumsum_m);
 		data["Concentration(C)"].push_back(sumsum_c);
 		data["Concentration"].push_back(sumsum_m+sumsum_c);
-
 		write();
-		LOG(2, "Stopping Operator: " << *this);
 	}
-	Operator::stop_timer();
+
 }
 
-void OutputSumConcentrations::add_species(Species &s) {
+void OutputSumConcentrations::add_species_execute(Species &s) {
 	std::ostringstream ss;
 	ss << s.id;
 	data.insert(std::pair<std::string,std::vector<double> >("Concentration(M)("+ss.str()+")",std::vector<double>()));
 	data.insert(std::pair<std::string,std::vector<double> >("Concentration(C)("+ss.str()+")",std::vector<double>()));
 	data.insert(std::pair<std::string,std::vector<double> >("Concentration("+ss.str()+")",std::vector<double>()));
-	Operator::add_species(s);
+
 }
 
 

@@ -50,30 +50,32 @@ public:
 	ZeroOrderMolecularReaction(const double rate, const Vect3d min, const Vect3d max):
 		Reaction(rate),min(min),max(max) {
 	};
-	void add_species(Species& s);
+
 	void add_species(const double rate, Species& s);
 
-	void operator()(const double dt);
-	friend std::ostream& operator<< (std::ostream& out, ZeroOrderMolecularReaction &r);
+protected:
+	virtual void integrate(const double dt);
+	virtual void add_species_execute(Species& s);
+	virtual void print(std::ostream& out);
 private:
 	std::vector<double> rates;
 	Vect3d min,max;
 };
 
-std::ostream& operator<< (std::ostream& out, ZeroOrderMolecularReaction &r);
 
 class UniMolecularReaction: public Reaction {
 public:
 	UniMolecularReaction(const double rate,const ReactionEquation& eq, const double init_radius=0.0);
 	void add_reaction(const double rate, const ReactionEquation& eq, const double init_radius=0.0);
-	void operator()(const double dt);
+	void report_dt_suitability(const double dt);
+protected:
+	virtual void integrate(const double dt);
 	virtual void print(std::ostream& out) {
 		out << "\tUnimolecular Reaction with reactions:";
 		BOOST_FOREACH(ReactionSide side, product_list) {
-			out << "\t1("<<all_species[0]->id<<") >> "<<side<<" (rate = "<<rate<<")";
+			out << "\t1("<<get_species()[0]->id<<") >> "<<side<<" (rate = "<<rate<<")";
 		}
 	}
-	void report_dt_suitability(const double dt);
 private:
 	void calculate_probabilities(const double dt);
 	ReactionSide& get_random_reaction(const double rand);
@@ -98,16 +100,18 @@ public:
 			const bool reversible=false);
 	BiMolecularReaction(const double rate, const ReactionEquation& eq, const double dt,
 				Vect3d low, Vect3d high, Vect3b periodic);
-	virtual void operator()(const double dt);
-	virtual void print(std::ostream& out) {
-		out << "\tBimolecular Reaction with rate = "<<get_rate()<<" and binding radius = "<<get_binding_radius();
-	}
+
 	double get_rate() {return this->rate;}
 	double get_binding_radius() {return binding_radius;}
 	double get_unbinding_radius() {return unbinding_radius;}
 	void report_dt_suitability(const double dt);
 
 protected:
+
+	virtual void integrate(const double dt);
+	virtual void print(std::ostream& out) {
+		out << "\tBimolecular Reaction with rate = "<<get_rate()<<" and binding radius = "<<get_binding_radius();
+	}
 
 	double calculate_lambda_reversible(const double dt);
 	double calculate_lambda_irreversible(const double dt);

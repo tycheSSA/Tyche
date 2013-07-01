@@ -94,22 +94,21 @@ Visualisation::Visualisation(const double dt):vis_dt(dt),next_vis(0),low(Vect3d(
 	my_vtk_data = new MyVTKdata();
 }
 
-void Visualisation::operator ()(const double dt) {
-	Operator::operator()(dt);
-	Operator::resume_timer();
-	if (time > next_vis) {
+void Visualisation::integrate(const double dt) {
+
+	if (get_time() > next_vis) {
 		LOG(2, "Starting Operator: " << *this);
 		my_vtk_data->renderer->RemoveAllViewProps();
-		BOOST_FOREACH(Species* s, this->all_species) {
+		BOOST_FOREACH(Species* s, this->get_species()) {
 			add_molecules_to_vis(*s);
 			add_compartments_to_vis(*s);
 		}
 		add_planes_to_vis();
 		show_vis();
-		next_vis = time + vis_dt;
+		next_vis = get_time() + vis_dt;
 		LOG(2, "Stopping Operator: " << *this);
 	}
-	Operator::stop_timer();
+
 }
 
 
@@ -342,12 +341,9 @@ Plot2d::Plot2d(const double dt, const std::vector<double>& x, const std::vector<
 	my_vtk_data->chart->GetAxis(0)->SetTitle(y_label);
 }
 
-void Plot2d::operator ()(const double dt) {
-	Operator::operator()(dt);
-	Operator::resume_timer();
-	if (time > next_vis) {
-		LOG(2, "Starting Operator: " << *this);
+void Plot2d::integrate(const double dt) {
 
+	if (get_time() > next_vis) {
 		const int numPoints = x.size();
 		ASSERT(numPoints == y.size(), "x and y should have same length");
 		if (numPoints == 0) return;
@@ -412,13 +408,11 @@ void Plot2d::operator ()(const double dt) {
 
 		my_vtk_data->chart->GetScene()->SetDirty(true);
 		my_vtk_data->view->GetRenderer()->Render();
-		next_vis = time + vis_dt;
-		LOG(2, "Stopping Operator: " << *this);
+		next_vis = get_time() + vis_dt;
 	}
-	Operator::stop_timer();
 }
 
-virtual void print(std::ostream& out) {
+void Visualisation::print(std::ostream& out) {
 	out << "\tVisualisation showing:" << std::endl;
 	const int nplanes = xplanes.size() + yplanes.size() + zplanes.size();
 	if (nplanes > 0) {
@@ -446,7 +440,7 @@ virtual void print(std::ostream& out) {
 			out << "\t\t\t" << p << std::endl;
 		}
 	}
-	BOOST_FOREACH(Species *s, all_species) {
+	BOOST_FOREACH(Species *s, get_species()) {
 		if (s->mols.size() > 0) out << "\t\t "<< s->mols.size() << " molecules from Species "<< s->id << std::endl;
 	}
 }

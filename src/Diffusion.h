@@ -37,12 +37,13 @@ namespace Tyche {
 class Diffusion: public Operator {
 public:
 	Diffusion():norm(generator,boost::normal_distribution<>(0,1)) {}
-	void operator()(const double dt);
-	void add_species(Species &s);
+
+
+protected:
+	virtual void integrate(const double dt);
 	virtual void print(std::ostream& out) {
 		out << "\tDiffusion";
 	}
-protected:
 	double calc_step_length(Species &s, const double dt) {
 		return sqrt(2.0*s.D*dt);
 	}
@@ -57,8 +58,10 @@ Diffusion create_diffusion();
 class Diffusion1D: public Diffusion {
 public:
 	Diffusion1D(const int dim):Diffusion(),dim(dim) {}
-	void operator()(const double dt);
 	const int dim;
+
+protected:
+	virtual void integrate(const double dt);
 	virtual void print(std::ostream& out) {
 		out << "\t1D Diffusion along axis "<<dim;
 	}

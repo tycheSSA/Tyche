@@ -40,9 +40,6 @@ class Boundary: public Operator {
 public:
 	Boundary<T>(const T& geometry):geometry(geometry) {
 	}
-	virtual void operator()(const double dt) {
-	}
-
 	const T& geometry;
 };
 
@@ -52,7 +49,8 @@ class DestroyBoundary: public Boundary<T> {
 public:
 	DestroyBoundary(const T& geometry):
 		Boundary<T>(geometry) {}
-	virtual void operator()(const double dt);
+protected:
+	virtual void integrate(const double dt);
 	virtual void print(std::ostream& out) {
 		out << "\tDestroy Boundary at "<< this->geometry;
 	}
@@ -65,11 +63,12 @@ class JumpBoundary: public Boundary<T> {
 public:
 	JumpBoundary(const T& geometry, const Vect3d jump_by):
 		Boundary<T>(geometry),jump_by(jump_by) {}
-	virtual void operator()(const double dt);
+protected:
+	virtual void integrate(const double dt);
 	virtual void print(std::ostream& out) {
 		out << "\tJump Boundary at "<< this->geometry;
 	}
-protected:
+
 	const Vect3d jump_by;
 
 };
@@ -97,9 +96,12 @@ public:
 		   delete i;
 	   }
    }
-   virtual void add_species(Species &s);
 
 protected:
+   virtual void add_species_execute(Species &s);
+
+
+
    void timestep_initialise(const double dt);
    void timestep_finalise();
    bool particle_crossed_boundary(const int p_i, const int s_i);
@@ -126,9 +128,10 @@ class RemoveBoundaryWithCorrection: public DiffusionCorrectedBoundary<T> {
 public:
 	RemoveBoundaryWithCorrection(const T& geometry):
 		DiffusionCorrectedBoundary<T>(geometry) {}
-	virtual void operator()(const double dt);
-	virtual void add_species(Species& s);
 	Molecules& get_removed(Species& s);
+protected:
+	virtual void integrate(const double dt);
+	virtual void add_species_execute(Species& s);
 	virtual void print(std::ostream& out) {
 		out << "\tRemove Boundary With Correction at "<< this->geometry;
 	}
@@ -154,12 +157,16 @@ class RemoveBoundary: public Boundary<T> {
 public:
 	RemoveBoundary(const T& geometry):
 		Boundary<T>(geometry) {}
-	virtual void operator()(const double dt);
-	virtual void add_species(Species& s);
 	Molecules& get_removed(Species& s);
+
+protected:
+
+	virtual void integrate(const double dt);
+	virtual void add_species_execute(Species& s);
 	virtual void print(std::ostream& out) {
 		out << "\tRemove Boundary at "<< this->geometry;
 	}
+
 private:
 	std::vector<Molecules> removed_molecules;
 };
@@ -182,12 +189,14 @@ class JumpBoundaryWithCorrection: public DiffusionCorrectedBoundary<T> {
 public:
 	JumpBoundaryWithCorrection(const T& geometry, const Vect3d jump_by):
 		DiffusionCorrectedBoundary<T>(geometry),jump_by(jump_by) {}
-	virtual void operator()(const double dt);
+
+protected:
+	virtual void integrate(const double dt);
 	virtual void print(std::ostream& out) {
 		out << "\tJump Boundary With Correction at "<< this->geometry;
 	}
 
-protected:
+
    const Vect3d jump_by;
 
 };
@@ -210,7 +219,9 @@ class ReflectiveBoundary: public Boundary<T> {
 public:
 	ReflectiveBoundary(const T& geometry):
 		Boundary<T>(geometry) {}
-	virtual void operator()(const double dt);
+protected:
+
+	virtual void integrate(const double dt);
 	virtual void print(std::ostream& out) {
 		out << "\tReflective Boundary at "<< this->geometry;
 	}
@@ -238,9 +249,12 @@ public:
 		uni1(generator,boost::uniform_real<>(0,t1.norm())),
 		uni2(generator,boost::uniform_real<>(0,t2.norm()))
 		{}
-	virtual void operator()(const double dt);
+
 	const double rate;
 	const Vect3d p,t1,t2;
+
+protected:
+	virtual void integrate(const double dt);
 	virtual void print(std::ostream& out) {
 		out << "\tFlux Boundary at (x,y,z) = " << p << " + s*" << t1 << " + t*" << t2 << " with s = (0 -> 1) and t = (0 -> 1)";
 	}
@@ -255,10 +269,13 @@ class CouplingBoundary_M_to_C: public DiffusionCorrectedBoundary<T> {
 public:
 	CouplingBoundary_M_to_C(const T& geometry, NextSubvolumeMethod& nsm):
 		DiffusionCorrectedBoundary<T>(geometry),nsm(nsm) {}
-	virtual void operator()(const double dt);
+
+protected:
+	virtual void integrate(const double dt);
 	virtual void print(std::ostream& out) {
 		out << "\tCoupling Boundary from Molecules to Compartments at "<< std::endl << "\t\t"<< this->geometry;
 	}
+
 private:
 	NextSubvolumeMethod& nsm;
 
@@ -271,11 +288,15 @@ public:
 	CouplingBoundary_C_to_M(const T& geometry, NextSubvolumeMethod& nsm):
 		Boundary<T>(geometry),nsm(nsm),old_dt(0),
 		uni(generator,boost::uniform_real<>(0,1)) {}
-	virtual void operator()(const double dt);
 	virtual void add_species(Species &s, const double dt);
+protected:
+
+	virtual void integrate(const double dt);
+
 	virtual void print(std::ostream& out) {
 		out << "\tCoupling Boundary from Compartments to Molecules at "<< std::endl << "\t\t"<<this->geometry;
 	}
+
 private:
 	NextSubvolumeMethod& nsm;
 	double old_dt;

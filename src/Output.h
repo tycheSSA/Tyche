@@ -40,21 +40,18 @@ class Output: public Operator {
 public:
 	typedef std::map<std::string, std::vector<double> > DataType;
 	Output(const std::string filename, const double execute_dt):filename(filename),execute_dt(execute_dt) {
-		next_execute = time + execute_dt;
+		next_execute = get_time() + execute_dt;
 	}
 	~Output() {
 		f.close();
 	}
-	void reset() {
-		Operator::reset();
-		next_execute = time + execute_dt;
-	}
+
 	void write();
 	void write(double time);
 	void write(std::string filename);
 	bool is_execute_time() {
-		if (time > next_execute) {
-			next_execute = time + execute_dt;
+		if (get_time() > next_execute) {
+			next_execute = get_time() + execute_dt;
 			return true;
 		}
 		return false;
@@ -64,6 +61,11 @@ public:
 		return data[name];
 	}
 protected:
+
+	virtual void reset_execute() {
+		next_execute = get_time() + execute_dt;
+	}
+
 	DataType data;
 	double execute_dt;
 	double next_execute;
@@ -84,11 +86,13 @@ public:
 		data.insert(std::pair<std::string,std::vector<double> >("Concentration(C)",std::vector<double>()));
 		data.insert(std::pair<std::string,std::vector<double> >("Concentration",std::vector<double>()));
 	}
-	void operator()(const double dt);
+
+protected:
+	virtual void integrate(const double dt);
 	virtual void print(std::ostream& out) {
 		out << "\tOutput concentrations";
 	}
-protected:
+
 	const StructuredGrid& grid;
 };
 
@@ -101,12 +105,15 @@ public:
 		data.insert(std::pair<std::string,std::vector<double> >("Concentration(C)",std::vector<double>()));
 		data.insert(std::pair<std::string,std::vector<double> >("Concentration",std::vector<double>()));
 	}
-	void operator()(const double dt);
+
+
+protected:
+	virtual void integrate(const double dt);
 	virtual void print(std::ostream& out) {
 		out << "\tOutput sum concentrations";
 	}
-	void add_species(Species &s);
-protected:
+	virtual void add_species_execute(Species &s);
+
 	const StructuredGrid& grid;
 };
 
@@ -126,12 +133,16 @@ public:
 		data.insert(std::pair<std::string,std::vector<double> >("Error",std::vector<double>()));
 	}
 
-	void operator()(const double dt);
+
+	void set_param(const std::string name, const double value);
+
+
+protected:
+	virtual void reset_execute();
+	virtual void integrate(const double dt);
 	virtual void print(std::ostream& out) {
 		out << "\tCompare concentration with exact function";
 	}
-	void set_param(const std::string name, const double value);
-	void reset();
 private:
 	const double start_time;
 	const int average_over;

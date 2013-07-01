@@ -17,10 +17,8 @@
 namespace Tyche {
 
 template<typename T>
-void JumpBoundary<T>::operator ()(const double dt) {
-	Operator::resume_timer();
-	LOG(2, "Starting Operator: " << *this);
-	BOOST_FOREACH(Species *s, this->all_species) {
+void JumpBoundary<T>::integrate(const double dt) {
+	BOOST_FOREACH(Species *s, this->get_species()) {
 		Molecules& mols = s->mols;
 		const int n = mols.size();
 		for (int i = 0; i < n; ++i) {
@@ -30,15 +28,14 @@ void JumpBoundary<T>::operator ()(const double dt) {
 			}
 		}
 	}
-	LOG(2,"Stopping Operator: " << *this);
-	Operator::stop_timer();
+
 }
 
 template<typename T>
 void DiffusionCorrectedBoundary<T>::timestep_initialise(const double dt) {
-   const int n = this->all_species.size();
+   const int n = this->get_species().size();
    for (int i = 0; i < n; ++i) {
-      Species& s = *(this->all_species[i]);
+      Species& s = *(this->get_species()[i]);
       std::vector<double>& prev_distance = *(all_prev_distance[i]);
       std::vector<double>& curr_distance = *(all_curr_distance[i]);
       Molecules& mols = s.mols;
@@ -56,7 +53,7 @@ void DiffusionCorrectedBoundary<T>::timestep_initialise(const double dt) {
 
 template<typename T>
 void DiffusionCorrectedBoundary<T>::timestep_finalise() {
-   const int n = this->all_species.size();
+   const int n = this->get_species().size();
    for (int i = 0; i < n; ++i) {
       std::vector<double> *tmp = all_prev_distance[i];
       all_prev_distance[i] = all_curr_distance[i];
@@ -71,7 +68,7 @@ bool DiffusionCorrectedBoundary<T>::particle_crossed_boundary(const int p_i, con
 	if (dist_to_wall <= 0) {
 		return true;
 	} else if (dist_to_wall < test_this_distance_from_wall) {
-	   const int saved_index = this->all_species[s_i]->mols.saved_index[p_i];
+	   const int saved_index = this->get_species()[s_i]->mols.saved_index[p_i];
 	   if (saved_index == SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE) return false;
 	   const double old_dist_to_wall = (*all_prev_distance[s_i])[saved_index];
 	   if (old_dist_to_wall <= 0) return false;
@@ -84,8 +81,7 @@ bool DiffusionCorrectedBoundary<T>::particle_crossed_boundary(const int p_i, con
 }
 
 template<typename T>
-void DiffusionCorrectedBoundary<T>::add_species(Species &s) {
-   Boundary<T>::add_species(s);
+void DiffusionCorrectedBoundary<T>::add_species_execute(Species &s) {
    std::vector<double>* prev_distance = new std::vector<double>;
    std::vector<double>* curr_distance = new std::vector<double>;
    init_prev_distance(s.mols, *prev_distance);
@@ -94,14 +90,13 @@ void DiffusionCorrectedBoundary<T>::add_species(Species &s) {
 }
 
 template<typename T>
-void JumpBoundaryWithCorrection<T>::operator ()(const double dt) {
-	Operator::resume_timer();
-	LOG(2, "Starting Operator: " << *this);
+void JumpBoundaryWithCorrection<T>::integrate(const double dt) {
+
 	DiffusionCorrectedBoundary<T>::timestep_initialise(dt);
 
-	const int s_n = this->all_species.size();
+	const int s_n = this->get_species().size();
 	for (int s_i = 0; s_i < s_n; ++s_i) {
-		Species &s = *(this->all_species[s_i]);
+		Species &s = *(this->get_species()[s_i]);
 		const int p_n = s.mols.size();
 		for (int p_i = 0; p_i < p_n; ++p_i) {
 			if (DiffusionCorrectedBoundary<T>::particle_crossed_boundary(p_i, s_i)) {
@@ -115,13 +110,12 @@ void JumpBoundaryWithCorrection<T>::operator ()(const double dt) {
 	}
 
 	DiffusionCorrectedBoundary<T>::timestep_finalise();
-	LOG(2, "Stopping Operator: " << *this);
-	Operator::stop_timer();
+
 }
 
 template<typename T>
-void RemoveBoundaryWithCorrection<T>::add_species(Species& s) {
-	DiffusionCorrectedBoundary<T>::add_species(s);
+void RemoveBoundaryWithCorrection<T>::add_species_execute(Species& s) {
+
 	removed_molecules.push_back(Molecules());
 }
 
@@ -132,14 +126,13 @@ Molecules& RemoveBoundaryWithCorrection<T>::get_removed(Species& s) {
 }
 
 template<typename T>
-void RemoveBoundaryWithCorrection<T>::operator ()(const double dt) {
-	Operator::resume_timer();
-	LOG(2, "Starting Operator: " << *this);
+void RemoveBoundaryWithCorrection<T>::integrate(const double dt) {
+
 	DiffusionCorrectedBoundary<T>::timestep_initialise(dt);
 
-	const int s_n = this->all_species.size();
+	const int s_n = this->get_species().size();
 	for (int s_i = 0; s_i < s_n; ++s_i) {
-		Species &s = *(this->all_species[s_i]);
+		Species &s = *(this->get_species()[s_i]);
 		const int p_n = s.mols.size();
 		for (int p_i = 0; p_i < p_n; ++p_i) {
 			if (DiffusionCorrectedBoundary<T>::particle_crossed_boundary(p_i, s_i)) {
@@ -150,13 +143,12 @@ void RemoveBoundaryWithCorrection<T>::operator ()(const double dt) {
 		s.mols.delete_molecules();
 	}
 	DiffusionCorrectedBoundary<T>::timestep_finalise();
-	LOG(2, "Stopping Operator: " << *this);
-	Operator::stop_timer();
+
 }
 
 template<typename T>
-void RemoveBoundary<T>::add_species(Species& s) {
-	Boundary<T>::add_species(s);
+void RemoveBoundary<T>::add_species_execute(Species& s) {
+
 	removed_molecules.push_back(Molecules());
 }
 
@@ -167,13 +159,12 @@ Molecules& RemoveBoundary<T>::get_removed(Species& s) {
 }
 
 template<typename T>
-void RemoveBoundary<T>::operator ()(const double dt) {
-	Operator::resume_timer();
-	LOG(2, "Starting Operator: " << *this);
+void RemoveBoundary<T>::integrate(const double dt) {
 
-	const int s_n = this->all_species.size();
+
+	const int s_n = this->get_species().size();
 	for (int s_i = 0; s_i < s_n; ++s_i) {
-		Species &s = *(this->all_species[s_i]);
+		Species &s = *(this->get_species()[s_i]);
 		const int p_n = s.mols.size();
 		for (int p_i = 0; p_i < p_n; ++p_i) {
 			if (this->geometry.at_boundary(s.mols.r[p_i])) {
@@ -183,15 +174,13 @@ void RemoveBoundary<T>::operator ()(const double dt) {
 		}
 		s.mols.delete_molecules();
 	}
-	LOG(2, "Stopping Operator: " << *this);
-	Operator::stop_timer();
+
 }
 
 template<typename T>
-void ReflectiveBoundary<T>::operator ()(const double dt) {
-	Operator::resume_timer();
-	LOG(2, "Starting Operator: " << *this);
-	BOOST_FOREACH(Species *s, this->all_species) {
+void ReflectiveBoundary<T>::integrate(const double dt) {
+
+	BOOST_FOREACH(Species *s, this->get_species()) {
 		Molecules& mols = s->mols;
 		const int n = mols.size();
 		for (int i = 0; i < n; ++i) {
@@ -202,16 +191,14 @@ void ReflectiveBoundary<T>::operator ()(const double dt) {
 			}
 		}
 	}
-	LOG(2, "Stopping Operator: " << *this);
-	Operator::stop_timer();
+
 }
 
 
 template<typename T>
-void DestroyBoundary<T>::operator ()(const double dt) {
-	Operator::resume_timer();
-	LOG(2, "Starting Operator: " << *this);
-	BOOST_FOREACH(Species *s, this->all_species) {
+void DestroyBoundary<T>::integrate(const double dt) {
+
+	BOOST_FOREACH(Species *s, this->get_species()) {
 		Molecules& mols = s->mols;
 		for (int i = 0; i < mols.size(); ++i) {
 			if (Boundary<T>::geometry.at_boundary(mols.r[i])) {
@@ -219,19 +206,17 @@ void DestroyBoundary<T>::operator ()(const double dt) {
 			}
 		}
 	}
-	LOG(2, "Stopping Operator: " << *this);
-	Operator::stop_timer();
+
 }
 
 template<typename T>
-void CouplingBoundary_M_to_C<T>::operator ()(const double dt) {
-	Operator::resume_timer();
-	LOG(2, "Starting Operator: " << *this);
+void CouplingBoundary_M_to_C<T>::integrate(const double dt) {
+
 	DiffusionCorrectedBoundary<T>::timestep_initialise(dt);
-	const int s_n = this->all_species.size();
+	const int s_n = this->get_species().size();
 	std::set<int> dirty_indicies;
 	for (int s_i = 0; s_i < s_n; ++s_i) {
-		Species &s = *(this->all_species[s_i]);
+		Species &s = *(this->get_species()[s_i]);
 		const int p_n = s.mols.size();
 		for (int p_i = 0; p_i < p_n; ++p_i) {
 			if (DiffusionCorrectedBoundary<T>::particle_crossed_boundary(p_i, s_i)) {
@@ -261,17 +246,19 @@ void CouplingBoundary_M_to_C<T>::operator ()(const double dt) {
 		nsm.recalc_priority(i);
 	}
 	DiffusionCorrectedBoundary<T>::timestep_finalise();
-	LOG(2, "Stopping Operator: " << *this);
-	Operator::stop_timer();
+
 }
 
 template<typename T>
 void CouplingBoundary_C_to_M<T>::add_species(Species& s, const double dt) {
-	Boundary<T>::add_species(s);
+
 	/*
 	 * setup interface reactions in the boundary grid cells
 	 */
-	nsm.set_interface(s,this->geometry,dt);
+	if (Operator::add_species(s)) {
+		nsm.set_interface(s,this->geometry,dt);
+	}
+
 //	boundary_compartment_indicies.push_back(std::vector<int>());
 //	boundary_intersections.push_back(std::vector<typename T::SurfaceElementType>());
 //	std::vector<int>& boundary_compartment_indicies_ref = *(boundary_compartment_indicies.end()-1);
@@ -287,12 +274,11 @@ void CouplingBoundary_C_to_M<T>::add_species(Species& s, const double dt) {
 
 
 template<typename T>
-void CouplingBoundary_C_to_M<T>::operator ()(const double dt) {
-	Operator::resume_timer();
-	LOG(2, "Starting Operator: " << *this);
-	const int s_n = this->all_species.size();
+void CouplingBoundary_C_to_M<T>::integrate(const double dt) {
+
+	const int s_n = this->get_species().size();
 	for (int s_i = 0; s_i < s_n; ++s_i) {
-		Species &s = *(this->all_species[s_i]);
+		Species &s = *(this->get_species()[s_i]);
 		/*
 		 * find where boundaries intersect
 		 */
@@ -332,8 +318,7 @@ void CouplingBoundary_C_to_M<T>::operator ()(const double dt) {
 		}
 		//std::cout << count << "particles moved to free-space. Free space = "<<s.mols.size() <<" compart = "<< std::accumulate(s.copy_numbers.begin(),s.copy_numbers.end(),0) << std::endl;
 	}
-	LOG(2, "Stopping Operator: " << *this);
-	Operator::stop_timer();
+
 }
 
 }

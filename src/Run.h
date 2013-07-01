@@ -31,54 +31,8 @@
 #include BOOST_PP_ITERATE()
 
 namespace Tyche {
-
-void run(double for_time, double dt, OperatorList& operators) {
-	const int iterations = int(for_time/dt) + 1;
-	const double num_out = 100;
-	const int it_per_out = int(iterations/num_out+0.5);
-
-	boost::timer timer;
-	double time = 0;
-	LOG(1, "Running simulation for "<< for_time << " seconds with dt = " << dt << " seconds.");
-	LOG(1, "Will perform "<<iterations<<" iterations for a total simulation time of "<<iterations*dt<<" seconds.");
-	LOG(1, "Operators to be run (in order) are:"<<std::endl<<operators);
-	for (int i = 0; i < iterations; ++i) {
-		if ((it_per_out==0)||(i%it_per_out==0)) {
-			int nmol = 0;
-			int ncompart = 0;
-			int ncomparts = 0;
-			for (int j = 0; j < operators.get_species().size(); ++j) {
-				nmol += operators.get_species()[j]->mols.size();
-				ncompart += std::accumulate(operators.get_species()[j].copy_numbers.begin(),operators.get_species()[j].copy_numbers.end(),0);
-				ncomparts += (unsigned int)operators.get_species()[j].copy_numbers.size();
-			}
-			LOG(1, "Simulation " << double(i)/iterations*100 << "% complete. There are " << nmol <<
-					" molecules in free space and " << ncompart <<
-					" molecules in " << ncomparts << " compartments");
-		}
-		timer.restart();
-		for (int j = 0; j < operators.get_species().size(); ++j) {
-			operators.get_species()[j]->mols.save_indicies();
-		}
-
-		operators(dt);
-
-		time += timer.elapsed();
-	}
-
-	LOG(1,"Total time = " << time << " s");
-	LOG(1, operators.get_global_time());
-	LOG(1, "Operator times:");
-	LOG(1, BOOST_PP_REPEAT(n, RUN_print_times, none) " ");
-}
-
-
-void reset_then_run(double for_time, double dt, OperatorList& operators) {
-	LOG(1, "Reseting all operators...");
-	operators.reset();
-	LOG(1, "done.");
-	run(for_time, dt, operators);
-}
+void run(double for_time, double dt, OperatorList& operators);
+void reset_then_run(double for_time, double dt, OperatorList& operators);
 }
 
 

@@ -46,7 +46,7 @@ UniMolecularReaction::UniMolecularReaction(const double rate,const ReactionEquat
 
 void UniMolecularReaction::add_reaction(const double rate, const ReactionEquation& eq, const double init_radius) {
 		CHECK((eq.lhs.size()==1) && (eq.lhs[0].multiplier == 1), "Reaction equation is not unimolecular!");
-		CHECK(eq.lhs[0].species == all_species[0], "Reactant is different from previous equation");
+		CHECK(eq.lhs[0].species == get_species()[0], "Reactant is different from previous equation");
 		product_list.push_back(eq.rhs);
 		probabilities.push_back(0);
 		rates.push_back(rate);
@@ -54,9 +54,8 @@ void UniMolecularReaction::add_reaction(const double rate, const ReactionEquatio
 		total_rate += rate;
 	}
 
-void UniMolecularReaction::operator ()(const double dt) {
-	Operator::resume_timer();
-	LOG(2, "Starting Operator: " << *this);
+void UniMolecularReaction::integrate(const double dt) {
+
 #ifdef DEBUG
 	std::map<int,int> count;
 	count[all_species[0]->id] = 0;
@@ -65,7 +64,7 @@ void UniMolecularReaction::operator ()(const double dt) {
 	calculate_probabilities(dt);
 	boost::uniform_real<> uni_dist(0.0,1.0);
 	boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni(generator, uni_dist);
-	Molecules &mols = all_species[0]->mols;
+	Molecules &mols = get_species()[0]->mols;
 	const int n = mols.size();
 	for (int i = 0; i < n; ++i) {
 		if (mols.saved_index[i] == SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE) continue;
@@ -105,8 +104,7 @@ void UniMolecularReaction::operator ()(const double dt) {
 		LOG(2,"Created/Deleted "<<it->second<<" molecules of species ("<<it->first<<")");
 	}
 #endif
-	LOG(2, "Stopping Operator: " << *this);
-	Operator::stop_timer();
+
 }
 
 
@@ -381,7 +379,12 @@ double BiMolecularReaction<T>::calculate_lambda_reversible(const double dt) {
 
 	const double alpha = unbinding_radius/binding_radius;
 	const double goal_kappa = rate*dt/pow(binding_radius,3);
-	const double difc = all_species[0]->D + all_species[1]->D;
+	double difc;
+	if (self_reaction) {
+		difc = 2*get_species()[0]->D;
+	} else {
+		difc = get_species()[0]->D + get_species()[1]->D;
+	}
 	const double gamma = sqrt(2.0*difc*dt)/binding_radius;
 	std::cout << "gamma = "<<gamma<<std::endl;
 	calculate_kappa_reversible f(gamma,alpha,goal_kappa);
@@ -412,7 +415,12 @@ double BiMolecularReaction<T>::calculate_lambda_irreversible(const double dt) {
 	std::pair<double, double> r;
 
 	const double goal_kappa = rate*dt/pow(binding_radius,3);
-	const double difc = all_species[0]->D + all_species[1]->D;
+	double difc;
+	if (self_reaction) {
+		difc = 2*get_species()[0]->D;
+	} else {
+		difc = get_species()[0]->D + get_species()[1]->D;
+	}
 	const double gamma = sqrt(2.0*difc*dt)/binding_radius;
 	calculate_kappa_irreversible f(gamma,goal_kappa);
 	CHECK(f(P_lambda_min)*f(P_lambda_max) < 0, "brackets of root not valid. f(P_lambda_min) = "<<f(P_lambda_min)<<" and f(P_lambda_max) = "<<f(P_lambda_max));
@@ -431,9 +439,8 @@ double BiMolecularReaction<T>::calculate_lambda_irreversible(const double dt) {
 }
 
 template<typename T>
-void BiMolecularReaction<T>::operator ()(const double dt) {
-	Operator::resume_timer();
-	LOG(2, "Starting Operator: " << *this);
+void BiMolecularReaction<T>::integrate(const double dt) {
+
 
 //	if (dt != binding_radius_dt) {
 //		LOG(2, "dt has changed, recalculating binding radius....");
@@ -450,27 +457,32 @@ void BiMolecularReaction<T>::operator ()(const double dt) {
 //		neighbourhood_search.reset(neighbourhood_search.get_low(), neighbourhood_search.get_high(), binding_radius);
 //	}
 
-	Molecules &mols1 = all_species[0]->mols;
-	Molecules &mols2 = all_species[1]->mols;
+	Molecules* mols1 = &get_species()[0]->mols;
+	Molecules* mols2;
+	if (self_reaction) {
+		mols2 = mols1;
+	} else {
+		mols2 = &get_species()[1]->mols;
+	}
 
 	boost::uniform_real<> uni_dist(0.0,1.0);
 	boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni(generator, uni_dist);
 
 	const double binding_radius2 = binding_radius*binding_radius;
 
-	neighbourhood_search.embed_points(mols1.r);
-	const int n = mols2.size();
+	neighbourhood_search.embed_points(mols1->r);
+	const int n = mols2->size();
 	for (int mols2_i = 0; mols2_i < n; ++mols2_i) {
-		if (!mols2.alive[mols2_i]) continue;
-		if (mols2.saved_index[mols2_i] == SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE) continue;
-		const Vect3d pos2 = mols2.r[mols2_i];
-		const int id2 = mols2.id[mols2_i];
+		if (!mols2->alive[mols2_i]) continue;
+		if (mols2->saved_index[mols2_i] == SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE) continue;
+		const Vect3d pos2 = mols2->r[mols2_i];
+		const int id2 = mols2->id[mols2_i];
 		std::vector<int>& neighbrs_list = neighbourhood_search.find_broadphase_neighbours(pos2);
 		for (auto mols1_i : neighbrs_list) {
-			if (!mols1.alive[mols1_i]) continue;
-			if (mols1.saved_index[mols1_i] == SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE) continue;
-			const Vect3d pos1 = mols1.r[mols1_i];
-			const int id1 = mols1.id[mols1_i];
+			if (!mols1->alive[mols1_i]) continue;
+			if (mols1->saved_index[mols1_i] == SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE) continue;
+			const Vect3d pos1 = mols1->r[mols1_i];
+			const int id1 = mols1->id[mols1_i];
 			if (self_reaction && (id1==id2)) continue;
 			if ((pos2-neighbourhood_search.correct_position_for_periodicity(pos2, pos1)).squaredNorm() < binding_radius2) {
 				if (uni() < P_lambda) {
@@ -479,23 +491,28 @@ void BiMolecularReaction<T>::operator ()(const double dt) {
 							component.species->mols.add_molecule(0.5*(pos1+pos2));
 						}
 					}
-					mols1.mark_for_deletion(mols1_i);
-					mols2.mark_for_deletion(mols2_i);
+					mols1->mark_for_deletion(mols1_i);
+					mols2->mark_for_deletion(mols2_i);
 				}
 			}
 		}
 	}
-	mols1.delete_molecules();
-	mols2.delete_molecules();
-	LOG(2, "Stopping Operator: " << *this);
-	Operator::stop_timer();
+	mols1->delete_molecules();
+	mols2->delete_molecules();
+
 }
 
 template<typename T>
 void BiMolecularReaction<T>::report_dt_suitability(const double dt) {
-	LOG(1,"probability of reaction (per timestep) = "<<
-			     P_lambda<<". ratio of diffusion step to binding radius = "<<
-				std::sqrt(2.0*(all_species[0]->D + all_species[1]->D)*dt)/binding_radius);
+	if (self_reaction) {
+		LOG(1,"probability of reaction (per timestep) = "<<
+				P_lambda<<". ratio of diffusion step to binding radius = "<<
+				std::sqrt(4.0*(get_species()[0]->D)*dt)/binding_radius);
+	} else {
+		LOG(1,"probability of reaction (per timestep) = "<<
+				P_lambda<<". ratio of diffusion step to binding radius = "<<
+				std::sqrt(2.0*(get_species()[0]->D + get_species()[1]->D)*dt)/binding_radius);
+	}
 }
 
 void UniMolecularReaction::report_dt_suitability(const double dt) {
@@ -513,21 +530,22 @@ BiMolecularReaction<T>::BiMolecularReaction(const double rate, const ReactionEqu
 		neighbourhood_search(low,high,periodic) {
 	if (eq.lhs.size() == 1) {
 		CHECK(eq.lhs[0].multiplier == 2, "Reaction equation is not bimolecular!");
+		//this->add_species(*(eq.lhs[0].species));
 		this->add_species(*(eq.lhs[0].species));
-		this->add_species(*(eq.lhs[0].species));
+		self_reaction = true;
 	} else {
 		CHECK((eq.lhs.size()==2) && (eq.lhs[0].multiplier == 1) && (eq.lhs[1].multiplier == 1), "Reaction equation is not bimolecular!");
 		this->add_species(*(eq.lhs[0].species));
 		this->add_species(*(eq.lhs[1].species));
-	}
-
-	if (all_species[0] == all_species[1]) {
-		self_reaction = true;
-	} else {
 		self_reaction = false;
 	}
 
-	const double difc = all_species[0]->D + all_species[1]->D;
+	double difc;
+	if (self_reaction) {
+		difc = 2*get_species()[0]->D;
+	} else {
+		difc = get_species()[0]->D + get_species()[1]->D;
+	}
 	binding_radius = bindingradius(rate,dt,difc,-1,-1);
 
 	P_lambda = 1.0;
@@ -553,17 +571,13 @@ BiMolecularReaction<T>::BiMolecularReaction(const double rate, const ReactionEqu
 		neighbourhood_search(low,high,periodic) {
 	if (eq.lhs.size() == 1) {
 		CHECK(eq.lhs[0].multiplier == 2, "Reaction equation is not bimolecular!");
+		//this->add_species(*(eq.lhs[0].species));
 		this->add_species(*(eq.lhs[0].species));
-		this->add_species(*(eq.lhs[0].species));
+		self_reaction = true;
 	} else {
 		CHECK((eq.lhs.size()==2) && (eq.lhs[0].multiplier == 1) && (eq.lhs[1].multiplier == 1), "Reaction equation is not bimolecular!");
 		this->add_species(*(eq.lhs[0].species));
 		this->add_species(*(eq.lhs[1].species));
-	}
-
-	if (all_species[0] == all_species[1]) {
-		self_reaction = true;
-	} else {
 		self_reaction = false;
 	}
 
@@ -644,8 +658,7 @@ BiMolecularReaction<T>::BiMolecularReaction(const double rate, const ReactionEqu
 template class BiMolecularReaction<BucketSort>;
 
 
-void ZeroOrderMolecularReaction::add_species(Species& s) {
-	Reaction::add_species(s);
+void ZeroOrderMolecularReaction::add_species_execute(Species& s) {
 	rates.push_back(rate);
 }
 
@@ -654,37 +667,33 @@ void ZeroOrderMolecularReaction::add_species(const double _rate, Species& s) {
 	rates.push_back(_rate);
 }
 
-void ZeroOrderMolecularReaction::operator ()(const double dt) {
-	Operator::resume_timer();
-	LOG(2, "Starting Operator: " << *this);
+void ZeroOrderMolecularReaction::integrate(const double dt) {
+
 	boost::uniform_real<> p_dist(0,1);
 	boost::variate_generator<base_generator_type&, boost::uniform_real<> > N(generator, p_dist);
 	const Vect3d max_minus_min = max-min;
 	const double volume = max_minus_min.squaredNorm();
-	const int n_s = all_species.size();
+	const int n_s = get_species().size();
 	for (int i_s = 0; i_s < n_s; ++i_s) {
 		boost::poisson_distribution<> p_dist(rates[i_s]*volume*dt);
 		boost::variate_generator<base_generator_type&, boost::poisson_distribution<> > P(generator, p_dist);
 
-		Molecules &mols = all_species[i_s]->mols;
+		Molecules &mols = get_species()[i_s]->mols;
 		const int num_created = P();
 		for (int i = 0; i < num_created; ++i) {
 			const Vect3d new_position = min + max_minus_min.cwiseProduct(Vect3d(N(),N(),N()));
 			mols.add_molecule(new_position);
 		}
 	}
-	LOG(2, "Stopping Operator: " << *this);
-	Operator::stop_timer();
 }
 
 
-std::ostream& operator <<(std::ostream& out, ZeroOrderMolecularReaction& r) {
+void ZeroOrderMolecularReaction::print(std::ostream& out) {
 	out << "\tZero order molecular Reaction with reactants:";
-	const int n = r.all_species.size();
+	const int n = get_species().size();
 	for (int i = 0; i < n; ++i) {
-		out << "\t\tid = "<<r.all_species[i]->id<<" (rate = "<<r.rates[i]<<")";
+		out << "\t\tid = "<<get_species()[i]->id<<" (rate = "<<rates[i]<<")";
 	}
-	return out;
 }
 
 

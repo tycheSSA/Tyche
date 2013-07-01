@@ -35,21 +35,28 @@ class Operator {
 public:
 	Operator();
 	virtual ~Operator() {};
-	virtual void add_species(Species &s);
+	bool add_species(Species &s);
 
-	virtual void operator()(const double dt);
-	std::string get_time();
+	void operator()(const double dt);
+	std::string get_time_string();
 	std::string get_global_time();
 	std::string get_time_percentage();
-	virtual void reset();
+	void reset();
 	int get_species_index(Species& s);
+	double get_time() const {return time;}
 	std::vector<Species*>& get_species() {return all_species;}
 	friend std::ostream& operator<<( std::ostream& out, const Operator& b ) {
 		b.print(out);
 		return out;
 	}
-	virtual void print(std::ostream& out) const;
+
 protected:
+	virtual void add_species_execute(Species &s);
+	virtual void reset_execute();
+	virtual void integrate(const double dt);
+	virtual void print(std::ostream& out) const;
+
+private:
 	void resume_timer();
 	void stop_timer();
 
@@ -77,32 +84,43 @@ public:
 		list.push_back(&o);
 	}
 	virtual ~OperatorList() {}
-	virtual void operator()(const double dt) {
-		for (auto i : list) {
-		    i->operator ()(dt);
-		}
-	}
-	virtual void reset() {
-		for (auto i : list) {
-			i->reset();
-		}
-	}
 
 	void push_back(Operator* i) {
 		list.push_back(i);
+		for (auto s: i->get_species()) {
+			add_species(*s);
+		}
 	}
 	void push_back(const OperatorList& i) {
 		for (Operator* j: i.list) {
 			list.push_back(j);
+			for (auto s: j->get_species()) {
+				add_species(*s);
+			}
 		}
 	}
+
+	std::vector<Operator*>& get_operators() {return list;}
+
+protected:
 	virtual void print(std::ostream& out) {
 		out << "List of "<<list.size()<< "Operators:" << std::endl;
 		for (auto i : list) {
 			out << "\t" << *i << std::endl;
 		}
 	}
-protected:
+	virtual void integrate(const double dt) {
+		for (auto i : list) {
+			i->operator ()(dt);
+		}
+	}
+	virtual void reset_execute() {
+		for (auto i : list) {
+			i->reset();
+		}
+	}
+
+
 	std::vector<Operator*> list;
 };
 
