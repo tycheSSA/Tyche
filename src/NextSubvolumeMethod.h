@@ -185,7 +185,7 @@ public:
 protected:
 	virtual void reset_execute();
 	virtual void integrate(const double dt);
-	virtual void print(std::ostream& out) {
+	virtual void print(std::ostream& out) const {
 		out << "\tNext Subvolume Method";
 	}
 private:

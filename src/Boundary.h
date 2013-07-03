@@ -41,6 +41,11 @@ public:
 	Boundary<T>(const T& geometry):geometry(geometry) {
 	}
 	const T& geometry;
+
+protected:
+	virtual void print(std::ostream& out) const  {
+		out << "\tBoundary at "<< this->geometry;
+	}
 };
 
 
@@ -51,7 +56,7 @@ public:
 		Boundary<T>(geometry) {}
 protected:
 	virtual void integrate(const double dt);
-	virtual void print(std::ostream& out) {
+	virtual void print(std::ostream& out) const  {
 		out << "\tDestroy Boundary at "<< this->geometry;
 	}
 
@@ -65,7 +70,7 @@ public:
 		Boundary<T>(geometry),jump_by(jump_by) {}
 protected:
 	virtual void integrate(const double dt);
-	virtual void print(std::ostream& out) {
+	virtual void print(std::ostream& out) const {
 		out << "\tJump Boundary at "<< this->geometry;
 	}
 
@@ -132,7 +137,7 @@ public:
 protected:
 	virtual void integrate(const double dt);
 	virtual void add_species_execute(Species& s);
-	virtual void print(std::ostream& out) {
+	virtual void print(std::ostream& out) const {
 		out << "\tRemove Boundary With Correction at "<< this->geometry;
 	}
 
@@ -163,7 +168,7 @@ protected:
 
 	virtual void integrate(const double dt);
 	virtual void add_species_execute(Species& s);
-	virtual void print(std::ostream& out) {
+	virtual void print(std::ostream& out) const {
 		out << "\tRemove Boundary at "<< this->geometry;
 	}
 
@@ -192,7 +197,7 @@ public:
 
 protected:
 	virtual void integrate(const double dt);
-	virtual void print(std::ostream& out) {
+	virtual void print(std::ostream& out) const {
 		out << "\tJump Boundary With Correction at "<< this->geometry;
 	}
 
@@ -222,7 +227,7 @@ public:
 protected:
 
 	virtual void integrate(const double dt);
-	virtual void print(std::ostream& out) {
+	virtual void print(std::ostream& out) const {
 		out << "\tReflective Boundary at "<< this->geometry;
 	}
 };
@@ -255,7 +260,7 @@ public:
 
 protected:
 	virtual void integrate(const double dt);
-	virtual void print(std::ostream& out) {
+	virtual void print(std::ostream& out) const {
 		out << "\tFlux Boundary at (x,y,z) = " << p << " + s*" << t1 << " + t*" << t2 << " with s = (0 -> 1) and t = (0 -> 1)";
 	}
 private:
@@ -272,7 +277,7 @@ public:
 
 protected:
 	virtual void integrate(const double dt);
-	virtual void print(std::ostream& out) {
+	virtual void print(std::ostream& out) const  {
 		out << "\tCoupling Boundary from Molecules to Compartments at "<< std::endl << "\t\t"<< this->geometry;
 	}
 
@@ -293,7 +298,7 @@ protected:
 
 	virtual void integrate(const double dt);
 
-	virtual void print(std::ostream& out) {
+	virtual void print(std::ostream& out) const  {
 		out << "\tCoupling Boundary from Compartments to Molecules at "<< std::endl << "\t\t"<<this->geometry;
 	}
 

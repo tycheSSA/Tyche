@@ -41,7 +41,7 @@ public:
 
 protected:
 	virtual void integrate(const double dt);
-	virtual void print(std::ostream& out) {
+	virtual void print(std::ostream& out) const {
 		out << "\tDiffusion";
 	}
 	double calc_step_length(Species &s, const double dt) {

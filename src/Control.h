@@ -68,7 +68,7 @@ public:
 	}
 protected:
 	virtual void integrate(const double dt);
-	virtual void print(std::ostream& out) {
+	virtual void print(std::ostream& out) const {
 		out << "\tGrowing/Shrinking Interface at "<< this->geometry;
 	}
 

@@ -61,7 +61,9 @@ public:
 		return data[name];
 	}
 protected:
-
+	virtual void print(std::ostream& out) const {
+			out << "\tDefault output operator";
+		}
 	virtual void reset_execute() {
 		next_execute = get_time() + execute_dt;
 	}
@@ -89,7 +91,7 @@ public:
 
 protected:
 	virtual void integrate(const double dt);
-	virtual void print(std::ostream& out) {
+	virtual void print(std::ostream& out) const {
 		out << "\tOutput concentrations";
 	}
 
@@ -109,7 +111,7 @@ public:
 
 protected:
 	virtual void integrate(const double dt);
-	virtual void print(std::ostream& out) {
+	virtual void print(std::ostream& out) const {
 		out << "\tOutput sum concentrations";
 	}
 	virtual void add_species_execute(Species &s);
@@ -140,7 +142,7 @@ public:
 protected:
 	virtual void reset_execute();
 	virtual void integrate(const double dt);
-	virtual void print(std::ostream& out) {
+	virtual void print(std::ostream& out) const {
 		out << "\tCompare concentration with exact function";
 	}
 private:

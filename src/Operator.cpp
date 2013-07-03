@@ -124,24 +124,27 @@ void Operator::print(std::ostream& out) const {
 
 
 
-OperatorList operator+(Operator& arg1, Operator& arg2) {
-	OperatorList result;
-	result.push_back(&arg1);
-	result.push_back(&arg2);
-	return result;
-}
-OperatorList operator+(Operator& arg1, OperatorList& arg2) {
-	arg2.push_back(&arg1);
-	return arg2;
-}
-OperatorList operator+(OperatorList& arg1, Operator& arg2) {
-	arg1.push_back(&arg2);
-	return arg1;
-}
-OperatorList operator+(OperatorList& arg1, OperatorList& arg2) {
-	arg1.push_back(&arg2);
-	return arg1;
-}
+//OperatorList operator+(Operator& arg1, Operator& arg2) {
+//	OperatorList result;
+//	result += arg1;
+//	result += arg2;
+//	return result;
+//}
+//OperatorList operator+(Operator& arg1, OperatorList& arg2) {
+//	OperatorList result = arg2;
+//	result += arg1;
+//	return arg2;
+//}
+//OperatorList operator+(OperatorList& arg1, Operator& arg2) {
+//	OperatorList result = arg1;
+//	result += arg2;
+//	return arg1;
+//}
+//OperatorList operator+(OperatorList& arg1, OperatorList& arg2) {
+//	OperatorList result = arg1;
+//	arg1 += arg2;
+//	return arg1;
+//}
 
 }
 

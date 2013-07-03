@@ -688,7 +688,7 @@ void ZeroOrderMolecularReaction::integrate(const double dt) {
 }
 
 
-void ZeroOrderMolecularReaction::print(std::ostream& out) {
+void ZeroOrderMolecularReaction::print(std::ostream& out) const {
 	out << "\tZero order molecular Reaction with reactants:";
 	const int n = get_species().size();
 	for (int i = 0; i < n; ++i) {

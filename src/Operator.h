@@ -44,7 +44,7 @@ public:
 	void reset();
 	int get_species_index(Species& s);
 	double get_time() const {return time;}
-	std::vector<Species*>& get_species() {return all_species;}
+	const std::vector<Species*>& get_species() const {return all_species;}
 	friend std::ostream& operator<<( std::ostream& out, const Operator& b ) {
 		b.print(out);
 		return out;
@@ -83,9 +83,18 @@ public:
 	OperatorList(Operator& o) {
 		list.push_back(&o);
 	}
+	OperatorList(std::initializer_list<Operator*> arg) {
+		for (auto i: arg) {
+			list.push_back(i);
+			for (auto s: i->get_species()) {
+				add_species(*s);
+			}
+		}
+
+	}
 	virtual ~OperatorList() {}
 
-	void push_back(Operator* i) {
+	void push_back(Operator* const i) {
 		list.push_back(i);
 		for (auto s: i->get_species()) {
 			add_species(*s);
@@ -100,11 +109,27 @@ public:
 		}
 	}
 
+//	OperatorList& operator+=(const OperatorList &rhs) {
+//		for (Operator* j: rhs.list) {
+//			list.push_back(j);
+//			for (auto s: j->get_species()) {
+//				add_species(*s);
+//			}
+//		}
+//		return *this;
+//	}
+//	OperatorList& operator+=(Operator &rhs) {
+//		list.push_back(&rhs);
+//		for (auto s: rhs.get_species()) {
+//			add_species(*s);
+//		}
+//		return *this;
+//	}
 	std::vector<Operator*>& get_operators() {return list;}
 
 protected:
-	virtual void print(std::ostream& out) {
-		out << "List of "<<list.size()<< "Operators:" << std::endl;
+	virtual void print(std::ostream& out) const {
+		out << "List of "<<list.size()<< " operators:" << std::endl;
 		for (auto i : list) {
 			out << "\t" << *i << std::endl;
 		}
@@ -125,10 +150,10 @@ protected:
 };
 
 
-OperatorList operator+(Operator& arg1, Operator& arg2);
-OperatorList operator+(Operator& arg1, OperatorList& arg2);
-OperatorList operator+(OperatorList& arg1, Operator& arg2);
-OperatorList operator+(OperatorList& arg1, OperatorList& arg2);
+//OperatorList operator+(Operator& arg1, Operator& arg2);
+//OperatorList operator+(Operator& arg1, OperatorList& arg2);
+//OperatorList operator+(OperatorList& arg1, Operator& arg2);
+//OperatorList operator+(OperatorList& arg1, OperatorList& arg2);
 
 
 }

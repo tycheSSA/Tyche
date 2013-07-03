@@ -56,7 +56,7 @@ public:
 protected:
 	virtual void integrate(const double dt);
 	virtual void add_species_execute(Species& s);
-	virtual void print(std::ostream& out);
+	virtual void print(std::ostream& out) const;
 private:
 	std::vector<double> rates;
 	Vect3d min,max;
@@ -70,7 +70,7 @@ public:
 	void report_dt_suitability(const double dt);
 protected:
 	virtual void integrate(const double dt);
-	virtual void print(std::ostream& out) {
+	virtual void print(std::ostream& out) const {
 		out << "\tUnimolecular Reaction with reactions:";
 		BOOST_FOREACH(ReactionSide side, product_list) {
 			out << "\t1("<<get_species()[0]->id<<") >> "<<side<<" (rate = "<<rate<<")";
@@ -101,15 +101,15 @@ public:
 	BiMolecularReaction(const double rate, const ReactionEquation& eq, const double dt,
 				Vect3d low, Vect3d high, Vect3b periodic);
 
-	double get_rate() {return this->rate;}
-	double get_binding_radius() {return binding_radius;}
-	double get_unbinding_radius() {return unbinding_radius;}
+	double get_rate() const {return this->rate;}
+	double get_binding_radius() const {return binding_radius;}
+	double get_unbinding_radius() const {return unbinding_radius;}
 	void report_dt_suitability(const double dt);
 
 protected:
 
 	virtual void integrate(const double dt);
-	virtual void print(std::ostream& out) {
+	virtual void print(std::ostream& out) const {
 		out << "\tBimolecular Reaction with rate = "<<get_rate()<<" and binding radius = "<<get_binding_radius();
 	}
 

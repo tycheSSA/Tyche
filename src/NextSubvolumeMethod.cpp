@@ -319,7 +319,6 @@ void NextSubvolumeMethod::recalc_priority(const int i) {
 }
 
 void NextSubvolumeMethod::integrate(const double dt) {
-
 	const double final_time = time + dt;
 	while (get_next_event_time() < final_time) {
 		const int sv_i = heap.top().subvolume_index;
