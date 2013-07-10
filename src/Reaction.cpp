@@ -256,6 +256,9 @@ public:
 		}
     	//A.diagonal() = A.diagonal()+1.0;
     	Eigen::VectorXd x = A.colPivHouseholderQr().solve(b);
+//    	Eigen::JacobiSVD<Eigen::MatrixXd> svd = A.jacobiSvd();
+//    	std::cout << "The condition number of A is:\n" << svd.singularValues().maxCoeff()/svd.singularValues().minCoeff() << std::endl;
+
     	//Eigen::VectorXd x = A.llt().solve(b);
 //    	const double relative_error = (A*x - b).norm() / b.norm(); // norm() is L2 norm
 //    	std::cout << "The relative error is:\n" << relative_error << std::endl;
@@ -381,7 +384,7 @@ double BiMolecularReaction<T>::calculate_lambda_reversible(const double dt) {
 	const double goal_kappa = rate*dt/pow(binding_radius,3);
 	double difc;
 	if (self_reaction) {
-		difc = 2*get_species()[0]->D;
+		difc = 2.0*get_species()[0]->D;
 	} else {
 		difc = get_species()[0]->D + get_species()[1]->D;
 	}
@@ -473,13 +476,13 @@ void BiMolecularReaction<T>::integrate(const double dt) {
 	neighbourhood_search.embed_points(mols1->r);
 	const int n = mols2->size();
 	for (int mols2_i = 0; mols2_i < n; ++mols2_i) {
-		if (!mols2->alive[mols2_i]) continue;
+		if (!(mols2->alive[mols2_i])) continue;
 		if (mols2->saved_index[mols2_i] == SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE) continue;
 		const Vect3d pos2 = mols2->r[mols2_i];
 		const int id2 = mols2->id[mols2_i];
 		std::vector<int>& neighbrs_list = neighbourhood_search.find_broadphase_neighbours(pos2);
 		for (auto mols1_i : neighbrs_list) {
-			if (!mols1->alive[mols1_i]) continue;
+			if (!(mols1->alive[mols1_i])) continue;
 			if (mols1->saved_index[mols1_i] == SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE) continue;
 			const Vect3d pos1 = mols1->r[mols1_i];
 			const int id1 = mols1->id[mols1_i];
@@ -493,13 +496,17 @@ void BiMolecularReaction<T>::integrate(const double dt) {
 					}
 					mols1->mark_for_deletion(mols1_i);
 					mols2->mark_for_deletion(mols2_i);
+					break;
 				}
 			}
 		}
 	}
-	mols1->delete_molecules();
-	mols2->delete_molecules();
-
+	if (self_reaction) {
+		mols1->delete_molecules();
+	} else {
+		mols1->delete_molecules();
+		mols2->delete_molecules();
+	}
 }
 
 template<typename T>
@@ -523,7 +530,7 @@ void UniMolecularReaction::report_dt_suitability(const double dt) {
 
 template<typename T>
 BiMolecularReaction<T>::BiMolecularReaction(const double rate, const ReactionEquation& eq, const double dt,
-			Vect3d low, Vect3d high, Vect3b periodic):
+			Vect3d low, Vect3d high, Vect3b periodic, const bool reversible):
 		Reaction(rate),
 		products(eq.rhs),
 		binding_radius_dt(0),
@@ -542,14 +549,22 @@ BiMolecularReaction<T>::BiMolecularReaction(const double rate, const ReactionEqu
 
 	double difc;
 	if (self_reaction) {
-		difc = 2*get_species()[0]->D;
+		difc = 2.0*get_species()[0]->D;
 	} else {
 		difc = get_species()[0]->D + get_species()[1]->D;
 	}
-	binding_radius = bindingradius(rate,dt,difc,-1,-1);
+	if (reversible) {
+		binding_radius = bindingradius(rate,dt,difc,1,1);
+	} else {
+		binding_radius = bindingradius(rate,dt,difc,-1,-1);
+	}
+	if (binding_radius==-1) {
+		ERROR("error calculating binding radius!!!");
+	}
 
 	P_lambda = 1.0;
 	binding_radius_dt = binding_radius;
+	unbinding_radius = binding_radius*1.0;
 
 	LOG(1,"created bimolecular reaction with eq: " << eq <<" binding radius = " << binding_radius);
 	neighbourhood_search.reset(neighbourhood_search.get_low(), neighbourhood_search.get_high(), binding_radius);
@@ -581,69 +596,7 @@ BiMolecularReaction<T>::BiMolecularReaction(const double rate, const ReactionEqu
 		self_reaction = false;
 	}
 
-//	const double difc = all_species[0]->D + all_species[1]->D;
 
-//	double lambda_min =  std::sqrt(std::numeric_limits<double>::min());
-//	double lambda_max = 0.1*difc * pow(std::numeric_limits<double>::max_exponent,2) / pow(binding,2);
-////	double binding_min = binding_max * 0.000001;
-//	LOG(1,"lambda_min = "<<lambda_min<<" and lambda_max = "<<lambda_max);
-//	unsigned int maximum_iterations = 50000;
-//	boost::uintmax_t max_iter = maximum_iterations;
-//	boost::math::tools::eps_tolerance<double> tol(60);
-//	std::pair<double, double> r;
-//	if (reversible) {
-//		reversiblef fop(rate,unbinding,binding,difc);
-//
-//		CHECK(fop(lambda_min)*fop(lambda_max) < 0, "brackets of root not valid. f(lambda_min) = "<<fop(lambda_min)<<" and f(lambda_max) = "<<fop(lambda_max));
-//		while (std::isinf(fop(lambda_max))) {
-//			const double middle = 0.5*(lambda_max-lambda_min);
-//			if (fop(lambda_min)*fop(middle) < 0) {
-//				lambda_max = middle;
-//			} else {
-//				lambda_min = middle;
-//			}
-//		}
-//		LOG(2,"solving root with f(lambda_min) = "<<fop(lambda_min)<<" and f(lambda_max) = "<<fop(lambda_max));
-//
-//		r = boost::math::tools::toms748_solve(
-//									fop,
-//									lambda_min, lambda_max, tol, max_iter);
-//		LOG(1,"f(binding) = f("<<0.5*(r.first+r.second)<<") = "<<fop(0.5*(r.first + r.second)));
-//		LOG(1,"f(first) = f("<<r.first<<") = "<<fop(r.first));
-//		LOG(1,"f(second) = f("<<r.second<<") = "<< fop(r.second));
-//
-//	} else {
-////		irreversiblef f(kappa_constant);
-////		CHECK(f(beta_min)*f(beta_max) < 0, "brackets of root not valid. f(beta_min) = "<<f(beta_min)<<" and f(beta_max) = "<<f(beta_max));
-////		while (std::isinf(f(beta_max))) {
-////			const double middle = 0.5*(beta_max-beta_min);
-////			if (f(beta_min)*f(middle) < 0) {
-////				beta_max = middle;
-////			} else {
-////				beta_min = middle;
-////			}
-////		}
-////		LOG(2,"solving root with f(beta_min) = "<<f(beta_min)<<" and f(beta_max) = "<<f(beta_max));
-////		r = boost::math::tools::toms748_solve(
-////									f,
-////									beta_min, beta_max, tol, max_iter);
-//	}
-//	CHECK(max_iter < maximum_iterations, "could not solve for root. binding_min = "<<r.first<<" and binding_max = "<<r.second);
-//	lambda = 0.5*(r.first + r.second);
-//	binding_radius = binding;
-//	binding_radius_dt = binding_radius;
-//	unbinding_radius = unbinding;
-//	const double alpha = unbinding/binding_radius;
-//	const double beta = binding_radius*std::sqrt(lambda/difc);
-//	CHECK(alpha < 1.0, "unbinding radius must be less than binding radius = "<<binding_radius);
-//
-//	//lambda = pow(beta / binding_radius,2)*difc;
-//	double germinate;
-//	if (reversible) {
-//		germinate = 1.0 - std::sinh(alpha*beta) / (alpha*beta*std::cosh(beta));
-//	} else {
-//		germinate = 0.0;
-//	}
 	if (reversible) {
 		P_lambda = calculate_lambda_reversible(dt);
 	} else {

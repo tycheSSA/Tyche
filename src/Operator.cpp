@@ -65,8 +65,8 @@ void Operator::operator ()(const double dt) {
 }
 
 void Operator::reset() {
-	reset_execute();
 	time = 0;
+	reset_execute();
 }
 
 void Operator::stop_timer() {
@@ -86,17 +86,17 @@ const std::string to_string(const T& data)
    return conv.str();
 }
 
-std::string Operator::get_time_string() {
+std::string Operator::get_time_string() const {
 	//return timer.format();
 	return "Time to execute: " + to_string(total_time) + " s (" + get_time_percentage() + ")";
 }
 
-std::string Operator::get_global_time() {
+std::string Operator::get_global_time() const {
 	//return global_timer.format();
 	return "Time to execute all Operators: " + to_string(total_global_time) + " s";
 }
 
-std::string Operator::get_time_percentage() {
+std::string Operator::get_time_percentage() const {
 //	boost::timer::cpu_times percent;
 //	boost::timer::cpu_times this_time = timer.elapsed();
 //	boost::timer::cpu_times total = global_timer.elapsed();

@@ -121,9 +121,13 @@ void Species::get_concentrations(const StructuredGrid& calc_grid,
 			std::vector<double> volume_ratio;
 			grid.get_overlap(calc_grid.get_low_point(i),calc_grid.get_high_point(i),indicies,volume_ratio);
 			const int noverlap = indicies.size();
+			//double sum_of_volume_ratios = 0;
 			for (int j = 0; j < noverlap; ++j) {
+				//sum_of_volume_ratios += volume_ratio[j];
 				compartment_concentrations[i] += copy_numbers[indicies[j]]*volume_ratio[j];
+				//std::cout << " compartment "<<i<<" overlap with compartment "<<indicies[j]<<" with volume ratio"<<volume_ratio[j]<<std::endl;
 			}
+			//std::cout <<" sum of vol ratio = "<<sum_of_volume_ratios<<std::endl;
 		}
 	}
 
@@ -139,9 +143,18 @@ void Species::get_concentration(const StructuredGrid& calc_grid,
 	std::vector<double> compartment_concentrations;
 	get_concentrations(calc_grid,concentration,compartment_concentrations);
 	const int n = concentration.size();
+//	double totalm = 0;
+//	double totalc = 0;
+//	double totalv = 0;
 	for (int i = 0; i < n; ++i) {
+//		if (i >= n/2) {
+//			totalm += concentration[i]*calc_grid.get_cell_volume(i);
+//			totalc += compartment_concentrations[i]*calc_grid.get_cell_volume(i);
+//			totalv += calc_grid.get_cell_volume(i);
+//		}
 		concentration[i] += compartment_concentrations[i];
 	}
+	//std::cout <<" there are "<<totalm<<" particles and "<<totalc<<" compartment mols in "<<totalv<<" volume"<<std::endl;
 }
 
 std::string Species::get_status_string() {

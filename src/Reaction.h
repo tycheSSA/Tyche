@@ -99,9 +99,10 @@ public:
 			Vect3d low, Vect3d high, Vect3b periodic,
 			const bool reversible=false);
 	BiMolecularReaction(const double rate, const ReactionEquation& eq, const double dt,
-				Vect3d low, Vect3d high, Vect3b periodic);
+				Vect3d low, Vect3d high, Vect3b periodic, const bool reversible);
 
 	double get_rate() const {return this->rate;}
+	double get_P_lambda() const {return this->P_lambda;}
 	double get_binding_radius() const {return binding_radius;}
 	double get_unbinding_radius() const {return unbinding_radius;}
 	void report_dt_suitability(const double dt);
@@ -110,7 +111,15 @@ protected:
 
 	virtual void integrate(const double dt);
 	virtual void print(std::ostream& out) const {
-		out << "\tBimolecular Reaction with rate = "<<get_rate()<<" and binding radius = "<<get_binding_radius();
+		if (self_reaction) {
+			out << "\tBimolecular Reaction: 1("<<get_species()[0]->id<<") + 1("<<get_species()[0]->id<<") >> ";
+		} else {
+			out << "\tBimolecular Reaction: 1("<<get_species()[0]->id<<") + 1("<<get_species()[1]->id<<") >> ";
+		}
+		for (auto component : products) {
+			out << "1("<<component.species->id<<") ";
+		}
+		out << "(rate = "<<rate<<", binding radius = "<<get_binding_radius()<<")";
 	}
 
 	double calculate_lambda_reversible(const double dt);

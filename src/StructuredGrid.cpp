@@ -30,22 +30,25 @@ Vect3d StructuredGrid::get_random_point(const int i) const {
 }
 
 void StructuredGrid::get_overlap(const Vect3d& overlap_low, const Vect3d& overlap_high, std::vector<int>& indicies, std::vector<double>& volume) const {
+	indicies.clear();
+	volume.clear();
+	if ((overlap_low.array() >= high.array()).any()) return;
+	if ((overlap_high.array() <= low.array()).any()) return;
+
 	Vect3d snap_low = overlap_low + Vect3d(tolerance,tolerance,tolerance);
 	Vect3d snap_high = overlap_high - Vect3d(tolerance,tolerance,tolerance);
 	for (int i = 0; i < 3; ++i) {
 		if (snap_low[i] < low[i]) {
 			snap_low[i] = low[i];
 		}
-		if (snap_high[i] > high[i]) {
-			snap_high[i] = high[i];
+		if (snap_high[i] >= high[i]) {
+			snap_high[i] = high[i]-tolerance;
 		}
 	}
 	Vect3i lowi,highi;
 	lowi = get_cell_index_vector(snap_low);
 	highi = get_cell_index_vector(snap_high);
 
-	indicies.clear();
-	volume.clear();
 	const double inv_volume = 1.0/cell_size.prod();
 	for (int i = lowi[0]; i <= highi[0]; ++i) {
 		for (int j = lowi[1]; j <= highi[1]; ++j) {

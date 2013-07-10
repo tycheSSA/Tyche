@@ -185,6 +185,7 @@ NextSubvolumeMethod::NextSubvolumeMethod(const StructuredGrid& subvolumes):
 }
 
 void NextSubvolumeMethod::reset_execute() {
+	time = 0.0;
 	reset_all_priorities();
 }
 
@@ -319,8 +320,9 @@ void NextSubvolumeMethod::recalc_priority(const int i) {
 }
 
 void NextSubvolumeMethod::integrate(const double dt) {
+	time = get_time();
 	const double final_time = time + dt;
-	while (get_next_event_time() < final_time) {
+	while (get_next_event_time() <= final_time) {
 		const int sv_i = heap.top().subvolume_index;
 		time = heap.top().time_at_next_reaction;
 		//std::cout << "dealing with subvolume with time = " << time << " and index = " << sv_i << std::endl;

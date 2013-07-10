@@ -38,9 +38,9 @@ public:
 	bool add_species(Species &s);
 
 	void operator()(const double dt);
-	std::string get_time_string();
-	std::string get_global_time();
-	std::string get_time_percentage();
+	std::string get_time_string() const;
+	std::string get_global_time() const;
+	std::string get_time_percentage() const;
 	void reset();
 	int get_species_index(Species& s);
 	double get_time() const {return time;}
@@ -129,9 +129,9 @@ public:
 
 protected:
 	virtual void print(std::ostream& out) const {
-		out << "List of "<<list.size()<< " operators:" << std::endl;
+		out << "List of "<<list.size()<< " operators: ("<<get_time_string()<<")"<< std::endl;
 		for (auto i : list) {
-			out << "\t" << *i << std::endl;
+			out << "\t" << *i << " ("<<i->get_time_string()<<")"<<std::endl;
 		}
 	}
 	virtual void integrate(const double dt) {
@@ -145,6 +145,11 @@ protected:
 		}
 	}
 
+	virtual void add_species_execute(Species &s) {
+		for (auto i : list) {
+			i->add_species(s);
+		}
+	}
 
 	std::vector<Operator*> list;
 };

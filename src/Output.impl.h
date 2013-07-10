@@ -23,6 +23,19 @@ void OutputCompareWithFunction<T>::integrate(const double dt) {
 			volumes.push_back(grid.get_cell_volume(i));
 		}
 		errors.push_back(calc_error(get_time(), concentrations,centers,volumes));
+
+//		int nmol = 0;
+//		int ncompart = 0;
+//		int ncomparts = 0;
+//		for (int j = 0; j < get_species().size(); ++j) {
+//			nmol += get_species()[j]->mols.size();
+//			ncompart += std::accumulate(get_species()[j]->copy_numbers.begin(),get_species()[j]->copy_numbers.end(),0);
+//			ncomparts += (unsigned int)get_species()[j]->copy_numbers.size();
+//		}
+//		LOG(1, "output: There are " << nmol <<
+//				" molecules in free space and " << ncompart <<
+//				" molecules in " << ncomparts << " compartments");
+
 		if (errors.size() >= average_over) {
 			data["Time"].push_back(get_time());
 			data["Error"].push_back(std::accumulate(errors.begin(),errors.end(),0.0)/double(average_over));
@@ -54,6 +67,7 @@ void OutputCompareWithFunction<T>::set_param(const std::string name, const doubl
 template<typename T>
 void OutputCompareWithFunction<T>::reset_execute() {
 	errors.clear();
+	Output::reset_execute();
 }
 }
 

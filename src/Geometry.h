@@ -106,6 +106,10 @@ public:
 		coord -= normal*move_by;
 	}
 
+	void set_coord(const double arg) {
+		coord = arg;
+	}
+
 	const double& get_coord() const {
 		return coord;
 	}

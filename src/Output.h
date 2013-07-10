@@ -194,16 +194,58 @@ struct halfSumError {
 		const int n = concentrations.size();
 		ASSERT((n == positions.size()) && (n == volumes.size()), "all vectors assumed to be equal size");
 		double error = 0;
-		double halfsum = 0;
-		double fullsum = 0;
+		Vect3d min,max;
+		Vect3d min_region, max_region;
+		const int NDIM = 3;
+		min = Vect3d(0,0,0);
+		max = Vect3d(1,1,1);
+		min_region = Vect3d(0.5,0,0);
+		max_region = Vect3d(1,1,1);
 		for (int i = 0; i < n; ++i) {
-			const double expectedN = function(time,positions[i])*volumes[i];
-			fullsum += expectedN;
 			if (positions[i][0] > 0.5) {
-				halfsum += expectedN;
 				error += concentrations[i]*volumes[i];
 			}
 		}
+		double halfsum = 0;
+		double fullsum = 0;
+		const int N = 10;
+		const Vect3d dx = (max-min)/N;
+		const Vect3d dx_region = (max_region-min_region)/N;
+		for (int i = 0; i <= N; ++i) {
+			const double x = min[0] + i*dx[0];
+			const double x_region = min_region[0] + i*dx_region[0];
+			double multiplier_x = 2;
+			if ((i==0)||(i==N)) {
+				multiplier_x = 1;
+			}
+			for (int j = 0; j <= N; ++j) {
+				const double y = min[1] + j*dx[1];
+				const double y_region = min_region[1] + j*dx_region[1];
+				double multiplier_y = 2;
+				if ((j==0)||(j==N)) {
+					multiplier_y = 1;
+				}
+				for (int k = 0; k <= N; ++k) {
+					const double z = min[2] + k*dx[2];
+					const double z_region = min_region[2] + k*dx_region[2];
+					double multiplier_z = 2;
+					if ((k==0)||(k==N)) {
+						multiplier_z = 1;
+					}
+					const double multiplier = multiplier_x*multiplier_y*multiplier_z;
+					fullsum  += multiplier*function(time,Vect3d(x,y,z));
+					halfsum  += multiplier*function(time,Vect3d(x_region,y_region,z_region));
+				}
+			}
+		}
+		fullsum *= dx.prod()/8.0;
+		halfsum *= dx_region.prod()/8.0;
+//		std::cout << "halfSumError: min = "<<min<<"  max = "<<max <<std::endl;
+//		std::cout << "halfSumError: min_region = "<<min_region<<"  max_region = "<<max_region <<std::endl;
+//		std::cout << "halfSumError: dx = "<<dx<<"  dx_region = "<<dx_region <<std::endl;
+//
+//		std::cout << "halfSumError: fullsum = "<<fullsum<<" halfsum = "<<halfsum<<" error = "<<error<<std::endl;
+
 		return (error - halfsum)/fullsum;
 	}
 	T function;
