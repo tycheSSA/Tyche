@@ -133,6 +133,10 @@ public:
 				calc_error(calc_error) {
 		data.insert(std::pair<std::string,std::vector<double> >("Time",std::vector<double>()));
 		data.insert(std::pair<std::string,std::vector<double> >("Error",std::vector<double>()));
+		data.insert(std::pair<std::string,std::vector<double> >("Volume",std::vector<double>()));
+		data.insert(std::pair<std::string,std::vector<double> >("Molecules(M)",std::vector<double>()));
+		data.insert(std::pair<std::string,std::vector<double> >("Molecules(C)",std::vector<double>()));
+
 	}
 
 

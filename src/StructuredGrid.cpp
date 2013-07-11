@@ -13,7 +13,7 @@ void StructuredGrid::reset_domain(const Vect3d& _low, const Vect3d& _high, const
 	low = _low;
 	num_cells_along_axes = ((high-low).cwiseQuotient(max_grid_size) + Vect3d(0.5,0.5,0.5)).cast<int>();
 	cell_size = (high-low).cwiseQuotient(num_cells_along_axes.cast<double>());
-	tolerance = cell_size.minCoeff()/1000.0;
+	tolerance = cell_size.minCoeff()/100000.0;
 	cell_volume = cell_size.prod();
 	//std::cout << "cell volume = " << cell_volume << " cell_size = " << cell_size<<std::endl;
 	inv_cell_size = Vect3d(1,1,1).cwiseQuotient(cell_size);

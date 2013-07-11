@@ -148,37 +148,38 @@ class AxisAlignedRectangle: public AxisAlignedPlane<DIM> {
 public:
 	AxisAlignedRectangle(const Vect3d _low, const Vect3d _high, const int _normal):
 	   AxisAlignedPlane<DIM>(_low[DIM], _normal),
-	   low(_low),high(_high),
+	   low(_low),high(_high),mid(0.5*(_low[dim_map[DIM][0]] + _high[dim_map[DIM][0]])),
 	   normal_vector(Vect3d::Zero()),
 	   uni1(generator,boost::uniform_real<>(_low[dim_map[DIM][0]],_high[dim_map[DIM][0]])),
 	   uni2(generator,boost::uniform_real<>(_low[dim_map[DIM][1]],_high[dim_map[DIM][1]])),
-	   tri1(generator,boost::triangle_distribution<>(_low[dim_map[DIM][0]],
+	   tri1(generator,boost::triangle_distribution<>(1.5*_low[dim_map[DIM][0]] - 0.5*_high[dim_map[DIM][0]],
 			   	   	   	   	   0.5*(_low[dim_map[DIM][0]] + _high[dim_map[DIM][0]]),
-			   	   	   	   	   	   	   	             _high[dim_map[DIM][0]] )),
-	   tri2(generator,boost::triangle_distribution<>(_low[dim_map[DIM][1]],
-			   0.5*(_low[dim_map[DIM][1]] + _high[dim_map[DIM][1]]),
-			   	   	   	   	   				         _high[dim_map[DIM][1]] )) {
+			   	   	   	   	   1.5*_high[dim_map[DIM][0]]-0.5*_low[dim_map[DIM][0]] )),
+	   tri2(generator,boost::triangle_distribution<>(1.5*_low[dim_map[DIM][1]] - 0.5*_high[dim_map[DIM][1]],
+			   	   	   	   	   0.5*(_low[dim_map[DIM][1]] + _high[dim_map[DIM][1]]),
+			   	   	  	  	  1.5*_high[dim_map[DIM][1]] - 0.5*_low[dim_map[DIM][1]])) {
 	   high[DIM] = low[DIM];
 	   normal_vector[DIM] = this->normal;
 	}
 	AxisAlignedRectangle(const AxisAlignedRectangle<DIM>& arg):
 		AxisAlignedPlane<DIM>(arg),
 		low(arg.low),
-		high(arg.high),
+		high(arg.high),mid(0.5*(arg.low[dim_map[DIM][0]] + arg.high[dim_map[DIM][0]])),
 		normal_vector(arg.normal_vector),
 		uni1(generator,boost::uniform_real<>(arg.low[dim_map[DIM][0]],arg.high[dim_map[DIM][0]])),
 		uni2(generator,boost::uniform_real<>(arg.low[dim_map[DIM][1]],arg.high[dim_map[DIM][1]])),
-		tri1(generator,boost::triangle_distribution<>(arg.low[dim_map[DIM][0]],
+		tri1(generator,boost::triangle_distribution<>(1.5*arg.low[dim_map[DIM][0]] - 0.5*arg.high[dim_map[DIM][0]],
 				0.5*(arg.low[dim_map[DIM][0]] + arg.high[dim_map[DIM][0]]),
-				arg.high[dim_map[DIM][0]] )),
-				tri2(generator,boost::triangle_distribution<>(arg.low[dim_map[DIM][1]],
+				1.5*arg.high[dim_map[DIM][0]] - 0.5*arg.low[dim_map[DIM][0]])),
+				tri2(generator,boost::triangle_distribution<>(1.5*arg.low[dim_map[DIM][1]] - 0.5*arg.high[dim_map[DIM][1]],
 						0.5*(arg.low[dim_map[DIM][1]] + arg.high[dim_map[DIM][1]]),
-						arg.high[dim_map[DIM][1]] ))
+						1.5*arg.high[dim_map[DIM][1]] - 0.5*arg.low[dim_map[DIM][1]]))
 						{}
 	AxisAlignedRectangle<DIM>& operator=(const AxisAlignedRectangle<DIM>& arg) {
 		AxisAlignedPlane<DIM>::operator=(arg);
 		low = arg.low;
 		high = arg.high;
+		mid = arg.mid;
 		normal_vector = arg.normal_vector;
 		boost::uniform_real<double>& dist1 = uni1.distribution();
 		boost::uniform_real<double>& dist2 = uni2.distribution();
@@ -186,12 +187,12 @@ public:
 		dist2.param(boost::uniform_real<double>::param_type(arg.low[dim_map[DIM][1]],arg.high[dim_map[DIM][1]]));
 		boost::triangle_distribution<double>& dist3 = tri1.distribution();
 		boost::triangle_distribution<double>& dist4 = tri2.distribution();
-		dist3.param(boost::triangle_distribution<double>::param_type(arg.low[dim_map[DIM][0]],
+		dist3.param(boost::triangle_distribution<double>::param_type(1.5*arg.low[dim_map[DIM][0]]-0.5*arg.high[dim_map[DIM][0]],
 				0.5*(arg.low[dim_map[DIM][0]] + arg.high[dim_map[DIM][0]]),
-				arg.high[dim_map[DIM][0]] ));
-		dist4.param(boost::triangle_distribution<double>::param_type(arg.low[dim_map[DIM][1]],
+				1.5*arg.high[dim_map[DIM][0]] - 0.5*arg.low[dim_map[DIM][0]]));
+		dist4.param(boost::triangle_distribution<double>::param_type(1.5*arg.low[dim_map[DIM][1]]-0.5*arg.high[dim_map[DIM][1]],
 				0.5*(arg.low[dim_map[DIM][1]] + arg.high[dim_map[DIM][1]]),
-				arg.high[dim_map[DIM][1]] ));
+				1.5*arg.high[dim_map[DIM][1]] - 0.5*arg.low[dim_map[DIM][1]]));
 	}
 	void get_random_point_and_normal(Vect3d& p, Vect3d& n) {
 	   p = get_random_point();
@@ -218,7 +219,7 @@ public:
 	}
 
 private:
-	Vect3d low,high,normal_vector;
+	Vect3d low,high,normal_vector,mid;
 
 	boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni1, uni2;
 	boost::variate_generator<base_generator_type&, boost::triangle_distribution<> > tri1, tri2;

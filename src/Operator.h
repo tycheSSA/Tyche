@@ -129,10 +129,12 @@ public:
 
 protected:
 	virtual void print(std::ostream& out) const {
-		out << "List of "<<list.size()<< " operators: ("<<get_time_string()<<")"<< std::endl;
+		out << "List of "<<list.size()<< " operators:"<< std::endl;
 		for (auto i : list) {
 			out << "\t" << *i << " ("<<i->get_time_string()<<")"<<std::endl;
 		}
+		out << "End list of "<<list.size()<< " operators";
+
 	}
 	virtual void integrate(const double dt) {
 		for (auto i : list) {

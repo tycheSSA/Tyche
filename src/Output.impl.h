@@ -39,6 +39,9 @@ void OutputCompareWithFunction<T>::integrate(const double dt) {
 		if (errors.size() >= average_over) {
 			data["Time"].push_back(get_time());
 			data["Error"].push_back(std::accumulate(errors.begin(),errors.end(),0.0)/double(average_over));
+			data["Volume"].push_back(std::accumulate(volumes.begin(),volumes.end(),0.0));
+			data["Molecules(M)"].push_back(s.mols.size());
+			data["Molecules(C)"].push_back(std::accumulate(s.copy_numbers.begin(),s.copy_numbers.end(),0));
 			for (std::map<std::string,double>::const_iterator i = params.begin(); i != params.end(); i++) {
 				data[i->first].push_back(i->second);
 			}

@@ -67,7 +67,7 @@ void UniMolecularReaction::integrate(const double dt) {
 	Molecules &mols = get_species()[0]->mols;
 	const int n = mols.size();
 	for (int i = 0; i < n; ++i) {
-		if (mols.saved_index[i] == SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE) continue;
+		//if (mols.saved_index[i] == SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE) continue;
 		const double rand = uni();
 		if (rand < total_probability) {
 			ReactionSide& products = get_random_reaction(rand);
@@ -477,13 +477,13 @@ void BiMolecularReaction<T>::integrate(const double dt) {
 	const int n = mols2->size();
 	for (int mols2_i = 0; mols2_i < n; ++mols2_i) {
 		if (!(mols2->alive[mols2_i])) continue;
-		if (mols2->saved_index[mols2_i] == SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE) continue;
+		//if (mols2->saved_index[mols2_i] == SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE) continue;
 		const Vect3d pos2 = mols2->r[mols2_i];
 		const int id2 = mols2->id[mols2_i];
 		std::vector<int>& neighbrs_list = neighbourhood_search.find_broadphase_neighbours(pos2);
 		for (auto mols1_i : neighbrs_list) {
 			if (!(mols1->alive[mols1_i])) continue;
-			if (mols1->saved_index[mols1_i] == SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE) continue;
+			//if (mols1->saved_index[mols1_i] == SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE) continue;
 			const Vect3d pos1 = mols1->r[mols1_i];
 			const int id1 = mols1->id[mols1_i];
 			if (self_reaction && (id1==id2)) continue;

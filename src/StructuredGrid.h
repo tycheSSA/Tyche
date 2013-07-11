@@ -115,14 +115,14 @@ public:
 	template<typename T>
 	bool geometry_intersects_cell(const int i, const T geometry) const;
 	inline bool is_in(const Vect3d& r) const {
-		return ((r.array() > low.array()).all()) && ((r.array() < high.array()).all());
+		return ((r.array() >= low.array()).all()) && ((r.array() < high.array()).all());
 	}
 	inline Vect3i get_cell_index_vector(const Vect3d &r) const {
-			ASSERT(((r.array() > low.array()).all()) && ((r.array() < high.array()).all()), "point outside structured grid range!!!");
+			ASSERT(((r.array() >= low.array()).all()) && ((r.array() < high.array()).all()), "point outside structured grid range!!!");
 			return ((r-low).cwiseProduct(inv_cell_size)).cast<int>();
 	}
 	inline int get_cell_index(const Vect3d &r) const {
-		ASSERT(((r.array() > low.array()).all()) && ((r.array() < high.array()).all()), "point outside structured grid range!!!");
+		ASSERT(((r.array() >= low.array()).all()) && ((r.array() < high.array()).all()), "point outside structured grid range!!!");
 		const Vect3i celli = ((r-low).cwiseProduct(inv_cell_size)).cast<int>();
 		return vect_to_index(celli);
 	}
