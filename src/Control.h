@@ -57,13 +57,15 @@ public:
 	};
 
 	GrowingInterface(T& geometry, NextSubvolumeMethod& nsm,
-					   const double move_by, const T& shrink_to, const T& grow_to,
+					   const double check_distance, const T& shrink_to, const T& grow_to,
 					   const double check_dt,
 					   const int grow_threshold, const int shrink_threshold):
 		Control<T>(geometry),nsm(nsm),
-		check_dt(check_dt),move_by(move_by),
+		check_dt(check_dt),move_by(nsm.get_grid().get_cell_size()[T::dim]),
+		check_distance(nsm.get_grid().get_cell_size()[T::dim]),
 		shrink_to(shrink_to),grow_to(grow_to),
 		grow_threshold(grow_threshold),shrink_threshold(shrink_threshold) {
+
 		last_check = 0;
 	}
 protected:
@@ -75,6 +77,7 @@ protected:
 
 	NextSubvolumeMethod& nsm;
 	const double check_dt;
+	const double check_distance;
 	const double move_by;
 	const T& shrink_to,grow_to;
 	const int grow_threshold,shrink_threshold;

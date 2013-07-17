@@ -42,11 +42,16 @@ void GrowingInterface<T>::integrate(const double dt) {
 		this->geometry -= move_by;
 		if (this->geometry.is_between(shrink_to,grow_to)) {
 			s.grid.get_slice(this->geometry,grid_indices_shrink);
-
+//			std::cout << "grid indicies shrink are: "
+//			for (auto i: grid_indices_shrink) {
+//				std::cout << i<<' ';
+//
+//			}
+//			std::cout << std::endl;
 			const int total_copy_number_shrink = std::accumulate(grid_indices_shrink.begin(),grid_indices_shrink.end(),0,my_accumulate(s.copy_numbers));
 			const bool is_meaningful_shrink = (grid_indices_shrink.size() > 0) || (grid_indices_current.size() > 0);
 			if ((is_meaningful_shrink)&&(total_copy_number_shrink < shrink_threshold)) {
-				LOG(1.5,"Shrinking interface at " << this->geometry <<". found " << total_copy_number_shrink <<" molecules behind interface");
+				LOG(1.0,"Shrinking interface at " << this->geometry <<". found " << total_copy_number_shrink <<" molecules behind interface");
 				nsm.unset_interface_reactions(s,grid_indices_current);
 				/*
 				 * If there are any molecules in the compartments, randomly
@@ -95,7 +100,7 @@ void GrowingInterface<T>::integrate(const double dt) {
 			//const int total_copy_number_grow = std::accumulate(grid_indices_grow.begin(),grid_indices_grow.end(),0,my_accumulate(s.mol_copy_numbers));
 			const bool is_meaningful_grow = (grid_indices_grow.size() > 0) || (grid_indices_current.size() > 0);
 			if ((is_meaningful_grow)&&(total_copy_number_grow > grow_threshold)) {
-				LOG(1.5,"Growing interface at " << this->geometry <<". found " << total_copy_number_grow <<" molecules in front of interface");
+				LOG(1.0,"Growing interface at " << this->geometry <<". found " << total_copy_number_grow <<" molecules in front of interface");
 
 				/*
 				 * delete particles behind interface and add them to compartments

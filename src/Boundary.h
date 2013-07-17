@@ -68,6 +68,9 @@ class JumpBoundary: public Boundary<T> {
 public:
 	JumpBoundary(const T& geometry, const Vect3d jump_by):
 		Boundary<T>(geometry),jump_by(jump_by) {}
+	static std::unique_ptr<JumpBoundary> New(const T& geometry, const Vect3d jump_by) {
+			return std::unique_ptr<JumpBoundary> (new JumpBoundary(geometry,jump_by));
+	}
 protected:
 	virtual void integrate(const double dt);
 	virtual void print(std::ostream& out) const {
@@ -194,7 +197,9 @@ class JumpBoundaryWithCorrection: public DiffusionCorrectedBoundary<T> {
 public:
 	JumpBoundaryWithCorrection(const T& geometry, const Vect3d jump_by):
 		DiffusionCorrectedBoundary<T>(geometry),jump_by(jump_by) {}
-
+	static std::unique_ptr<JumpBoundaryWithCorrection> New(const T& geometry, const Vect3d jump_by) {
+		return std::unique_ptr<JumpBoundaryWithCorrection>(new JumpBoundaryWithCorrection(geometry,jump_by));
+	}
 protected:
 	virtual void integrate(const double dt);
 	virtual void print(std::ostream& out) const {
@@ -224,6 +229,9 @@ class ReflectiveBoundary: public Boundary<T> {
 public:
 	ReflectiveBoundary(const T& geometry):
 		Boundary<T>(geometry) {}
+	static std::unique_ptr<ReflectiveBoundary> New(const T& geometry) {
+		return std::unique_ptr<ReflectiveBoundary>(new ReflectiveBoundary(geometry));
+	}
 protected:
 
 	virtual void integrate(const double dt);
@@ -254,6 +262,9 @@ public:
 		uni1(generator,boost::uniform_real<>(0,t1.norm())),
 		uni2(generator,boost::uniform_real<>(0,t2.norm()))
 		{}
+	static std::unique_ptr<FluxBoundary> New(const Vect3d p, const Vect3d t1, const Vect3d t2, const double rate) {
+		return std::unique_ptr<FluxBoundary>(new FluxBoundary(p,t1,t2,rate));
+	}
 
 	const double rate;
 	const Vect3d p,t1,t2;
@@ -274,7 +285,9 @@ class CouplingBoundary_M_to_C: public DiffusionCorrectedBoundary<T> {
 public:
 	CouplingBoundary_M_to_C(const T& geometry, NextSubvolumeMethod& nsm):
 		DiffusionCorrectedBoundary<T>(geometry),nsm(nsm) {}
-
+	static std::unique_ptr<CouplingBoundary_M_to_C> New(const T& geometry, NextSubvolumeMethod& nsm) {
+		return std::unique_ptr<CouplingBoundary_M_to_C>(new CouplingBoundary_M_to_C(geometry,nsm));
+	}
 protected:
 	virtual void integrate(const double dt);
 	virtual void print(std::ostream& out) const  {
@@ -293,6 +306,9 @@ public:
 	CouplingBoundary_C_to_M(const T& geometry, NextSubvolumeMethod& nsm):
 		Boundary<T>(geometry),nsm(nsm),old_dt(0),
 		uni(generator,boost::uniform_real<>(0,1)) {}
+	static std::unique_ptr<CouplingBoundary_C_to_M> New(const T& geometry, NextSubvolumeMethod& nsm) {
+		return std::unique_ptr<CouplingBoundary_C_to_M>(new CouplingBoundary_C_to_M(geometry,nsm));
+	}
 	virtual void add_species(Species &s, const double dt);
 protected:
 

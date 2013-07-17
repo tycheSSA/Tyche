@@ -391,7 +391,22 @@ double BiMolecularReaction<T>::calculate_lambda_reversible(const double dt) {
 	const double gamma = sqrt(2.0*difc*dt)/binding_radius;
 	std::cout << "gamma = "<<gamma<<std::endl;
 	calculate_kappa_reversible f(gamma,alpha,goal_kappa);
-	CHECK(f(P_lambda_min)*f(P_lambda_max) < 0, "brackets of root not valid. f(P_lambda_min) = "<<f(P_lambda_min)<<" and f(P_lambda_max) = "<<f(P_lambda_max));
+	if (f(P_lambda_min)*f(P_lambda_max) >= 0) {
+		const double lbr = binding_radius/10.0;
+		const double hbr = binding_radius*10.0;
+		const int N = 50;
+		for (int i = 0; i < N; ++i) {
+			const double br = lbr + i*(hbr-lbr)/N;
+			const double gamma = sqrt(2.0*difc*dt)/br;
+			const double alpha = unbinding_radius/br;
+			const double goal_kappa = rate*dt/pow(br,3);
+
+			calculate_kappa_reversible ftest(gamma,alpha,goal_kappa);
+
+			std::cout << br<<" = "<<ftest(P_lambda_max)<<std::endl;
+		}
+		ERROR("brackets of root not valid. f(P_lambda_min) = "<<f(P_lambda_min)<<" and f(P_lambda_max) = "<<f(P_lambda_max));
+	}
 
 	LOG(1,"solving root with f(P_lambda_min) = "<<f(P_lambda_min)<<" and f(P_lambda_max) = "<<f(P_lambda_max));
 

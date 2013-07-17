@@ -179,7 +179,7 @@ public:
 	double get_next_event_time() {
 		return heap.top().time_at_next_reaction;
 	}
-
+	const StructuredGrid& get_grid() {return subvolumes;}
 
 
 protected:
