@@ -303,8 +303,10 @@ void NextSubvolumeMethod::recalc_priority(const int i) {
 		//const double time_to_next_reaction = -inv_total_propensity*log(uni());
 		if (in_queue) {
 			const double old_time = (*subvolume_heap_handles[i]).time_at_next_reaction;
-			const double new_time = time + old_propensity*inv_total_propensity*(old_time - time);
-			//const double new_time = time - inv_total_propensity*log(uni());
+			//const double new_time = time + old_propensity*inv_total_propensity*(old_time - time);
+			double rand = uni();
+			while (rand==0.0) rand = uni();
+			const double new_time = time - inv_total_propensity*log(rand);
 			(*subvolume_heap_handles[i]).time_at_next_reaction = new_time;
 			heap.update(subvolume_heap_handles[i]);
 		} else {

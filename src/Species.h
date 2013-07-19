@@ -75,6 +75,9 @@ public:
 		species_count++;
 		clear();
 	}
+	static std::auto_ptr<Species> New(double D) {
+		return std::auto_ptr<Species>(new Species(D));
+	}
 	void clear() {
 		mols.clear();
 		copy_numbers.assign(grid.size(),0);
@@ -83,6 +86,8 @@ public:
 	void fill_uniform(const Vect3d low, const Vect3d high, const unsigned int N);
 	void get_concentrations(const StructuredGrid& calc_grid, std::vector<double>& mol_concentrations, std::vector<double>& compartment_concentrations) const;
 	void get_concentration(const StructuredGrid& calc_grid, std::vector<double>& concentration) const;
+	void get_concentration(const Vect3d low, const Vect3d high, const Vect3i n, std::vector<double>& concentration) const;
+
 	std::string get_status_string();
 
 	double D;

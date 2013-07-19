@@ -371,6 +371,72 @@ public:
 };
 
 template<typename T>
+void  BiMolecularReaction<T>::suggest_binding_unbinding(const double dt) {
+	double difc;
+	if (self_reaction) {
+		difc = 2.0*get_species()[0]->D;
+	} else {
+		difc = get_species()[0]->D + get_species()[1]->D;
+	}
+	const double lbr = binding_radius/10.0;
+	const double hbr = binding_radius*10.0;
+	const int N = 100;
+	std::cout <<"Suggested binding radii (with unbinding = "<<unbinding_radius<<"):"<<std::endl;
+	for (int i = 0; i < N; ++i) {
+		const double br = lbr + i*(hbr-lbr)/N;
+		const double gamma = sqrt(2.0*difc*dt)/br;
+		const double alpha = unbinding_radius/br;
+		const double goal_kappa = rate*dt/pow(br,3);
+
+		calculate_kappa_reversible ftest(gamma,alpha,goal_kappa);
+		double result = ftest(1);
+		if (result > 0) {
+			std::cout << br<<" = "<<result<<std::endl;
+		}
+	}
+	const double lur = unbinding_radius/10.0;
+	const double hur = unbinding_radius*10.0;
+	std::cout <<"Suggested unbinding radii (with binding = "<<binding_radius<<"):"<<std::endl;
+	for (int i = 0; i < N; ++i) {
+		const double ur = lur + i*(hur-lur)/N;
+		const double gamma = sqrt(2.0*difc*dt)/binding_radius;
+		const double alpha = ur/binding_radius;
+		const double goal_kappa = rate*dt/pow(binding_radius,3);
+
+		calculate_kappa_reversible ftest(gamma,alpha,goal_kappa);
+		double result = ftest(1);
+		if (result > 0) {
+			std::cout << ur<<" = "<<result<<std::endl;
+		}
+	}
+}
+
+template<typename T>
+void  BiMolecularReaction<T>::suggest_binding(const double dt) {
+	double difc;
+	if (self_reaction) {
+		difc = 2.0*get_species()[0]->D;
+	} else {
+		difc = get_species()[0]->D + get_species()[1]->D;
+	}
+	const double lbr = binding_radius/10.0;
+	const double hbr = binding_radius*10.0;
+	const int N = 100;
+	std::cout <<"Suggested binding radii (with unbinding = "<<unbinding_radius<<"):"<<std::endl;
+	for (int i = 0; i < N; ++i) {
+		const double br = lbr + i*(hbr-lbr)/N;
+		const double gamma = sqrt(2.0*difc*dt)/br;
+		const double goal_kappa = rate*dt/pow(br,3);
+
+		calculate_kappa_irreversible ftest(gamma,goal_kappa);
+		double result = ftest(1);
+		if (result > 0) {
+			std::cout << br<<" = "<<result<<std::endl;
+		}
+	}
+}
+
+template<typename T>
 double BiMolecularReaction<T>::calculate_lambda_reversible(const double dt) {
 	double P_lambda_min = 0;
 	double P_lambda_max = 1;
@@ -392,19 +458,7 @@ double BiMolecularReaction<T>::calculate_lambda_reversible(const double dt) {
 	std::cout << "gamma = "<<gamma<<std::endl;
 	calculate_kappa_reversible f(gamma,alpha,goal_kappa);
 	if (f(P_lambda_min)*f(P_lambda_max) >= 0) {
-		const double lbr = binding_radius/10.0;
-		const double hbr = binding_radius*10.0;
-		const int N = 50;
-		for (int i = 0; i < N; ++i) {
-			const double br = lbr + i*(hbr-lbr)/N;
-			const double gamma = sqrt(2.0*difc*dt)/br;
-			const double alpha = unbinding_radius/br;
-			const double goal_kappa = rate*dt/pow(br,3);
-
-			calculate_kappa_reversible ftest(gamma,alpha,goal_kappa);
-
-			std::cout << br<<" = "<<ftest(P_lambda_max)<<std::endl;
-		}
+		suggest_binding_unbinding(dt);
 		ERROR("brackets of root not valid. f(P_lambda_min) = "<<f(P_lambda_min)<<" and f(P_lambda_max) = "<<f(P_lambda_max));
 	}
 
@@ -441,7 +495,10 @@ double BiMolecularReaction<T>::calculate_lambda_irreversible(const double dt) {
 	}
 	const double gamma = sqrt(2.0*difc*dt)/binding_radius;
 	calculate_kappa_irreversible f(gamma,goal_kappa);
-	CHECK(f(P_lambda_min)*f(P_lambda_max) < 0, "brackets of root not valid. f(P_lambda_min) = "<<f(P_lambda_min)<<" and f(P_lambda_max) = "<<f(P_lambda_max));
+	if (f(P_lambda_min)*f(P_lambda_max) >= 0) {
+			suggest_binding(dt);
+			ERROR("brackets of root not valid. f(P_lambda_min) = "<<f(P_lambda_min)<<" and f(P_lambda_max) = "<<f(P_lambda_max));
+		}
 
 	LOG(1,"solving root with f(P_lambda_min) = "<<f(P_lambda_min)<<" and f(P_lambda_max) = "<<f(P_lambda_max));
 
@@ -622,6 +679,24 @@ BiMolecularReaction<T>::BiMolecularReaction(const double rate, const ReactionEqu
 
 	neighbourhood_search.reset(neighbourhood_search.get_low(), neighbourhood_search.get_high(), binding_radius);
 };
+
+template<typename T>
+BiMolecularReaction<T>::BiMolecularReaction(const double rate, const std::vector<Species*>& reactants,const std::vector<Species*>& products,
+				const double binding,
+				const double unbinding,
+				const double dt,
+				Vect3d low, Vect3d high, Vect3b periodic,
+				const bool reversible):
+				Reaction(rate),
+				products(products),
+				binding_radius(binding),
+				unbinding_radius(unbinding),
+				binding_radius_dt(dt),
+				reversible(reversible),
+				neighbourhood_search(low,high,periodic) {
+	BiMolecularReaction(rate,ReactionSide(reactants) >> ReactionSide(products),
+											binding,unbinding,dt,low,high,periodic,reversible);
+}
 
 template class BiMolecularReaction<BucketSort>;
 

@@ -37,8 +37,8 @@ namespace Tyche {
 class Diffusion: public Operator {
 public:
 	Diffusion():norm(generator,boost::normal_distribution<>(0,1)) {}
-	static std::unique_ptr<Diffusion> New() {
-		return std::unique_ptr<Diffusion>(new Diffusion());
+	static std::auto_ptr<Operator> New() {
+		return std::auto_ptr<Operator>(new Diffusion());
 	}
 
 

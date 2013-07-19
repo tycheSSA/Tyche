@@ -32,6 +32,11 @@ struct ReactionComponent {
 		multiplier(multiplier),
 		species(&species_ref),
 		compartment_index(compartment_index) {}
+	ReactionComponent(int multiplier, Species* species_ptr, int compartment_index):
+			multiplier(multiplier),
+			species(species_ptr),
+			compartment_index(compartment_index) {}
+
 	ReactionComponent(const ReactionComponent& arg):
 		multiplier(arg.multiplier),
 		species(arg.species),
@@ -56,6 +61,11 @@ struct ReactionComponent {
 class ReactionSide: public std::vector<ReactionComponent> {
 public:
 	ReactionSide() {}
+	ReactionSide(const std::vector<Species*>& s) {
+		for (Species* i: s) {
+			this->push_back(ReactionComponent(1,i,0));
+		}
+	}
 	ReactionSide(const ReactionComponent& arg1, const ReactionComponent& arg2) {
 		this->push_back(arg1);
 		this->push_back(arg2);

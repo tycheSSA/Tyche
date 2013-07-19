@@ -33,4 +33,5 @@ enable_testing()
 # the project's entire directory structure. 
 set(Tyche_INCLUDE_DIRECTORIES  ${Tyche_SOURCE_DIR}/src ${Tyche_SOURCE_DIR}/eigen3 ${Tyche_SOURCE_DIR}/smoldyn ${Boost_INCLUDE_DIR} ${VTK_INCLUDE_DIRS})
 add_subdirectory (src)
+add_subdirectory (python)
 #add_subdirectory (examples)

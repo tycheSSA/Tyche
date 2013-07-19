@@ -51,6 +51,10 @@ public:
 		Reaction(rate),min(min),max(max) {
 	};
 
+	static std::auto_ptr<Operator> New(const double rate, const Vect3d min, const Vect3d max) {
+		return std::auto_ptr<Operator>(new ZeroOrderMolecularReaction(rate,min,max));
+	}
+
 	void add_species(const double rate, Species& s);
 
 protected:
@@ -66,6 +70,13 @@ private:
 class UniMolecularReaction: public Reaction {
 public:
 	UniMolecularReaction(const double rate,const ReactionEquation& eq, const double init_radius=0.0);
+	UniMolecularReaction(const double rate, const std::vector<Species*>& reactants,const std::vector<Species*>& products, const double init_radius=0.0):Reaction(rate) {
+		UniMolecularReaction(rate,ReactionSide(reactants)>>ReactionSide(products),init_radius);
+	}
+
+	static std::auto_ptr<Operator> New(const double rate, const std::vector<Species*>& reactants,const std::vector<Species*>& products, const double init_radius=0.0) {
+		return std::auto_ptr<Operator>(new UniMolecularReaction(rate,reactants,products,init_radius));
+	}
 	void add_reaction(const double rate, const ReactionEquation& eq, const double init_radius=0.0);
 	void report_dt_suitability(const double dt);
 protected:
@@ -98,8 +109,23 @@ public:
 			const double dt,
 			Vect3d low, Vect3d high, Vect3b periodic,
 			const bool reversible=false);
+	BiMolecularReaction(const double rate, const std::vector<Species*>& reactants,const std::vector<Species*>& products,
+				const double binding,
+				const double unbinding,
+				const double dt,
+				Vect3d low, Vect3d high, Vect3b periodic,
+				const bool reversible=false);
 	BiMolecularReaction(const double rate, const ReactionEquation& eq, const double dt,
 				Vect3d low, Vect3d high, Vect3b periodic, const bool reversible);
+
+	static std::auto_ptr<Operator> New(const double rate, const std::vector<Species*>& reactants,const std::vector<Species*>& products,
+			const double binding,
+			const double unbinding,
+			const double dt,
+			Vect3d low, Vect3d high, Vect3b periodic,
+			const bool reversible=false) {
+		return std::auto_ptr<Operator>(new BiMolecularReaction(rate,reactants,products,binding,unbinding,dt,low,high,periodic,reversible));
+	}
 
 	double get_rate() const {return this->rate;}
 	double get_P_lambda() const {return this->P_lambda;}
@@ -124,6 +150,9 @@ protected:
 
 	double calculate_lambda_reversible(const double dt);
 	double calculate_lambda_irreversible(const double dt);
+
+	void suggest_binding_unbinding(const double dt);
+	void suggest_binding(const double dt);
 
 	double binding_radius_dt;
 	ReactionSide products;

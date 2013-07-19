@@ -157,6 +157,27 @@ void Species::get_concentration(const StructuredGrid& calc_grid,
 	//std::cout <<" there are "<<totalm<<" particles and "<<totalc<<" compartment mols in "<<totalv<<" volume"<<std::endl;
 }
 
+void Species::get_concentration(const Vect3d low, const Vect3d high, const Vect3i n,
+		std::vector<double>& concentration) const {
+
+	const Vect3d spacing = (high-low).cwiseQuotient(n.cast<double>());
+	const Vect3d inv_spacing = Vect3d(1,1,1).cwiseQuotient(spacing);
+
+	const double volume = spacing.prod();
+	const int nnn = n.prod();
+	const int num_cells_along_yz = n[2]*n[1];
+
+
+	concentration.assign(nnn,0);
+	for (Vect3d r: mols.r) {
+		if (((r.array() >= low.array()).all()) && ((r.array() < high.array()).all())) {
+			const Vect3i celli = ((r-low).cwiseProduct(inv_spacing)).cast<int>();
+			const int index = celli[0] * num_cells_along_yz + celli[1] * n[1] + celli[2];
+			concentration[index]++;
+		}
+	}
+}
+
 std::string Species::get_status_string() {
 	std::ostringstream ss;
 	ss << "Molecular Status:" << std::endl;

@@ -1,0 +1,7 @@
+
+LINK_DIRECTORIES(${Tyche_BINARY_DIR}/lib)
+
+include_directories(${Tyche_INCLUDE_DIRECTORIES} ${PYTHON_INCLUDE_DIRS})
+PYTHON_ADD_MODULE(pyTyche python.cpp)
+
+TARGET_LINK_LIBRARIES(pyTyche Tyche ${Boost_LIBRARIES})
