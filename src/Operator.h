@@ -94,6 +94,10 @@ public:
 	}
 	virtual ~OperatorList() {}
 
+	static std::auto_ptr<Operator> New() {
+		return std::auto_ptr<OperatorList>(new OperatorList());
+	}
+
 	void push_back(Operator* const i) {
 		list.push_back(i);
 		for (auto s: i->get_species()) {

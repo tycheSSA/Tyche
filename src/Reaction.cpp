@@ -680,23 +680,23 @@ BiMolecularReaction<T>::BiMolecularReaction(const double rate, const ReactionEqu
 	neighbourhood_search.reset(neighbourhood_search.get_low(), neighbourhood_search.get_high(), binding_radius);
 };
 
-template<typename T>
-BiMolecularReaction<T>::BiMolecularReaction(const double rate, const std::vector<Species*>& reactants,const std::vector<Species*>& products,
-				const double binding,
-				const double unbinding,
-				const double dt,
-				Vect3d low, Vect3d high, Vect3b periodic,
-				const bool reversible):
-				Reaction(rate),
-				products(products),
-				binding_radius(binding),
-				unbinding_radius(unbinding),
-				binding_radius_dt(dt),
-				reversible(reversible),
-				neighbourhood_search(low,high,periodic) {
-	BiMolecularReaction(rate,ReactionSide(reactants) >> ReactionSide(products),
-											binding,unbinding,dt,low,high,periodic,reversible);
-}
+//template<typename T>
+//BiMolecularReaction<T>::BiMolecularReaction(const double rate, const std::vector<Species*>& reactants,const std::vector<Species*>& products,
+//				const double binding,
+//				const double unbinding,
+//				const double dt,
+//				Vect3d low, Vect3d high, Vect3b periodic,
+//				const bool reversible):
+//				Reaction(rate),
+//				products(products),
+//				binding_radius(binding),
+//				unbinding_radius(unbinding),
+//				binding_radius_dt(dt),
+//				reversible(reversible),
+//				neighbourhood_search(low,high,periodic) {
+//	BiMolecularReaction(rate,ReactionSide(reactants) >> ReactionSide(products),
+//											binding,unbinding,dt,low,high,periodic,reversible);
+//}
 
 template class BiMolecularReaction<BucketSort>;
 

@@ -68,6 +68,10 @@ public:
 			normal(arg.normal)
 	{}
 
+	static std::auto_ptr<AxisAlignedPlane<DIM> > New(const double coord, const int normal) {
+		return std::auto_ptr<AxisAlignedPlane<DIM> >(new AxisAlignedPlane<DIM>(coord,normal));
+	}
+
 	bool is_between(const AxisAlignedPlane<DIM>& plane1, const AxisAlignedPlane<DIM>& plane2) const {
 		if (plane1.coord < plane2.coord) {
 			return ((coord > plane1.coord) && (coord < plane2.coord));
