@@ -36,7 +36,7 @@ public:
 	Operator();
 	virtual ~Operator() {};
 	bool add_species(Species &s);
-
+	double integrate_for_time(const double time, const double dt);
 	void operator()(const double dt);
 	std::string get_time_string() const;
 	std::string get_global_time() const;
@@ -95,7 +95,7 @@ public:
 	virtual ~OperatorList() {}
 
 	static std::auto_ptr<Operator> New() {
-		return std::auto_ptr<OperatorList>(new OperatorList());
+		return std::auto_ptr<Operator>(new OperatorList());
 	}
 
 	void push_back(Operator* const i) {

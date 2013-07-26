@@ -201,7 +201,12 @@ double integral_K(const double r_i, const double S, const double gamma) {
 
 class calculate_kappa_reversible {
 public:
-	calculate_kappa_reversible(const double gamma, const double alpha, const double goal_kappa) :gamma(gamma),alpha(alpha),goal_kappa(goal_kappa) {}
+	calculate_kappa_reversible(const double gamma,
+			const double alpha,
+			const double goal_kappa,
+			const bool self_reaction = false):
+				gamma(gamma),alpha(alpha),goal_kappa(goal_kappa),self_reaction(self_reaction) {
+	}
     double operator()(const double P_lambda) {
     	const int N1 = 100;
     	const int N2 = 100;
@@ -299,11 +304,16 @@ public:
     const double gamma;
     const double alpha;
     const double goal_kappa;
+    const bool self_reaction;
 };
 
 class calculate_kappa_irreversible {
 public:
-	calculate_kappa_irreversible(const double gamma, const double goal_kappa) :gamma(gamma),goal_kappa(goal_kappa) {}
+	calculate_kappa_irreversible(const double gamma,
+			const double goal_kappa,
+			const bool self_reaction = false):
+				gamma(gamma),goal_kappa(goal_kappa),self_reaction(self_reaction) {
+	}
     double operator()(const double P_lambda) {
     	const int N1 = 100;
     	const int N2 = 100;
@@ -368,6 +378,7 @@ public:
     }
     const double gamma;
     const double goal_kappa;
+    const bool self_reaction;
 };
 
 template<typename T>
@@ -388,7 +399,7 @@ void  BiMolecularReaction<T>::suggest_binding_unbinding(const double dt) {
 		const double alpha = unbinding_radius/br;
 		const double goal_kappa = rate*dt/pow(br,3);
 
-		calculate_kappa_reversible ftest(gamma,alpha,goal_kappa);
+		calculate_kappa_reversible ftest(gamma,alpha,goal_kappa,self_reaction);
 		double result = ftest(1);
 		if (result > 0) {
 			std::cout << br<<" = "<<result<<std::endl;
@@ -403,7 +414,7 @@ void  BiMolecularReaction<T>::suggest_binding_unbinding(const double dt) {
 		const double alpha = ur/binding_radius;
 		const double goal_kappa = rate*dt/pow(binding_radius,3);
 
-		calculate_kappa_reversible ftest(gamma,alpha,goal_kappa);
+		calculate_kappa_reversible ftest(gamma,alpha,goal_kappa,self_reaction);
 		double result = ftest(1);
 		if (result > 0) {
 			std::cout << ur<<" = "<<result<<std::endl;
@@ -428,7 +439,7 @@ void  BiMolecularReaction<T>::suggest_binding(const double dt) {
 		const double gamma = sqrt(2.0*difc*dt)/br;
 		const double goal_kappa = rate*dt/pow(br,3);
 
-		calculate_kappa_irreversible ftest(gamma,goal_kappa);
+		calculate_kappa_irreversible ftest(gamma,goal_kappa,self_reaction);
 		double result = ftest(1);
 		if (result > 0) {
 			std::cout << br<<" = "<<result<<std::endl;
@@ -456,7 +467,7 @@ double BiMolecularReaction<T>::calculate_lambda_reversible(const double dt) {
 	}
 	const double gamma = sqrt(2.0*difc*dt)/binding_radius;
 	std::cout << "gamma = "<<gamma<<std::endl;
-	calculate_kappa_reversible f(gamma,alpha,goal_kappa);
+	calculate_kappa_reversible f(gamma,alpha,goal_kappa,self_reaction);
 	if (f(P_lambda_min)*f(P_lambda_max) >= 0) {
 		suggest_binding_unbinding(dt);
 		ERROR("brackets of root not valid. f(P_lambda_min) = "<<f(P_lambda_min)<<" and f(P_lambda_max) = "<<f(P_lambda_max));
@@ -494,7 +505,7 @@ double BiMolecularReaction<T>::calculate_lambda_irreversible(const double dt) {
 		difc = get_species()[0]->D + get_species()[1]->D;
 	}
 	const double gamma = sqrt(2.0*difc*dt)/binding_radius;
-	calculate_kappa_irreversible f(gamma,goal_kappa);
+	calculate_kappa_irreversible f(gamma,goal_kappa,self_reaction);
 	if (f(P_lambda_min)*f(P_lambda_max) >= 0) {
 			suggest_binding(dt);
 			ERROR("brackets of root not valid. f(P_lambda_min) = "<<f(P_lambda_min)<<" and f(P_lambda_max) = "<<f(P_lambda_max));
@@ -542,9 +553,9 @@ void BiMolecularReaction<T>::integrate(const double dt) {
 
 	boost::uniform_real<> uni_dist(0.0,1.0);
 	boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni(generator, uni_dist);
+	//LOG(1,"starting bi integrate");
 
 	const double binding_radius2 = binding_radius*binding_radius;
-
 	neighbourhood_search.embed_points(mols1->r);
 	const int n = mols2->size();
 	for (int mols2_i = 0; mols2_i < n; ++mols2_i) {
@@ -552,7 +563,7 @@ void BiMolecularReaction<T>::integrate(const double dt) {
 		//if (mols2->saved_index[mols2_i] == SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE) continue;
 		const Vect3d pos2 = mols2->r[mols2_i];
 		const int id2 = mols2->id[mols2_i];
-		std::vector<int>& neighbrs_list = neighbourhood_search.find_broadphase_neighbours(pos2);
+		std::vector<int>& neighbrs_list = neighbourhood_search.find_broadphase_neighbours(pos2, mols2_i,self_reaction);
 		for (auto mols1_i : neighbrs_list) {
 			if (!(mols1->alive[mols1_i])) continue;
 			//if (mols1->saved_index[mols1_i] == SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE) continue;
@@ -560,7 +571,9 @@ void BiMolecularReaction<T>::integrate(const double dt) {
 			const int id1 = mols1->id[mols1_i];
 			if (self_reaction && (id1==id2)) continue;
 			if ((pos2-neighbourhood_search.correct_position_for_periodicity(pos2, pos1)).squaredNorm() < binding_radius2) {
+				//LOG(1,"testing between particle "<<id1<<pos1<<" and "<<id2<<pos2);
 				if (uni() < P_lambda) {
+					//LOG(1,"deleting particle "<<id1<<" and "<<id2);
 					for (auto component : products) {
 						for (int i = 0; i < component.multiplier; ++i) {
 							component.species->mols.add_molecule(0.5*(pos1+pos2));
@@ -614,9 +627,19 @@ BiMolecularReaction<T>::BiMolecularReaction(const double rate, const ReactionEqu
 		self_reaction = true;
 	} else {
 		CHECK((eq.lhs.size()==2) && (eq.lhs[0].multiplier == 1) && (eq.lhs[1].multiplier == 1), "Reaction equation is not bimolecular!");
-		this->add_species(*(eq.lhs[0].species));
-		this->add_species(*(eq.lhs[1].species));
-		self_reaction = false;
+		if (eq.lhs[0].species==eq.lhs[1].species) {
+			this->add_species(*(eq.lhs[0].species));
+			self_reaction = true;
+		} else {
+			this->add_species(*(eq.lhs[0].species));
+			this->add_species(*(eq.lhs[1].species));
+			self_reaction = false;
+		}
+	}
+
+	if (self_reaction) {
+		LOG(1,"detected a self reaction: "<<eq);
+		this->rate *= 2.0;
 	}
 
 	double difc;
@@ -663,9 +686,19 @@ BiMolecularReaction<T>::BiMolecularReaction(const double rate, const ReactionEqu
 		self_reaction = true;
 	} else {
 		CHECK((eq.lhs.size()==2) && (eq.lhs[0].multiplier == 1) && (eq.lhs[1].multiplier == 1), "Reaction equation is not bimolecular!");
-		this->add_species(*(eq.lhs[0].species));
-		this->add_species(*(eq.lhs[1].species));
-		self_reaction = false;
+		if (eq.lhs[0].species==eq.lhs[1].species) {
+			this->add_species(*(eq.lhs[0].species));
+			self_reaction = true;
+		} else {
+			this->add_species(*(eq.lhs[0].species));
+			this->add_species(*(eq.lhs[1].species));
+			self_reaction = false;
+		}
+	}
+
+	if (self_reaction) {
+		LOG(1,"detected a self reaction: "<<eq);
+		this->rate *= 2.0;
 	}
 
 

@@ -87,8 +87,11 @@ public:
 	void get_concentrations(const StructuredGrid& calc_grid, std::vector<double>& mol_concentrations, std::vector<double>& compartment_concentrations) const;
 	void get_concentration(const StructuredGrid& calc_grid, std::vector<double>& concentration) const;
 	void get_concentration(const Vect3d low, const Vect3d high, const Vect3i n, std::vector<double>& concentration) const;
-
-	std::string get_status_string();
+	vtkSmartPointer<vtkUnstructuredGrid> get_vtk();
+	std::string get_status_string() const;
+	friend std::ostream& operator<<( std::ostream& out, const Species& b ) {
+		return out << b.get_status_string();
+	}
 
 	double D;
 	Molecules mols;

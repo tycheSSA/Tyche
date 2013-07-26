@@ -64,6 +64,14 @@ void Operator::operator ()(const double dt) {
 	Operator::stop_timer();
 }
 
+double Operator::integrate_for_time(const double itime, const double dt) {
+	const int timesteps = itime/dt;
+	for (int i = 0; i < timesteps; ++i) {
+		(*this)(dt);
+	}
+	return time;
+}
+
 void Operator::reset() {
 	time = 0;
 	reset_execute();

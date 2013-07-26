@@ -42,7 +42,7 @@ class Reaction: public Operator {
 public:
 	Reaction(const double rate):rate(rate) {};
 protected:
-	const double rate;
+	double rate;
 };
 
 class ZeroOrderMolecularReaction: public Reaction {

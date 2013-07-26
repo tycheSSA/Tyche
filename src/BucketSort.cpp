@@ -130,18 +130,34 @@ void BucketSort::embed_points(std::vector<Vect3d>& positions) {
 	}
 }
 
-std::vector<int>& BucketSort::find_broadphase_neighbours(const Vect3d& r) {
+std::vector<int>& BucketSort::find_broadphase_neighbours(const Vect3d& r, const int my_index, const bool self) {
 	const int cell_i = find_cell_index(r);
 	neighbr_list.clear();
-	BOOST_FOREACH(int offset, surrounding_cell_offsets) {
+	int n = surrounding_cell_offsets.size();
+	if (self) n = (n-1)/2;
+	for (int i = 0; i < n; ++i) {
+		const int offset = surrounding_cell_offsets[i];
 		int entry = cells[cell_i + offset];
 		while (entry != CELL_EMPTY) {
 			neighbr_list.push_back(entry);
 			entry = linked_list[entry];
 		}
 	}
+	if (self) {
+		int entry = cells[cell_i];
+		bool found_self = false;
+		while (entry != CELL_EMPTY) {
+			if (found_self) {
+				neighbr_list.push_back(entry);
+			} else if (my_index==entry) {
+				found_self = true;
+			}
+			entry = linked_list[entry];
+		}
+	}
 	return neighbr_list;
 }
+
 
 Vect3d BucketSort::correct_position_for_periodicity(const Vect3d& source_r, const Vect3d& to_correct_r) {
 	Vect3d corrected_r = to_correct_r - source_r;

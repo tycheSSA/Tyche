@@ -29,6 +29,9 @@
 //#include <python2.7/Python.h>
 #include <numpy/arrayobject.h>
 
+#include <vtkUnstructuredGrid.h>
+#include <vtkSmartPointer.h>
+
 
 using namespace boost::python;
 
@@ -81,6 +84,7 @@ std::auto_ptr<Operator> new_zero_reaction(const double rate, const boost::python
 std::auto_ptr<Operator> new_uni_reaction(const double rate, Species* s, const boost::python::list& products,const double init_radius=0.0) {
 	ReactionSide rhs;
 	const int np = len(products);
+
 	for (int i = 0; i < np; ++i) {
 		Species *s = extract<Species*>(products[i]);
 		rhs = rhs + *s;
@@ -110,10 +114,12 @@ std::auto_ptr<Operator> new_bi_reaction(const double rate, Species* s1, Species*
 	ReactionSide rhs;
 	const int np = len(products);
 	for (int i = 0; i < np; ++i) {
-		Species *s = extract<Species*>(products[i]);
+		Species* s = extract<Species*>(products[i]);
 		rhs = rhs + *s;
 	}
-	return BiMolecularReaction<BucketSort>::New(rate,*s1 + *s2 >> rhs,binding,unbinding,dt,cmin,cmax,cperiodic,reversible);
+	ReactionEquation eq = *s1 + *s2 >> rhs;
+
+	return BiMolecularReaction<BucketSort>::New(rate,eq,binding,unbinding,dt,cmin,cmax,cperiodic,reversible);
 }
 
 BOOST_PYTHON_FUNCTION_OVERLOADS(new_bi_reaction_overloads, new_bi_reaction, 10, 11);
@@ -198,6 +204,45 @@ void Species_get_concentration2(Species& self, const boost::python::list& min, c
 void    (Species::*fill_uniform1)(const int) = &Species::fill_uniform;
 
 
+std::auto_ptr<Operator> group(const boost::python::list& ops) {
+	OperatorList* result = new OperatorList();
+	const int n = len(ops);
+	for (int i = 0; i < n; ++i) {
+		Operator *s = extract<Operator*>(ops[i]);
+		result->push_back(s);
+	}
+	return std::auto_ptr<Operator>(result);
+}
+
+//template <typename T>
+//std::auto_ptr<Operator> new_jump_boundary(const T& geometry, PyObject* py_jump_by){
+//	Eigen::Map<Vect3d> jump_by((double *) PyArray_DATA(py_jump_by));
+//	return JumpBoundary<T>::New(geometry,jump_by);
+//}
+
+template <typename T>
+std::auto_ptr<Operator> new_jump_boundary(const T& geometry, const boost::python::list& py_jump_by){
+	CHECK(len(py_jump_by)==3,"length of jump_by should be 3");
+	Vect3d jump_by;
+	for (int i = 0; i < 3; ++i) {
+		jump_by[i] = extract<double>(py_jump_by[i]);
+	}
+	return JumpBoundary<T>::New(geometry,jump_by);
+}
+
+
+template<class T>
+struct vtkSmartPointer_to_python {
+	static PyObject *convert(const vtkSmartPointer<T> &p) {
+		std::ostringstream oss;
+		oss << (void*) p.GetPointer();
+		std::string address_str = oss.str();
+
+		using namespace boost::python;
+		object obj = import("vtk").attr("vtkObject")(address_str);
+		return incref(obj.ptr());
+	}
+};
 
 
 BOOST_PYTHON_MODULE(pyTyche) {
@@ -210,6 +255,8 @@ BOOST_PYTHON_MODULE(pyTyche) {
 	        .def(boost::python::vector_indexing_suite<std::vector<double> >())
 	    ;
 
+	to_python_converter<vtkSmartPointer<vtkUnstructuredGrid>,vtkSmartPointer_to_python<vtkUnstructuredGrid> >();
+
 	/*
 	 * Species
 	 */
@@ -219,6 +266,7 @@ BOOST_PYTHON_MODULE(pyTyche) {
 			.def("fill_uniform",Species_fill_uniform2)
 			.def("get_concentration",Species_get_concentration1, return_value_policy<manage_new_object>())
 			.def("get_concentration",Species_get_concentration2)
+			.def("get_vtk",&Species::get_vtk)
 			.def(self_ns::str(self_ns::self))
 			;
 	def("new_species",Species::New);
@@ -231,10 +279,11 @@ BOOST_PYTHON_MODULE(pyTyche) {
 			.def("reset",&Operator::reset)
 			.def("add_species",&Operator::add_species)
 			.def("get_species_index",&Operator::get_species_index)
+			.def("integrate_for_time",&Operator::integrate_for_time)
 			.def(self_ns::str(self_ns::self))
 			;
 
-
+	def("group",group);
 
 	/*
 	 * Geometry
@@ -243,6 +292,10 @@ BOOST_PYTHON_MODULE(pyTyche) {
 	def("new_yplane",yplane::New);
 	def("new_zplane",zplane::New);
 
+	class_<xplane,typename std::auto_ptr<xplane> >("Xplane",boost::python::no_init);
+	class_<yplane,typename std::auto_ptr<yplane> >("Yplane",boost::python::no_init);
+	class_<zplane,typename std::auto_ptr<zplane> >("Zplane",boost::python::no_init);
+
 	/*
 	 * Boundaries
 	 */
@@ -250,22 +303,39 @@ BOOST_PYTHON_MODULE(pyTyche) {
     def("new_reflective_boundary",ReflectiveBoundary<yplane>::New);
     def("new_reflective_boundary",ReflectiveBoundary<zplane>::New);
 
-    def("new_jump_boundary",JumpBoundary<xplane>::New);
-    def("new_jump_boundary",JumpBoundary<yplane>::New);
-    def("new_jump_boundary",JumpBoundary<yplane>::New);
+//	class_<ReflectiveBoundary<xplane>,typename std::auto_ptr<ReflectiveBoundary<xplane> > >("ReflectiveBoundaryXplane",boost::python::no_init);
+//	class_<ReflectiveBoundary<yplane>,typename std::auto_ptr<ReflectiveBoundary<yplane> > >("ReflectiveBoundaryYplane",boost::python::no_init);
+//	class_<ReflectiveBoundary<zplane>,typename std::auto_ptr<ReflectiveBoundary<zplane> > >("ReflectiveBoundaryZplane",boost::python::no_init);
+
+
+    def("new_jump_boundary",new_jump_boundary<xplane>);
+    def("new_jump_boundary",new_jump_boundary<yplane>);
+    def("new_jump_boundary",new_jump_boundary<zplane>);
+
+//	class_<JumpBoundary<xplane>,typename std::auto_ptr<JumpBoundary<xplane> > >("JumpBoundaryXplane",boost::python::no_init);
+//	class_<JumpBoundary<yplane>,typename std::auto_ptr<JumpBoundary<yplane> > >("JumpBoundaryYplane",boost::python::no_init);
+//	class_<JumpBoundary<zplane>,typename std::auto_ptr<JumpBoundary<zplane> > >("JumpBoundaryZplane",boost::python::no_init);
+
 
     /*
      * Diffusion
      */
     def("new_diffusion",Diffusion::New);
+//	class_<Diffusion,typename std::auto_ptr<Diffusion> >("Diffusion",boost::python::no_init);
 
 
     /*
      * Reactions
      */
     def("new_zero_reaction",new_zero_reaction);
+//	class_<ZeroOrderMolecularReaction,typename std::auto_ptr<ZeroOrderMolecularReaction> >("ZeroOrderMolecularReaction",boost::python::no_init);
+
     def("new_uni_reaction",new_uni_reaction, new_uni_reaction_overloads());
+//	class_<UniMolecularReaction,typename std::auto_ptr<UniMolecularReaction> >("UniMolecularReaction",boost::python::no_init);
+
     def("new_bi_reaction",new_bi_reaction, new_bi_reaction_overloads());
+//	class_<BiMolecularReaction<BucketSort>,typename std::auto_ptr<BiMolecularReaction<BucketSort> > >("BiMolecularReaction",boost::python::no_init);
+
 
 
 }

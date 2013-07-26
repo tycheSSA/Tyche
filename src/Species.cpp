@@ -8,6 +8,11 @@
 #include "Species.h"
 #include <boost/random.hpp>
 
+#include <vtkDoubleArray.h>
+#include <vtkIntArray.h>
+
+#include <vtkPointData.h>
+
 
 namespace Tyche {
 int Species::species_count = 0;
@@ -74,6 +79,25 @@ void Species::fill_uniform(const int n) {
 	}
 }
 
+vtkSmartPointer<vtkUnstructuredGrid> Species::get_vtk() {
+	vtkSmartPointer<vtkUnstructuredGrid> grid = vtkSmartPointer<vtkUnstructuredGrid>::New();
+	vtkSmartPointer<vtkPoints> newPts = vtkSmartPointer<vtkPoints>::New();
+	vtkSmartPointer<vtkIntArray> newInt = vtkSmartPointer<vtkIntArray>::New();
+	newInt->SetName("id");
+	const vtkIdType n = mols.size();
+	newPts->SetNumberOfPoints(n);
+	newInt->SetNumberOfValues(n);
+	for (int i = 0; i < n; ++i) {
+		newPts->SetPoint(i,mols.r[i][0],mols.r[i][1],mols.r[i][2]);
+		newInt->SetValue(n,mols.id[i]);
+	}
+	newPts->ComputeBounds();
+
+	grid->SetPoints(newPts);
+	grid->GetPointData()->AddArray(newInt);
+
+	return grid;
+}
 
 int Molecules::add_molecule(const Vect3d& position) {
 	this->push_back(position, true, next_id++, SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE);
@@ -178,11 +202,9 @@ void Species::get_concentration(const Vect3d low, const Vect3d high, const Vect3
 	}
 }
 
-std::string Species::get_status_string() {
+std::string Species::get_status_string() const {
 	std::ostringstream ss;
-	ss << "Molecular Status:" << std::endl;
-	ss << "\t" << mols.size() << " particles." << std::endl;
-
+	ss << "Species "<<id<<":\t" << mols.size() << " particles.";
 	return ss.str();
 }
 
