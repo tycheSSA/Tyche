@@ -169,6 +169,16 @@ Vect3d BucketSort::correct_position_for_periodicity(const Vect3d& source_r, cons
 	return corrected_r + source_r;
 }
 
+Vect3d BucketSort::correct_position_for_periodicity(const Vect3d& to_correct_r) {
+	Vect3d corrected_r = to_correct_r;
+	for (int i = 0; i < NDIM; ++i) {
+		if (!periodic[i]) continue;
+		while (corrected_r[i] >= high[i]) corrected_r[i] -= domain_size[i];
+		while (corrected_r[i] < low[i]) corrected_r[i] += domain_size[i];
+	}
+	return corrected_r;
+}
+
 
 }
 

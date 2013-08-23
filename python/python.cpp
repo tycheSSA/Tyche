@@ -124,6 +124,59 @@ std::auto_ptr<Operator> new_bi_reaction(const double rate, Species* s1, Species*
 
 BOOST_PYTHON_FUNCTION_OVERLOADS(new_bi_reaction_overloads, new_bi_reaction, 10, 11);
 
+std::auto_ptr<Operator> new_bi_reaction2(const double rate, Species* s1, Species* s2, const boost::python::list& products,
+					const double dt,
+					const boost::python::list& min, const boost::python::list& max, const boost::python::list& periodic,
+					const bool reversible=false) {
+	Vect3d cmin,cmax;
+	Vect3b cperiodic;
+	CHECK(len(min)==3,"length of min should be 3");
+	CHECK(len(max)==3,"length of max should be 3");
+	CHECK(len(periodic)==3,"length of periodic should be 3");
+	for (int i = 0; i < 3; ++i) {
+		cmin[i] = extract<double>(min[i]);
+		cmax[i] = extract<double>(max[i]);
+		cperiodic[i] = extract<bool>(periodic[i]);
+
+	}
+	ReactionSide rhs;
+	const int np = len(products);
+	for (int i = 0; i < np; ++i) {
+		Species* s = extract<Species*>(products[i]);
+		rhs = rhs + *s;
+	}
+	ReactionEquation eq = *s1 + *s2 >> rhs;
+
+	return BiMolecularReaction<BucketSort>::New(rate,eq,dt,cmin,cmax,cperiodic,reversible);
+}
+
+BOOST_PYTHON_FUNCTION_OVERLOADS(new_bi_reaction_overloads2, new_bi_reaction2, 8, 9);
+
+std::auto_ptr<Operator> new_tri_reaction(const double rate, Species* s1, Species* s2, Species* s3,
+					const boost::python::list& products,
+					const double dt,
+					const boost::python::list& min, const boost::python::list& max, const boost::python::list& periodic) {
+	Vect3d cmin,cmax;
+	Vect3b cperiodic;
+	CHECK(len(min)==3,"length of min should be 3");
+	CHECK(len(max)==3,"length of max should be 3");
+	CHECK(len(periodic)==3,"length of periodic should be 3");
+	for (int i = 0; i < 3; ++i) {
+		cmin[i] = extract<double>(min[i]);
+		cmax[i] = extract<double>(max[i]);
+		cperiodic[i] = extract<bool>(periodic[i]);
+
+	}
+	ReactionSide rhs;
+	const int np = len(products);
+	for (int i = 0; i < np; ++i) {
+		Species* s = extract<Species*>(products[i]);
+		rhs = rhs + *s;
+	}
+	ReactionEquation eq = *s1 + *s2 + *s3 >> rhs;
+
+	return TriMolecularReaction::New(rate,eq,dt,cmin,cmax,cperiodic);
+}
 
 void Species_fill_uniform2(Species& self, const boost::python::list& min, const boost::python::list& max, const unsigned int n) {
 	Vect3d cmin,cmax;
@@ -334,8 +387,9 @@ BOOST_PYTHON_MODULE(pyTyche) {
 //	class_<UniMolecularReaction,typename std::auto_ptr<UniMolecularReaction> >("UniMolecularReaction",boost::python::no_init);
 
     def("new_bi_reaction",new_bi_reaction, new_bi_reaction_overloads());
+    def("new_bi_reaction",new_bi_reaction2, new_bi_reaction_overloads2());
 //	class_<BiMolecularReaction<BucketSort>,typename std::auto_ptr<BiMolecularReaction<BucketSort> > >("BiMolecularReaction",boost::python::no_init);
-
+    def("new_tri_reaction",new_tri_reaction);
 
 
 }

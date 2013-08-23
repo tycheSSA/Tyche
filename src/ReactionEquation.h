@@ -73,6 +73,11 @@ public:
 	ReactionSide(const ReactionComponent& arg) {
 		this->push_back(arg);
 	}
+	ReactionSide(const ReactionSide& arg) {
+		for (auto i: arg) {
+			this->push_back(i);
+		}
+	}
 	~ReactionSide() {
 		this->clear();
 	}
@@ -115,8 +120,12 @@ ReactionSide operator+(const ReactionComponent& arg1, const ReactionComponent& a
 ReactionSide operator+(Species& arg1, const ReactionComponent& arg2);
 ReactionSide operator+(const ReactionComponent& arg1, Species& arg2);
 ReactionSide operator+(Species& arg1, Species& arg2);
-ReactionSide& operator+(ReactionSide& side, const ReactionComponent& comp);
-ReactionSide& operator+(ReactionSide& side, Species& s);
+//ReactionSide& operator+(ReactionSide& side, const ReactionComponent& comp);
+//ReactionSide& operator+(ReactionSide& side, Species& s);
+
+ReactionSide operator+(const ReactionSide side, const ReactionComponent& comp);
+ReactionSide operator+(const ReactionSide side, Species& s);
+
 ReactionEquation operator>>(const ReactionSide& lhs, const ReactionSide& rhs);
 ReactionEquation operator>>(const ReactionSide& lhs, const ReactionComponent& rhs);
 ReactionEquation operator>>(const ReactionSide& lhs, Species& rhs);

@@ -107,7 +107,7 @@ void Output::write() {
 
 void Output::write(double time) {
 	std::ostringstream s;
-	s << filename << "_time_" << time  << ".dat";
+	s << filename << "_time_" << std::fixed << std::setprecision(5) << std::setfill ('0') << std::setw (10) << time  << ".dat";
 	write(s.str());
 }
 

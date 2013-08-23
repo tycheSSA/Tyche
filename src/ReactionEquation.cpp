@@ -28,15 +28,27 @@ ReactionSide operator+(Species& arg1, Species& arg2) {
 	return ReactionSide(ReactionComponent(1,arg1,0),ReactionComponent(1,arg2,0));
 }
 
-ReactionSide& operator+(ReactionSide& side, const ReactionComponent& comp) {
-	side.push_back(comp);
-	return side;
+//ReactionSide& operator+(ReactionSide& side, const ReactionComponent& comp) {
+//	side.push_back(comp);
+//	return side;
+//}
+
+ReactionSide operator+(const ReactionSide side, const ReactionComponent& comp) {
+	ReactionSide result(side);
+	result.push_back(comp);
+	return result;
 }
 
-ReactionSide& operator+(ReactionSide& side, Species& s) {
-	side.push_back(ReactionComponent(1,s,0));
-	return side;
+ReactionSide operator+(const ReactionSide side, Species& s) {
+	ReactionSide result(side);
+	result.push_back(ReactionComponent(1,s,0));
+	return result;
 }
+
+//ReactionSide& operator+(ReactionSide& side, Species& s) {
+//	side.push_back(ReactionComponent(1,s,0));
+//	return side;
+//}
 
 ReactionEquation operator>>(const ReactionSide& lhs, const ReactionSide& rhs) {
 	ReactionSide* newlhs = new ReactionSide(lhs);

@@ -204,13 +204,14 @@ public:
 	calculate_kappa_reversible(const double gamma,
 			const double alpha,
 			const double goal_kappa,
-			const bool self_reaction = false):
-				gamma(gamma),alpha(alpha),goal_kappa(goal_kappa),self_reaction(self_reaction) {
+			const bool self_reaction = false, const bool display_condition = false):
+				gamma(gamma),alpha(alpha),goal_kappa(goal_kappa),self_reaction(self_reaction),
+				display_condition(display_condition) {
 	}
     double operator()(const double P_lambda) {
     	const int N1 = 100;
     	const int N2 = 100;
-    	const double S = 10.0;
+    	const double S = 5.0;
     	const double dx1 = 1.0/N1;
     	const double dx2 = (S-1.0)/N2;
 
@@ -224,8 +225,10 @@ public:
     		} else {
     			r_i = 1.0 + (i-N1)*dx2;
     		}
+    		//b[i-1] = integral_K(r_i,S,gamma) + goal_kappa*K(r_i,alpha,gamma)/(4.0*PI*pow(alpha,2));
     		b[i-1] = integral_K(r_i,S,gamma);
-    		double rowsum = b[i-1];
+
+    		double rowsum = integral_K(r_i,S,gamma);
 			for (int j = 1; j <= N1+N2; ++j) {
 				double r_j;
 				if (j <= N1) {
@@ -236,13 +239,15 @@ public:
 				if (j < N1) {
 					A(i-1,j-1) = -((1.0-P_lambda)/N1) * K(r_i,r_j,gamma) -
 							(P_lambda*K(r_i,alpha,gamma)/(pow(alpha,2)*N1)) * pow(r_j,2);
-					//A(i-1,j-1) = -((1.0-P_lambda)/double(N1)) * K(r_i,r_j,gamma);
+//					A(i-1,j-1) = -((1.0-P_lambda)/N1) * K(r_i,r_j,gamma);
 					rowsum += ((1.0)/double(N1)) * K(r_i,r_j,gamma);
 
 				} else if (j==N1) {
 					A(i-1,j-1) = -0.5*((1.0-P_lambda)/double(N1)) * K(r_i,r_j,gamma) -
 							      0.5*(P_lambda*K(r_i,alpha,gamma)/(pow(alpha,2)*N1)) * pow(r_j,2) -
 							      0.5*((S-1.0)/double(N2)) * K(r_i,r_j,gamma);
+//					A(i-1,j-1) = -0.5*((1.0-P_lambda)/double(N1)) * K(r_i,r_j,gamma) -
+//												      0.5*((S-1.0)/double(N2)) * K(r_i,r_j,gamma);
 					rowsum += 0.5*((1.0)/double(N1)) * K(r_i,r_j,gamma) +
 												      0.5*((S-1.0)/double(N2)) * K(r_i,r_j,gamma);
 				} else if (j < N1+N2) {
@@ -261,8 +266,10 @@ public:
 		}
     	//A.diagonal() = A.diagonal()+1.0;
     	Eigen::VectorXd x = A.colPivHouseholderQr().solve(b);
-//    	Eigen::JacobiSVD<Eigen::MatrixXd> svd = A.jacobiSvd();
-//    	std::cout << "The condition number of A is:\n" << svd.singularValues().maxCoeff()/svd.singularValues().minCoeff() << std::endl;
+    	if (display_condition) {
+    		Eigen::JacobiSVD<Eigen::MatrixXd> svd = A.jacobiSvd();
+    		std::cout << "The condition number of A is:\n" << svd.singularValues().maxCoeff()/svd.singularValues().minCoeff() << std::endl;
+    	}
 
     	//Eigen::VectorXd x = A.llt().solve(b);
 //    	const double relative_error = (A*x - b).norm() / b.norm(); // norm() is L2 norm
@@ -305,6 +312,7 @@ public:
     const double alpha;
     const double goal_kappa;
     const bool self_reaction;
+    const bool display_condition;
 };
 
 class calculate_kappa_irreversible {
@@ -458,7 +466,7 @@ double BiMolecularReaction<T>::calculate_lambda_reversible(const double dt) {
 	std::pair<double, double> r;
 
 	const double alpha = unbinding_radius/binding_radius;
-	const double goal_kappa = rate*dt/pow(binding_radius,3);
+	const double goal_kappa = (1.0+1.0*self_reaction)*rate*dt/pow(binding_radius,3);
 	double difc;
 	if (self_reaction) {
 		difc = 2.0*get_species()[0]->D;
@@ -483,6 +491,9 @@ double BiMolecularReaction<T>::calculate_lambda_reversible(const double dt) {
 	LOG(1,"f(first) = f("<<r.first<<") = "<<f(r.first));
 	LOG(1,"f(second) = f("<<r.second<<") = "<< f(r.second));
 
+	calculate_kappa_reversible fcalccondition(gamma,alpha,goal_kappa,self_reaction,true);
+	fcalccondition(0.5*(r.first + r.second));
+
 	return 0.5*(r.first + r.second);
 
 }
@@ -497,7 +508,7 @@ double BiMolecularReaction<T>::calculate_lambda_irreversible(const double dt) {
 	boost::math::tools::eps_tolerance<double> tol(30);
 	std::pair<double, double> r;
 
-	const double goal_kappa = rate*dt/pow(binding_radius,3);
+	const double goal_kappa = (1.0+1.0*self_reaction)*rate*dt/pow(binding_radius,3);
 	double difc;
 	if (self_reaction) {
 		difc = 2*get_species()[0]->D;
@@ -639,7 +650,7 @@ BiMolecularReaction<T>::BiMolecularReaction(const double rate, const ReactionEqu
 
 	if (self_reaction) {
 		LOG(1,"detected a self reaction: "<<eq);
-		this->rate *= 2.0;
+		//this->rate *= 2.0;
 	}
 
 	double difc;
@@ -649,9 +660,9 @@ BiMolecularReaction<T>::BiMolecularReaction(const double rate, const ReactionEqu
 		difc = get_species()[0]->D + get_species()[1]->D;
 	}
 	if (reversible) {
-		binding_radius = bindingradius(rate,dt,difc,1,1);
+		binding_radius = bindingradius((1.0+1.0*self_reaction)*rate,dt,difc,0.9,1);
 	} else {
-		binding_radius = bindingradius(rate,dt,difc,-1,-1);
+		binding_radius = bindingradius((1.0+1.0*self_reaction)*rate,dt,difc,-1,-1);
 	}
 	if (binding_radius==-1) {
 		ERROR("error calculating binding radius!!!");
@@ -698,7 +709,7 @@ BiMolecularReaction<T>::BiMolecularReaction(const double rate, const ReactionEqu
 
 	if (self_reaction) {
 		LOG(1,"detected a self reaction: "<<eq);
-		this->rate *= 2.0;
+		//this->rate *= 2.0;
 	}
 
 
@@ -748,7 +759,7 @@ void ZeroOrderMolecularReaction::integrate(const double dt) {
 	boost::uniform_real<> p_dist(0,1);
 	boost::variate_generator<base_generator_type&, boost::uniform_real<> > N(generator, p_dist);
 	const Vect3d max_minus_min = max-min;
-	const double volume = max_minus_min.squaredNorm();
+	const double volume = max_minus_min.prod();
 	const int n_s = get_species().size();
 	for (int i_s = 0; i_s < n_s; ++i_s) {
 		boost::poisson_distribution<> p_dist(rates[i_s]*volume*dt);
@@ -770,6 +781,98 @@ void ZeroOrderMolecularReaction::print(std::ostream& out) const {
 	for (int i = 0; i < n; ++i) {
 		out << "\t\tid = "<<get_species()[i]->id<<" (rate = "<<rates[i]<<")";
 	}
+}
+
+TriMolecularReaction::TriMolecularReaction(const double rate, const ReactionEquation& eq,
+			const double dt,
+			Vect3d low, Vect3d high, Vect3b periodic):
+			Reaction(rate),
+			products(eq.rhs),
+			neighbourhood_search2(low,high,periodic),
+			neighbourhood_search3(low,high,periodic) {
+	CHECK(eq.lhs.size()==3,"Not trimolecular reaction. Number of species on lhs of eq is != 3");
+	CHECK(eq.lhs[0].species!=eq.lhs[1].species,"Not trimolecular reaction. Species 1 and 2 are identical");
+	CHECK(eq.lhs[1].species!=eq.lhs[2].species,"Not trimolecular reaction. Species 2 and 3 are identical");
+
+	this->add_species(*(eq.lhs[0].species));
+	this->add_species(*(eq.lhs[1].species));
+	this->add_species(*(eq.lhs[2].species));
+
+	D1 = eq.lhs[0].species->D;
+	D2 = eq.lhs[1].species->D;
+	D3 = eq.lhs[2].species->D;
+	Dbar1 = D1 + D2;
+	Dbar2 = D3 + D1*D2/Dbar1;
+	invDbar1 = 1.0/Dbar1;
+	invDbar2 = 1.0/Dbar2;
+	radius_check = pow(rate / (4.0*pow(PI,3)*pow(Dbar1*Dbar2,3.0/2.0)),1.0/2.0);
+
+	const double search_radius = sqrt(radius_check*std::max(Dbar1,Dbar2));
+
+	LOG(1,"ratio of max diffusion step to min search radius = "<<
+					std::sqrt(2.0*std::max(Dbar1,Dbar2)*dt)/sqrt(radius_check*std::min(Dbar1,Dbar2)));
+
+	LOG(1,"created trimolecular reaction with eq: " << eq <<" search radius = " << search_radius <<
+			" Dbar1 = "<<Dbar1<<" Dbar2 = "<<Dbar2<<" radius_check = "<<radius_check);
+	neighbourhood_search2.reset(neighbourhood_search2.get_low(), neighbourhood_search2.get_high(), search_radius);
+	neighbourhood_search3.reset(neighbourhood_search3.get_low(), neighbourhood_search3.get_high(), search_radius);
+}
+
+
+void TriMolecularReaction::integrate(const double dt) {
+	Molecules* mols1 = &get_species()[0]->mols;
+	Molecules* mols2 = &get_species()[1]->mols;
+	Molecules* mols3 = &get_species()[2]->mols;
+
+	neighbourhood_search2.embed_points(mols2->r);
+	neighbourhood_search3.embed_points(mols3->r);
+
+	const int n = mols1->size();
+	for (int mols1_i = 0; mols1_i < n; ++mols1_i) {
+		if (!(mols1->alive[mols1_i])) continue;
+		const Vect3d pos1 = mols1->r[mols1_i];
+		const int id1 = mols1->id[mols1_i];
+		bool reacted = false;
+		std::vector<int>& neighbrs_list2 = neighbourhood_search2.find_broadphase_neighbours(pos1, mols1_i,false);
+		for (auto mols2_i : neighbrs_list2) {
+			if (reacted) break;
+			if (!(mols2->alive[mols2_i])) continue;
+			const Vect3d pos2 = mols2->r[mols2_i];
+			const int id2 = mols2->id[mols2_i];
+			const Vect3d pos2_corrected = neighbourhood_search2.correct_position_for_periodicity(pos1, pos2);
+			const double r12check = (pos1-pos2_corrected).squaredNorm() * invDbar1;
+			if (r12check <= radius_check) {
+				const Vect3d x12 = (D2*pos1 + D1*pos2_corrected) * invDbar1;
+				const Vect3d x12_corrected = neighbourhood_search3.correct_position_for_periodicity(x12);
+				std::vector<int>& neighbrs_list3 = neighbourhood_search3.find_broadphase_neighbours(x12_corrected, mols1_i,false);
+				for (auto mols3_i : neighbrs_list3) {
+					if (reacted) break;
+					if (!(mols3->alive[mols3_i])) continue;
+					const Vect3d pos3 = mols3->r[mols3_i];
+					const int id3 = mols3->id[mols3_i];
+					const Vect3d pos3_corrected = neighbourhood_search3.correct_position_for_periodicity(x12_corrected, pos3);
+					const double r123check = (x12_corrected-pos3_corrected).squaredNorm() * invDbar2;
+					if (r12check + r123check < radius_check) {
+//						for (auto component : products) {
+//							for (int i = 0; i < component.multiplier; ++i) {
+//								component.species->mols.add_molecule(0.5*(pos1+pos2+pos3));
+//							}
+//						}
+						products[0].species->mols.add_molecule(pos2);
+						products[1].species->mols.add_molecule(pos3);
+
+						mols1->mark_for_deletion(mols1_i);
+						mols2->mark_for_deletion(mols2_i);
+						mols3->mark_for_deletion(mols3_i);
+						reacted = true;
+					}
+				}
+			}
+		}
+	}
+	mols1->delete_molecules();
+	mols2->delete_molecules();
+	mols3->delete_molecules();
 }
 
 

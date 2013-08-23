@@ -127,6 +127,13 @@ public:
 		return std::auto_ptr<Operator>(new BiMolecularReaction(rate,eq,binding,unbinding,dt,low,high,periodic,reversible));
 	}
 
+	static std::auto_ptr<Operator> New(const double rate,  const ReactionEquation& eq,
+				const double dt,
+				Vect3d low, Vect3d high, Vect3b periodic,
+				const bool reversible=false) {
+			return std::auto_ptr<Operator>(new BiMolecularReaction(rate,eq,dt,low,high,periodic,reversible));
+		}
+
 	double get_rate() const {return this->rate;}
 	double get_P_lambda() const {return this->P_lambda;}
 	double get_binding_radius() const {return binding_radius;}
@@ -162,6 +169,38 @@ protected:
 	T neighbourhood_search;
 	bool self_reaction;
 };
+
+
+class TriMolecularReaction: public Reaction {
+public:
+	TriMolecularReaction(const double rate, const ReactionEquation& eq,
+			const double dt,
+			Vect3d low, Vect3d high, Vect3b periodic);
+
+	static std::auto_ptr<Operator> New(const double rate,  const ReactionEquation& eq,
+			const double dt,
+			Vect3d low, Vect3d high, Vect3b periodic) {
+		return std::auto_ptr<Operator>(new TriMolecularReaction(rate,eq,dt,low,high,periodic));
+	}
+
+protected:
+	virtual void integrate(const double dt);
+	virtual void print(std::ostream& out) const {
+		out << "\tTriMolecularReaction Reaction: 1("<<get_species()[0]->id<<") + 1("<<get_species()[1]->id<<") + 1("<<get_species()[2]->id<<") >> ";
+		for (auto component : products) {
+			out << "1("<<component.species->id<<") ";
+		}
+		out << "(rate = "<<rate<<")";
+	}
+
+	ReactionSide products;
+	double radius_check;
+	BucketSort neighbourhood_search2,neighbourhood_search3;
+	double D1,D2,D3;
+	double Dbar1,Dbar2;
+	double invDbar1,invDbar2;
+};
+
 
 }
 #endif /* REACTION_H_ */

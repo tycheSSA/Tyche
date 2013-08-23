@@ -52,6 +52,7 @@ public:
 	std::vector<int>& find_broadphase_neighbours(const Vect3d& r, const int my_index, const bool self);
 
 	Vect3d correct_position_for_periodicity(const Vect3d& source_r, const Vect3d& to_correct_r);
+	Vect3d correct_position_for_periodicity(const Vect3d& to_correct_r);
 
 private:
 	inline int vect_to_index(const Vect3i& vect) {
