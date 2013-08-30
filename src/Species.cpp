@@ -17,6 +17,7 @@
 namespace Tyche {
 int Species::species_count = 0;
 Species null_species(0);
+std::mutex Species::mutex;
 
 vtkSmartPointer<vtkUnstructuredGrid> Molecules::get_vtk_grid() {
 	/*

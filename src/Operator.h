@@ -39,8 +39,8 @@ public:
 	double integrate_for_time(const double time, const double dt);
 	void operator()(const double dt);
 	std::string get_time_string() const;
-	std::string get_global_time() const;
-	std::string get_time_percentage() const;
+	//std::string get_global_time() const;
+	//std::string get_time_percentage() const;
 	void reset();
 	int get_species_index(Species& s);
 	double get_time() const {return time;}
@@ -62,7 +62,6 @@ private:
 
 	boost::timer timer;
 	double total_time;
-	static double total_global_time;
 	double time;
 	//boost::timer global_timer;
 	std::vector<Species*> all_species;

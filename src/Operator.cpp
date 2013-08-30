@@ -13,7 +13,6 @@
 
 namespace Tyche {
 //boost::timer::cpu_timer Operator::global_timer;
-double Operator::total_global_time = 0;
 
 Operator::Operator() {
 //	timer.stop();
@@ -82,7 +81,6 @@ void Operator::stop_timer() {
 	//global_timer.stop();
 	const double time = timer.elapsed();
 	total_time += time;
-	total_global_time += time;
 }
 
 
@@ -96,9 +94,10 @@ const std::string to_string(const T& data)
 
 std::string Operator::get_time_string() const {
 	//return timer.format();
-	return "Time to execute: " + to_string(total_time) + " s (" + get_time_percentage() + ")";
+	return "Time to execute: " + to_string(total_time) + " s";
 }
 
+/*
 std::string Operator::get_global_time() const {
 	//return global_timer.format();
 	return "Time to execute all Operators: " + to_string(total_global_time) + " s";
@@ -116,7 +115,7 @@ std::string Operator::get_time_percentage() const {
 	const double percent = 100*total_time/total_global_time;
 	return to_string(percent) + "%";
 }
-
+*/
 void Operator::add_species_execute(Species &s) {
 
 }

@@ -67,7 +67,6 @@ void run(double for_time, double dt, Operator& operators) {
 	}
 
 	LOG(1,"Total time = " << time << " s");
-	LOG(1, operators.get_global_time());
 	LOG(1, "Operator times:");
 	LOG(1, operators << "\t" << operators.get_time_string() << std::endl);
 
