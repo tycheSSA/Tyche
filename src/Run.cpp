@@ -35,7 +35,13 @@ void run(double for_time, double dt, Operator& operators) {
 	const double num_out = 100;
 	const int it_per_out = int(iterations/num_out+0.5);
 
-	boost::timer timer;
+	ofstream myfile;
+	boost::timer::cpu_timer timer2;
+	timer2.start();
+	myfile.open ("times.txt");
+	myfile.precision(10);
+
+	boost::timer::cpu_timer timer;
 	double time = 0;
 	LOG(1, "Running simulation for "<< for_time << " seconds with dt = " << dt << " seconds.");
 	LOG(1, "Will perform "<<iterations<<" iterations for a total simulation time of "<<iterations*dt<<" seconds.");
@@ -43,6 +49,9 @@ void run(double for_time, double dt, Operator& operators) {
 	LOG(1, "Number of species:"<<operators.get_species().size());
 	for (int i = 0; i < iterations; ++i) {
 		if ((it_per_out==0)||(i%it_per_out==0)) {
+			timer2.stop();
+
+
 			int nmol = 0;
 			int ncompart = 0;
 			int ncomparts = 0;
@@ -55,16 +64,21 @@ void run(double for_time, double dt, Operator& operators) {
 			LOG(1, "Simulation " << double(i)/iterations*100 << "% complete. There are " << nmol <<
 					" molecules in free space and " << ncompart <<
 					" molecules in " << ncomparts << " compartments");
+
+			myfile << (timer2.elapsed().user + timer2.elapsed().user)/double(1000000000) << std::endl;
+			timer2.start();
 		}
-		timer.restart();
+		timer.start();
 		for (int j = 0; j < operators.get_species().size(); ++j) {
 			operators.get_species()[j]->mols.save_indicies();
 		}
 
 		operators(dt);
 
-		time += timer.elapsed();
+		timer.stop();
+		time += (timer.elapsed().user + timer.elapsed().user)/double(1000000000);
 	}
+	myfile.close();
 
 	LOG(1,"Total time = " << time << " s");
 	LOG(1, "Operator times:");

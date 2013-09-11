@@ -49,7 +49,7 @@ bool Operator::add_species(Species& s) {
 void Operator::resume_timer() {
 //	timer.resume();
 //	global_timer.resume();
-	timer.restart();
+	timer.start();
 }
 
 void Operator::operator ()(const double dt) {
@@ -77,9 +77,9 @@ void Operator::reset() {
 }
 
 void Operator::stop_timer() {
-	//timer.stop();
+	timer.stop();
 	//global_timer.stop();
-	const double time = timer.elapsed();
+	const double time = (timer.elapsed().user + timer.elapsed().user)/double(1000000000);
 	total_time += time;
 }
 

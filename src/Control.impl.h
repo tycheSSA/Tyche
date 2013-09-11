@@ -86,18 +86,20 @@ void GrowingInterface<T>::integrate(const double dt) {
 			 */
 			std::vector<int> mol_indices;
 			const int n = s.mols.size();
+			int total_copy_number_grow = 0; 
 			for (int i = 0; i < n; ++i) {
 				const double dist = this->geometry.distance_to_boundary(s.mols.r[i]);
 				if ((dist < 0)&&(dist > -move_by)) {
 					mol_indices.push_back(i);
+				} else if ((dist >= 0)&&(dist < check_distance-move_by)) {
+					total_copy_number_grow++;
 				}
 			}
 
+			total_copy_number_grow += mol_indices.size();
 
 			std::vector<int> grid_indices_grow;
 			s.grid.get_slice(this->geometry,grid_indices_grow);
-			const int total_copy_number_grow = mol_indices.size();
-			//const int total_copy_number_grow = std::accumulate(grid_indices_grow.begin(),grid_indices_grow.end(),0,my_accumulate(s.mol_copy_numbers));
 			const bool is_meaningful_grow = (grid_indices_grow.size() > 0) || (grid_indices_current.size() > 0);
 			if ((is_meaningful_grow)&&(total_copy_number_grow > grow_threshold)) {
 				LOG(1.0,"Growing interface at " << this->geometry <<". found " << total_copy_number_grow <<" molecules in front of interface");

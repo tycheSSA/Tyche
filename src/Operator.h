@@ -26,7 +26,8 @@
 #define OPERATOR_H_
 
 #include "Species.h"
-#include <boost/timer.hpp>
+//#include <boost/timer.hpp>
+#include <boost/timer/timer.hpp>
 #include <initializer_list>
 
 namespace Tyche {
@@ -60,7 +61,7 @@ private:
 	void resume_timer();
 	void stop_timer();
 
-	boost::timer timer;
+	boost::timer::cpu_timer timer;
 	double total_time;
 	double time;
 	//boost::timer global_timer;

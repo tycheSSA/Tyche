@@ -62,7 +62,7 @@ public:
 					   const int grow_threshold, const int shrink_threshold):
 		Control<T>(geometry),nsm(nsm),
 		check_dt(check_dt),move_by(nsm.get_grid().get_cell_size()[T::dim]),
-		check_distance(nsm.get_grid().get_cell_size()[T::dim]),
+		check_distance(check_distance),
 		shrink_to(shrink_to),grow_to(grow_to),
 		grow_threshold(grow_threshold),shrink_threshold(shrink_threshold) {
 
