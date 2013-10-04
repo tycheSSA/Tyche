@@ -101,7 +101,10 @@ vtkSmartPointer<vtkUnstructuredGrid> Species::get_vtk() {
 }
 
 int Molecules::add_molecule(const Vect3d& position) {
-	this->push_back(position, true, next_id++, SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE);
+	this->push_back(position, position, true, next_id++, SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE);
+}
+int Molecules::add_molecule(const Vect3d& position, const Vect3d& old_position) {
+	this->push_back(position, old_position, true, next_id++, SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE);
 }
 
 int Molecules::delete_molecules() {

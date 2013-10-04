@@ -78,7 +78,7 @@ void UniMolecularReaction::integrate(const double dt) {
 					0.5*init_radii[0]*cos(angle));
 			BOOST_FOREACH(ReactionComponent component, products) {
 				for (int j = 0; j < component.multiplier; ++j) {
-					component.species->mols.add_molecule(mols.r[i] + new_pos);
+					component.species->mols.add_molecule(mols.r[i] + new_pos,mols.r[i]);
 					new_pos = -new_pos;
 
 #ifdef DEBUG
@@ -587,7 +587,7 @@ void BiMolecularReaction<T>::integrate(const double dt) {
 					//LOG(1,"deleting particle "<<id1<<" and "<<id2);
 					for (auto component : products) {
 						for (int i = 0; i < component.multiplier; ++i) {
-							component.species->mols.add_molecule(0.5*(pos1+pos2));
+							component.species->mols.add_molecule(0.5*(pos1+pos2),pos1);
 						}
 					}
 					mols1->mark_for_deletion(mols1_i);

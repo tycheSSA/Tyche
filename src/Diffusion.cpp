@@ -19,8 +19,10 @@ void Diffusion::integrate(const double dt) {
 	for (int i = 0; i < n; ++i) {
 		Species &s = *(get_species()[i]);
 		const double step_length = calc_step_length(s, dt);
-		BOOST_FOREACH(Vect3d &r,s.mols.r) {
-			r += step_length * Vect3d(norm(),norm(),norm());
+		const int n = s.mols.size();
+		for (int j = 0; j < n; ++j) {
+			s.mols.r0[i] = s.mols.r[i];
+			s.mols.r[i] += step_length * Vect3d(norm(),norm(),norm());
 		}
 	}
 

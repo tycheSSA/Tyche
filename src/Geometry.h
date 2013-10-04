@@ -35,16 +35,8 @@ public:
 	NullGeometry() {}
 };
 
-class Cuboid {
-public:
-	Cuboid(const Vect3d min, const Vect3d max);
-	bool at_boundary(const Vect3d r) const;
-private:
-	Vect3d min,max;
 
-};
-
-template<int DIM>
+template<unsigned int DIM>
 class AxisAlignedRectangle;
 
 static const int dim_map[][2] = {{1,2}, {0,2}, {0,1}};
@@ -68,8 +60,22 @@ public:
 			normal(arg.normal)
 	{}
 
-	static std::auto_ptr<AxisAlignedPlane<DIM> > New(const double coord, const int normal) {
-		return std::auto_ptr<AxisAlignedPlane<DIM> >(new AxisAlignedPlane<DIM>(coord,normal));
+	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
+		if (((p2[DIM]>=coord)&&(p1[coord]<coord))||((p2[DIM]<coord)&&(p1[coord]>=coord))) {
+			if (intersect_point != NULL) {
+				intersect_point[DIM] = coord;
+				intersect_point[dim_map[DIM][0]] = 0.5*(p1[dim_map[DIM][0]] + p2[dim_map[DIM][0]]);
+				intersect_point[dim_map[DIM][1]] = 0.5*(p1[dim_map[DIM][1]] + p2[dim_map[DIM][1]]);
+			}
+			if (intersect_normal != NULL) {
+				intersect_normal[DIM] = 1.0;
+				intersect_normal[dim_map[DIM][0]] = 0.0;
+				intersect_normal[dim_map[DIM][1]] = 0.0;
+			}
+			return true;
+		} else {
+			return false;
+		}
 	}
 
 	bool is_between(const AxisAlignedPlane<DIM>& plane1, const AxisAlignedPlane<DIM>& plane2) const {
@@ -79,16 +85,7 @@ public:
 			return ((coord < plane1.coord) && (coord > plane2.coord));
 		}
 	}
-	inline bool at_boundary(const Vect3d& r) const {
-		return normal*(r[DIM]-coord) < 0;
-	}
-	inline bool at_boundary(const Vect3d& r, Vect3d& shortest) const {
-		//shortest = Vect3d::Zero();
-		shortest[dim_map[DIM][0]] = 0;
-		shortest[dim_map[DIM][1]] = 0;
-		shortest[DIM] = coord-r[DIM];
-		return normal*(-shortest[DIM]) < 0;
-	}
+
 
 	const Vect3d shortest_vector_to_boundary(const Vect3d& r) const {
 	   Vect3d shortest = Vect3d::Zero();
@@ -110,16 +107,16 @@ public:
 		coord -= normal*move_by;
 	}
 
-	void set_coord(const double arg) {
-		coord = arg;
-	}
-
 	const double& get_coord() const {
 		return coord;
 	}
 
 	const int& get_normal() const {
 		return normal;
+	}
+
+	void swap_normal() {
+		normal = -normal;
 	}
 
 protected:
@@ -147,43 +144,42 @@ typedef AxisAlignedPlane<2> zplane;
 
 
 
-template<int DIM>
+template<unsigned int DIM>
 class AxisAlignedRectangle: public AxisAlignedPlane<DIM> {
 public:
 	AxisAlignedRectangle(const Vect3d _low, const Vect3d _high, const int _normal):
 	   AxisAlignedPlane<DIM>(_low[DIM], _normal),
-	   low(_low),high(_high),mid(0.5*(_low[dim_map[DIM][0]] + _high[dim_map[DIM][0]])),
+	   low(_low),high(_high),
 	   normal_vector(Vect3d::Zero()),
 	   uni1(generator,boost::uniform_real<>(_low[dim_map[DIM][0]],_high[dim_map[DIM][0]])),
 	   uni2(generator,boost::uniform_real<>(_low[dim_map[DIM][1]],_high[dim_map[DIM][1]])),
-	   tri1(generator,boost::triangle_distribution<>(1.5*_low[dim_map[DIM][0]] - 0.5*_high[dim_map[DIM][0]],
+	   tri1(generator,boost::triangle_distribution<>(_low[dim_map[DIM][0]],
 			   	   	   	   	   0.5*(_low[dim_map[DIM][0]] + _high[dim_map[DIM][0]]),
-			   	   	   	   	   1.5*_high[dim_map[DIM][0]]-0.5*_low[dim_map[DIM][0]] )),
-	   tri2(generator,boost::triangle_distribution<>(1.5*_low[dim_map[DIM][1]] - 0.5*_high[dim_map[DIM][1]],
-			   	   	   	   	   0.5*(_low[dim_map[DIM][1]] + _high[dim_map[DIM][1]]),
-			   	   	  	  	  1.5*_high[dim_map[DIM][1]] - 0.5*_low[dim_map[DIM][1]])) {
+			   	   	   	   	   	   	   	             _high[dim_map[DIM][0]] )),
+	   tri2(generator,boost::triangle_distribution<>(_low[dim_map[DIM][1]],
+			   0.5*(_low[dim_map[DIM][1]] + _high[dim_map[DIM][1]]),
+			   	   	   	   	   				         _high[dim_map[DIM][1]] )) {
 	   high[DIM] = low[DIM];
 	   normal_vector[DIM] = this->normal;
 	}
 	AxisAlignedRectangle(const AxisAlignedRectangle<DIM>& arg):
 		AxisAlignedPlane<DIM>(arg),
 		low(arg.low),
-		high(arg.high),mid(0.5*(arg.low[dim_map[DIM][0]] + arg.high[dim_map[DIM][0]])),
+		high(arg.high),
 		normal_vector(arg.normal_vector),
 		uni1(generator,boost::uniform_real<>(arg.low[dim_map[DIM][0]],arg.high[dim_map[DIM][0]])),
 		uni2(generator,boost::uniform_real<>(arg.low[dim_map[DIM][1]],arg.high[dim_map[DIM][1]])),
-		tri1(generator,boost::triangle_distribution<>(1.5*arg.low[dim_map[DIM][0]] - 0.5*arg.high[dim_map[DIM][0]],
+		tri1(generator,boost::triangle_distribution<>(arg.low[dim_map[DIM][0]],
 				0.5*(arg.low[dim_map[DIM][0]] + arg.high[dim_map[DIM][0]]),
-				1.5*arg.high[dim_map[DIM][0]] - 0.5*arg.low[dim_map[DIM][0]])),
-				tri2(generator,boost::triangle_distribution<>(1.5*arg.low[dim_map[DIM][1]] - 0.5*arg.high[dim_map[DIM][1]],
+				arg.high[dim_map[DIM][0]] )),
+				tri2(generator,boost::triangle_distribution<>(arg.low[dim_map[DIM][1]],
 						0.5*(arg.low[dim_map[DIM][1]] + arg.high[dim_map[DIM][1]]),
-						1.5*arg.high[dim_map[DIM][1]] - 0.5*arg.low[dim_map[DIM][1]]))
+						arg.high[dim_map[DIM][1]] ))
 						{}
 	AxisAlignedRectangle<DIM>& operator=(const AxisAlignedRectangle<DIM>& arg) {
 		AxisAlignedPlane<DIM>::operator=(arg);
 		low = arg.low;
 		high = arg.high;
-		mid = arg.mid;
 		normal_vector = arg.normal_vector;
 		boost::uniform_real<double>& dist1 = uni1.distribution();
 		boost::uniform_real<double>& dist2 = uni2.distribution();
@@ -191,13 +187,37 @@ public:
 		dist2.param(boost::uniform_real<double>::param_type(arg.low[dim_map[DIM][1]],arg.high[dim_map[DIM][1]]));
 		boost::triangle_distribution<double>& dist3 = tri1.distribution();
 		boost::triangle_distribution<double>& dist4 = tri2.distribution();
-		dist3.param(boost::triangle_distribution<double>::param_type(1.5*arg.low[dim_map[DIM][0]]-0.5*arg.high[dim_map[DIM][0]],
+		dist3.param(boost::triangle_distribution<double>::param_type(arg.low[dim_map[DIM][0]],
 				0.5*(arg.low[dim_map[DIM][0]] + arg.high[dim_map[DIM][0]]),
-				1.5*arg.high[dim_map[DIM][0]] - 0.5*arg.low[dim_map[DIM][0]]));
-		dist4.param(boost::triangle_distribution<double>::param_type(1.5*arg.low[dim_map[DIM][1]]-0.5*arg.high[dim_map[DIM][1]],
+				arg.high[dim_map[DIM][0]] ));
+		dist4.param(boost::triangle_distribution<double>::param_type(arg.low[dim_map[DIM][1]],
 				0.5*(arg.low[dim_map[DIM][1]] + arg.high[dim_map[DIM][1]]),
-				1.5*arg.high[dim_map[DIM][1]] - 0.5*arg.low[dim_map[DIM][1]]));
+				arg.high[dim_map[DIM][1]] ));
 	}
+
+	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
+		if (((p2[DIM]>=low[DIM])&&(p1[DIM]<low[DIM]))||((p2[DIM]<low[DIM])&&(p1[DIM]>=low[DIM]))) {
+			const double intersect0 = 0.5*(p1[dim_map[DIM][0]] + p2[dim_map[DIM][0]]);
+			if ((intersect0 >= low[dim_map[DIM][0]]) && (intersect0 < high[dim_map[DIM][0]])) {
+				const double intersect1 = 0.5*(p1[dim_map[DIM][1]] + p2[dim_map[DIM][1]]);
+				if ((intersect1 >= low[dim_map[DIM][1]]) && (intersect1 < high[dim_map[DIM][1]])) {
+					if (intersect_point != NULL) {
+						intersect_point[DIM] = low[DIM];
+						intersect_point[dim_map[DIM][0]] = intersect0;
+						intersect_point[dim_map[DIM][1]] = intersect1;
+					}
+					if (intersect_normal != NULL) {
+						intersect_normal[DIM] = 1.0;
+						intersect_normal[dim_map[DIM][0]] = 0.0;
+						intersect_normal[dim_map[DIM][1]] = 0.0;
+					}
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
 	void get_random_point_and_normal(Vect3d& p, Vect3d& n) {
 	   p = get_random_point();
 	   n = normal_vector;
@@ -222,17 +242,92 @@ public:
 		return ret;
 	}
 
+	const Vect3d& get_low() const {return low;}
+	const Vect3d& get_high() const {return high;}
+
 private:
-	Vect3d low,high,normal_vector,mid;
+	Vect3d low,high,normal_vector;
 
 	boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni1, uni2;
 	boost::variate_generator<base_generator_type&, boost::triangle_distribution<> > tri1, tri2;
 };
 
+typedef AxisAlignedRectangle<0> xrect;
+typedef AxisAlignedRectangle<1> yrect;
+typedef AxisAlignedRectangle<2> zrect;
+
 template<unsigned int DIM>
 std::ostream& operator<< (std::ostream& out, const AxisAlignedRectangle<DIM>& p) {
 	return out << "Rectangle aligned with dimension " << DIM << ". Lower point in other dimensions is "<<p.low<<". Upper point in other dimensions is "<<p.high<<".";
 }
+
+class Rectangle {
+public:
+	Rectangle(const Vect3d& lower_corner,
+			const Vect3d& upper_left_corner,
+			const Vect3d& lower_right_corner):
+				low(lower_corner),high(upper_left_corner) {
+		l = upper_left_corner-lower_corner;
+		r = lower_right_corner-lower_corner;
+		normal = l.cross(r);
+		normal.normalize();
+	}
+
+	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
+		for (int d = 0; d < 3; ++d) {
+			if (((p1[d]<low[d]) && (p2[d]<low[d])) || ((p1[d]>=high[d]) && (p2[d]>=high[d]))) {
+				return false;
+			}
+		}
+		const double denominator = (p2-p1).dot(normal);
+		if (denominator==0) return false;
+		const double numerator = (low-p1).dot(normal);
+		if (intersect_point==NULL) {
+			intersect_point = new Vect3d();
+		}
+		*intersect_point = (numerator/denominator) * (p2-p1) + p1;
+		for (int d = 0; d < 3; ++d) {
+			if (((*intersect_point)[d]>=high[d]) && ((*intersect_point)[d]<low[d])) {
+				return false;
+			}
+		}
+		if (intersect_normal != NULL) {
+			*intersect_normal = normal;
+		}
+		return true;
+	}
+
+
+	void get_random_point_and_normal(Vect3d& p, Vect3d& n) {
+		p = get_random_point();
+		n = normal;
+	}
+	Vect3d get_random_point() {
+		boost::variate_generator<base_generator_type&, boost::uniform_real<> >
+			uni(generator,boost::uniform_real<>(0,1));
+		return low + l*uni() + r*uni();
+	}
+
+	void get_random_point_and_normal_triangle(Vect3d& p, Vect3d& n) {
+		p = get_random_point_triangle();
+		n = normal;
+	}
+	Vect3d get_random_point_triangle() {
+		boost::variate_generator<base_generator_type&, boost::triangle_distribution<> >
+					tri(generator,boost::triangle_distribution<>(0,0.5,1));
+		return low + l*tri() + r*tri();
+	}
+	const Vect3d& get_low() const {return low;}
+	const Vect3d& get_l() const {return l;}
+	const Vect3d& get_r() const {return r;}
+	const Vect3d& get_normal() const {return normal;}
+private:
+	Vect3d low,high;
+	Vect3d l,r;
+	Vect3d normal;
+};
+
+std::ostream& operator<< (std::ostream& out, const Rectangle& p);
 
 }
 

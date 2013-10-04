@@ -344,10 +344,19 @@ BOOST_PYTHON_MODULE(pyTyche) {
 	def("new_xplane",xplane::New);
 	def("new_yplane",yplane::New);
 	def("new_zplane",zplane::New);
+	def("new_xrect",xrect::New);
+	def("new_yrect",yrect::New);
+	def("new_zrect",zrect::New);
 
 	class_<xplane,typename std::auto_ptr<xplane> >("Xplane",boost::python::no_init);
 	class_<yplane,typename std::auto_ptr<yplane> >("Yplane",boost::python::no_init);
 	class_<zplane,typename std::auto_ptr<zplane> >("Zplane",boost::python::no_init);
+	class_<xplane,typename std::auto_ptr<xplane> >("Xplane",boost::python::no_init);
+	class_<yplane,typename std::auto_ptr<yplane> >("Yplane",boost::python::no_init);
+	class_<zplane,typename std::auto_ptr<zplane> >("Zplane",boost::python::no_init);
+	class_<xrect,typename std::auto_ptr<xrect> >("Xrect",boost::python::no_init);
+	class_<yrect,typename std::auto_ptr<yrect> >("Yrect",boost::python::no_init);
+	class_<zrect,typename std::auto_ptr<zrect> >("Zrect",boost::python::no_init);
 
 	/*
 	 * Boundaries
@@ -355,6 +364,9 @@ BOOST_PYTHON_MODULE(pyTyche) {
     def("new_reflective_boundary",ReflectiveBoundary<xplane>::New);
     def("new_reflective_boundary",ReflectiveBoundary<yplane>::New);
     def("new_reflective_boundary",ReflectiveBoundary<zplane>::New);
+    def("new_reflective_boundary",ReflectiveBoundary<xrect>::New);
+    def("new_reflective_boundary",ReflectiveBoundary<yrect>::New);
+    def("new_reflective_boundary",ReflectiveBoundary<zrect>::New);
 
 //	class_<ReflectiveBoundary<xplane>,typename std::auto_ptr<ReflectiveBoundary<xplane> > >("ReflectiveBoundaryXplane",boost::python::no_init);
 //	class_<ReflectiveBoundary<yplane>,typename std::auto_ptr<ReflectiveBoundary<yplane> > >("ReflectiveBoundaryYplane",boost::python::no_init);
@@ -364,6 +376,9 @@ BOOST_PYTHON_MODULE(pyTyche) {
     def("new_jump_boundary",new_jump_boundary<xplane>);
     def("new_jump_boundary",new_jump_boundary<yplane>);
     def("new_jump_boundary",new_jump_boundary<zplane>);
+    def("new_jump_boundary",new_jump_boundary<xrect>);
+    def("new_jump_boundary",new_jump_boundary<yrect>);
+    def("new_jump_boundary",new_jump_boundary<zrect>);
 
 //	class_<JumpBoundary<xplane>,typename std::auto_ptr<JumpBoundary<xplane> > >("JumpBoundaryXplane",boost::python::no_init);
 //	class_<JumpBoundary<yplane>,typename std::auto_ptr<JumpBoundary<yplane> > >("JumpBoundaryYplane",boost::python::no_init);

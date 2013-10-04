@@ -39,8 +39,8 @@
 namespace Tyche {
 
 #define DATA_typename MolData
-#define DATA_names   (r)(alive)(id)(saved_index)
-#define DATA_types   (Vect3d)(bool)(int)(int)
+#define DATA_names   (r)(r0)(alive)(id)(saved_index)
+#define DATA_types   (Vect3d)(Vect3d)(bool)(int)(int)
 #include "Data.h"
 
 
@@ -53,7 +53,10 @@ public:
 	int delete_molecule(const unsigned int i);
 	int delete_molecules();
 	int add_molecule(const Vect3d& position);
+	int add_molecule(const Vect3d& position, const Vect3d& old_position);
+
 	int mark_for_deletion(const unsigned int i);
+
 	void save_indicies();
 	vtkSmartPointer<vtkUnstructuredGrid> get_vtk_grid();
 private:
