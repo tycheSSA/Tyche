@@ -298,34 +298,30 @@ private:
 	NextSubvolumeMethod& nsm;
 
 };
-
-
 template<typename T>
-class CouplingBoundary_C_to_M: public Boundary<T> {
+class CouplingBoundary: public Boundary<T> {
 public:
-	CouplingBoundary_C_to_M(const T& geometry, NextSubvolumeMethod& nsm):
-		Boundary<T>(geometry),nsm(nsm),old_dt(0),
-		uni(generator,boost::uniform_real<>(0,1)) {}
-	static std::auto_ptr<Operator> New(const T& geometry, NextSubvolumeMethod& nsm) {
-		return std::auto_ptr<Operator>(new CouplingBoundary_C_to_M(geometry,nsm));
+	CouplingBoundary(const T& geometry, Operator* nsm):
+		Boundary<T>(geometry),nsm(dynamic_cast<NextSubvolumeMethod *>(nsm)) {
+		if(!nsm) {
+			ERROR("Must pass operator of type NextSubvolumeMethod to CouplingBoundary");
+		}
 	}
-	virtual void add_species(Species &s, const double dt);
+	static std::auto_ptr<Operator> New(const T& geometry, Operator* nsm) {
+		return std::auto_ptr<Operator>(new CouplingBoundary(geometry,nsm));
+	}
 protected:
-
 	virtual void integrate(const double dt);
-
 	virtual void print(std::ostream& out) const  {
-		out << "\tCoupling Boundary from Compartments to Molecules at "<< std::endl << "\t\t"<<this->geometry;
+		out << "\tCoupling Boundary from Molecules to Compartments at "<< std::endl << "\t\t"<< this->geometry;
 	}
 
 private:
-	NextSubvolumeMethod& nsm;
-	double old_dt;
-//	std::vector<std::vector<int> > boundary_compartment_indicies;
-	//TODO: restricted to axis aligned planes and structured grids!
-//	std::vector<std::vector<typename T::SurfaceElementType> > boundary_intersections;
-	boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni;
+	NextSubvolumeMethod* nsm;
+
 };
+
+
 
 
 }

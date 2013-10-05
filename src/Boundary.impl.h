@@ -252,76 +252,32 @@ void CouplingBoundary_M_to_C<T>::integrate(const double dt) {
 }
 
 template<typename T>
-void CouplingBoundary_C_to_M<T>::add_species(Species& s, const double dt) {
-
-	/*
-	 * setup interface reactions in the boundary grid cells
-	 */
-	if (Operator::add_species(s)) {
-		nsm.set_interface(s,this->geometry,dt);
-	}
-
-//	boundary_compartment_indicies.push_back(std::vector<int>());
-//	boundary_intersections.push_back(std::vector<typename T::SurfaceElementType>());
-//	std::vector<int>& boundary_compartment_indicies_ref = *(boundary_compartment_indicies.end()-1);
-//	std::vector<typename T::SurfaceElementType>& boundary_intersections_ref = *(boundary_intersections.end()-1);
-//	const int nc = s.copy_numbers.size();
-//	for (int i = 0; i < nc; ++i) {
-//		if (s.grid.geometry_intersects_cell(i, this->geometry)) {
-//			boundary_compartment_indicies_ref.push_back(i);
-//			boundary_intersections_ref.push_back(s.grid.get_intersection_of_cell(i,this->geometry));
-//		}
-//	}
-}
-
-
-template<typename T>
-void CouplingBoundary_C_to_M<T>::integrate(const double dt) {
+void CouplingBoundary<T>::integrate(const double dt) {
 
 	const int s_n = this->get_species().size();
+	std::set<int> dirty_indicies;
 	for (int s_i = 0; s_i < s_n; ++s_i) {
 		Species &s = *(this->get_species()[s_i]);
-		/*
-		 * find where boundaries intersect
-		 */
-		std::vector<typename T::SurfaceElementType> boundary_intersections;
-		std::vector<int> boundary_compartment_indicies;
-		s.grid.get_slice(this->geometry,boundary_compartment_indicies);
-		BOOST_FOREACH(int i,boundary_compartment_indicies) {
-			boundary_intersections.push_back(s.grid.get_intersection_of_cell(i,this->geometry));
-		}
-
-		/*
-		 * setup interface reactions in the boundary grid cells
-		 */
-		if (old_dt != dt) {
-			nsm.set_interface_reactions(s,boundary_compartment_indicies,dt);
-			old_dt = dt;
-		}
-
-		/*
-		 * move particles in compartments to free space
-		 */
-		const double step_length = sqrt(2.0*s.D*dt);
-		const int c_n = boundary_compartment_indicies.size();
-		for (int c_i = 0; c_i < c_n; ++c_i) {
-			const int num_particles_to_add = s.copy_numbers[boundary_compartment_indicies[c_i]];
-			typename T::SurfaceElementType& intersect =  boundary_intersections[c_i];
-			for (int i = 0; i < num_particles_to_add; ++i) {
-				Vect3d newr,newn;
-				intersect.get_random_point_and_normal_triangle(newr, newn);
-				const double P = uni();
-				const double P2 = pow(P,2);
-				const double dist_from_intersect = step_length*(0.729614*P - 0.70252*P2)/(1.0 - 1.47494*P + 0.484371*P2);
-				newr += newn*dist_from_intersect;
-				s.mols.add_molecule(newr);
+		const int p_n = s.mols.size();
+		for (int p_i = 0; p_i < p_n; ++p_i) {
+			Vect3d intersect_point, normal;
+			const Vect3d r = s.mols.r[p_i];
+			if (this->geometry.lineXsurface(s.mols.r0[p_i],r,&intersect_point,&normal)) {
+				const int i = s.grid.get_cell_index(r);
+				dirty_indicies.insert(i);
+				s.copy_numbers[i]++;
+				s.mols.mark_for_deletion(p_i);
 			}
-			s.copy_numbers[boundary_compartment_indicies[c_i]] = 0;
 		}
-		//std::cout << count << "particles moved to free-space. Free space = "<<s.mols.size() <<" compart = "<< std::accumulate(s.copy_numbers.begin(),s.copy_numbers.end(),0) << std::endl;
+		s.mols.delete_molecules();
+		//std::cout << count << "particles moved to compartments. Free space = "<<s.mols.size() <<" compart = "<< std::accumulate(s.copy_numbers.begin(),s.copy_numbers.end(),0) << std::endl;
 	}
-
+	BOOST_FOREACH(int i, dirty_indicies) {
+		nsm->recalc_priority(i);
+	}
 }
+
+
 
 }
 

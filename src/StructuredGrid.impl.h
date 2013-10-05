@@ -2,57 +2,6 @@
 #define STRUCTUREDGRID_IMPL_H_
 
 namespace Tyche {
-template<typename T>
-bool StructuredGrid::geometry_intersects_cell(const int i, const T geometry) const {
-
-	const Vect3d low_point = index_to_vect(i).cast<double>().cwiseProduct(cell_size) + low;
-
-	bool at_least_one_zero = false;
-	bool at_least_one_negative = false;
-	bool at_least_one_positive = false;
-
-	for (int i = 0; i < 2; ++i) {
-		for (int j = 0; j < 2; ++j) {
-			for (int k = 0; k < 2; ++k) {
-				const Vect3d test_point = low_point + Vect3d(i,j,k).cwiseProduct(cell_size);
-				const double dist = geometry.distance_to_boundary(test_point);
-				if (std::abs(dist) < tolerance) {
-					at_least_one_zero = true;
-					continue;
-				}
-				const bool sign = std::signbit(dist);
-				if (sign == true) {
-					at_least_one_negative = true;
-				} else {
-					at_least_one_positive = true;
-				}
-			}
-		}
-	}
-
-	return (at_least_one_negative && at_least_one_positive) || (at_least_one_zero && at_least_one_positive);
-}
-
-
-
-template<unsigned int DIM>
-AxisAlignedRectangle<DIM> StructuredGrid::get_intersection_of_cell(const int i,
-		const Intersection<AxisAlignedPlane<DIM>,AxisAlignedPlane<DIM> >& geometry) const {
-	const double dim_map[3][2] = {{1,2},{0,2},{0,1}};
-	Vect3d low_point = index_to_vect(i).cast<double>().cwiseProduct(cell_size)+low;
-	Vect3d high_point = low_point + cell_size;
-	low_point[DIM] -= tolerance;
-	const double dist = geometry.distance_to_boundary(low_point);
-	low_point[DIM] += std::abs(dist);
-	high_point[DIM] = low_point[DIM];
-	int norm;
-	if (dist < 0) {
-		norm = +1;
-	} else {
-		norm = -1;
-	}
-	return AxisAlignedRectangle<DIM>(low_point, high_point, norm);
-}
 
 template<unsigned int DIM>
 AxisAlignedRectangle<DIM> StructuredGrid::get_intersection_of_cell(const int i,
@@ -67,14 +16,58 @@ AxisAlignedRectangle<DIM> StructuredGrid::get_intersection_of_cell(const int i,
 }
 
 template<unsigned int DIM>
-void StructuredGrid::get_slice(const Intersection<AxisAlignedPlane<DIM>,AxisAlignedPlane<DIM> >& surface, std::vector<int>& indices) const {
-	const int coord_index1 = (surface.geometry1.get_coord()-low[DIM])*inv_cell_size[DIM];
-	const int coord_index2 = (surface.geometry2.get_coord()-low[DIM])*inv_cell_size[DIM];
-	get_slice(surface.geometry1,indices);
-	if (coord_index2 != coord_index1) {
-		get_slice(surface.geometry2,indices);
+AxisAlignedRectangle<DIM> StructuredGrid::get_intersection_of_cell(const int i,
+		const AxisAlignedRectangle<DIM>& geometry) const {
+	const double dim_map[3][2] = {{1,2},{0,2},{0,1}};
+	Vect3d low_point = index_to_vect(i).cast<double>().cwiseProduct(cell_size)+low;
+	Vect3d high_point = low_point + cell_size;
+	low_point[DIM] = geometry.get_coord();
+	high_point[DIM] = low_point[DIM];
+	const int norm = geometry.get_normal();
+	return AxisAlignedRectangle<DIM>(low_point, high_point, norm);
+}
+
+template<unsigned int DIM>
+void StructuredGrid::get_slice(const AxisAlignedRectangle<DIM>& surface, std::vector<int>& indices) const {
+	const double coord_index_double = (surface.get_coord()-low[DIM])*inv_cell_size[DIM];
+	const int coord_index_int = int(floor(coord_index_double + surface.get_normal()*tolerance));
+	if ((coord_index_int < 0) || (coord_index_int > num_cells_along_axes[DIM]-1)) return;
+	static const int dim_map[][2] = {{1,2}, {0,2}, {0,1}};
+
+	Vect3d low = surface.get_low();
+	low[dim_map[DIM][0]] += tolerance;
+	low[dim_map[DIM][1]] += tolerance;
+	Vect3i min_index = get_cell_index_vector(low);
+
+	Vect3d high = surface.get_high();
+	high[dim_map[DIM][0]] -= tolerance;
+	high[dim_map[DIM][1]] -= tolerance;
+	Vect3i max_index = get_cell_index_vector(high);
+
+	ASSERT(max_index[DIM]==min_index[DIM],"surface not an axis aligned rectangle");
+
+	int num_indicies = (max_index[dim_map[DIM][0]] - min_index[dim_map[DIM][0]] + 1) *
+			(max_index[dim_map[DIM][1]] - min_index[dim_map[DIM][1]] + 1);
+
+	const int size = indices.size() + num_indicies;
+	int ret_index = indices.size();
+
+	indices.resize(size);
+	Vect3i vect_index(0,0,0);
+	vect_index[DIM] = coord_index_int;
+	for (int i = min_index[dim_map[DIM][0]]; i <= max_index[dim_map[DIM][0]]; ++i) {
+		vect_index[dim_map[DIM][0]] = i;
+		for (int j = min_index[dim_map[DIM][1]]; j <= max_index[dim_map[DIM][1]]; ++j) {
+			vect_index[dim_map[DIM][1]] = j;
+			const int index = vect_to_index(vect_index);
+			ASSERT(ret_index < size,"return index is out of bounds");
+			indices[ret_index] = index;
+			ret_index++;
+		}
 	}
 }
+
+
 template<unsigned int DIM>
 void StructuredGrid::get_slice(const AxisAlignedPlane<DIM>& surface, std::vector<int>& indices) const {
 	const double coord_index_double = (surface.get_coord()-low[DIM])*inv_cell_size[DIM];
@@ -97,6 +90,57 @@ void StructuredGrid::get_slice(const AxisAlignedPlane<DIM>& surface, std::vector
 			ASSERT(ret_index < size,"return index is out of bounds");
 			indices[ret_index] = index;
 			ret_index++;
+		}
+	}
+}
+
+template<typename T>
+void StructuredGrid::get_slice(const T geometry, std::vector<int>& indices) const {
+	indices.clear();
+	const int nedges = 12;
+	const int edges[nedges][2][3] = {{{0,0,0},{0,0,1}},
+			              {{0,0,0},{0,1,0}},
+			              {{0,0,0},{1,0,0}},
+			              {{0,0,1},{0,1,1}},
+			              {{0,0,1},{1,0,0}},
+			              {{0,1,0},{1,1,0}},
+			              {{0,1,0},{0,1,1}},
+			              {{1,0,0},{1,1,0}},
+			              {{1,0,0},{1,0,1}},
+			              {{0,1,1},{1,1,1}},
+			              {{1,1,0},{1,1,1}},
+			              {{1,0,1},{1,1,1}}};
+
+	for (int i = 0; i < num_cells; ++i) {
+		const Vect3d low_point = index_to_vect(i).cast<double>().cwiseProduct(cell_size)+low;
+		for (int j = 0; j < nedges; ++j) {
+			const Vect3d p1 = low_point + Vect3d(edges[j][0][0],edges[j][0][1],edges[j][0][2]).cwiseProduct(cell_size);
+			const Vect3d p2 = low_point + Vect3d(edges[j][1][0],edges[j][1][1],edges[j][1][2]).cwiseProduct(cell_size);
+			if (geometry.lineXsurface(p1,p2)) {
+				indices.push_back(i);
+			}
+
+		}
+	}
+}
+
+template<typename T>
+void StructuredGrid::get_region(const T geometry, std::vector<int>& indices) const {
+	indices.clear();
+	for (int i = 0; i < num_cells; ++i) {
+		Vect3d low_point = index_to_vect(i).cast<double>().cwiseProduct(cell_size)+low;
+
+		for (int i = 0; i < 2; ++i) {
+			for (int j = 0; j < 2; ++j) {
+				for (int k = 0; k < 2; ++k) {
+					const Vect3d test_point = low_point + Vect3d(i,j,k).cwiseProduct(cell_size);
+					const double dist = geometry.is_in(test_point);
+					if (dist < 0) {
+						indices.push_back(i);
+						continue;
+					}
+				}
+			}
 		}
 	}
 }

@@ -51,7 +51,6 @@ struct HeapNode {
 		return time_at_next_reaction > rhs.time_at_next_reaction;
 	}
 };
-
 typedef boost::heap::fibonacci_heap<HeapNode> PriorityHeap;
 typedef boost::heap::fibonacci_heap<HeapNode>::handle_type HeapHandle;
 
@@ -74,8 +73,8 @@ struct ReactionsWithSameRateAndLHS {
 		return all_rhs.size();
 	}
 
-	double rate;
 	ReactionSide lhs;
+	double rate;
 	std::vector<ReactionSide> all_rhs;
 };
 
@@ -99,7 +98,7 @@ public:
 	}
 	void list_reactions();
 	void add_reaction(const double rate, const ReactionEquation& eq);
-	bool delete_reaction(const ReactionEquation& eq);
+	double delete_reaction(const ReactionEquation& eq);
 	void clear();
 	ReactionEquation pick_random_reaction(const double rand);
 	double recalculate_propensities();
@@ -110,95 +109,120 @@ public:
 		return my_size;
 	}
 private:
+	double total_propensity;
 	double my_size;
 	std::vector<ReactionsWithSameRateAndLHS> reactions;
 	std::vector<double> propensities;
-	double total_propensity;
 	double inv_total_propensity;
 };
+
+template<typename T>
+void set_interface(Operator *op, const T& geometry, const double dt, const bool corrected) {
+	NextSubvolumeMethod *nsm = dynamic_cast<NextSubvolumeMethod *>(op);
+	if (!nsm) ERROR("Must pass NextSubvolumeMethod operator to set_interface");
+	nsm->set_interface(geometry,dt,corrected);
+}
 	
 
 class NextSubvolumeMethod: public Operator {
 public:
-	NextSubvolumeMethod(const StructuredGrid& subvolumes);
-
+	NextSubvolumeMethod(StructuredGrid& subvolumes);
+	static std::auto_ptr<NextSubvolumeMethod> New(StructuredGrid& subvolumes) {
+		return std::auto_ptr<NextSubvolumeMethod>(new NextSubvolumeMethod(subvolumes));
+	}
+	void integrate(const double dt) {
+		(*this)(dt);
+	}
+	void reset();
 	void list_reactions();
 	template<typename T>
-	void set_interface(Species &s, const T& geometry, const double dt) {
-		std::vector<int> indicies;
-		subvolumes.get_slice(geometry,indicies);
-		set_interface_reactions(s,indicies,dt);
+	void set_interface(const T& geometry, const double dt, const bool corrected) {
+		std::vector<int> to_indicies,from_indicies;
+		T to_geometry = geometry;
+		to_geometry += 0.5*subvolumes.get_cell_size()[T::dim];
+		T from_geometry = geometry;
+		from_geometry.swap_normal();
+		from_geometry += 0.5*subvolumes.get_cell_size()[T::dim];
+		subvolumes.get_slice(from_geometry,from_indicies);
+		subvolumes.get_slice(to_geometry,to_indicies);
+		set_interface_reactions(from_indicies,to_indicies,dt,corrected);
 	}
+
 	template<typename T>
-	void unset_interface(Species &s, const T& geometry) {
-		std::vector<int> indicies;
-		subvolumes.get_slice(geometry,indicies);
-		unset_interface_reactions(s,indicies);
+	void unset_interface(const T& geometry) {
+		std::vector<int> to_indicies,from_indicies;
+		subvolumes.get_slice(geometry,to_indicies);
+		T opposite_normal = geometry;
+		opposite_normal.swap_normal();
+		subvolumes.get_slice(geometry,from_indicies);
+		unset_interface_reactions(from_indicies,to_indicies);
 	}
-	void set_interface_reactions(Species &s, std::vector<int>& indicies, const double dt);
-	void unset_interface_reactions(Species &s, std::vector<int>& indicies);
+	void set_interface_reactions(std::vector<int>& from_indicies, std::vector<int>& to_indicies, const double dt, const bool corrected);
+	void unset_interface_reactions(std::vector<int>& from_indicies, std::vector<int>& to_indicies);
 	void add_diffusion(Species &s);
 	void add_diffusion(Species &s, const double rate);
 	void add_reaction(const double rate, ReactionEquation eq);
-//	template<typename T>
-//	void add_diffusion_between(Species &s, const double rate, T& geometry_from, T& geometry_to);
-	template<unsigned int DIM>
-	void add_diffusion_between(Species &s, const double rate, AxisAlignedPlane<DIM>& geometry_from, AxisAlignedPlane<DIM>& geometry_to) {
+	template<typename T>
+	void add_reaction_on(const double rate, ReactionEquation eq, const T& geometry) {
+		std::vector<int> indicies;
+		subvolumes.get_slice(geometry,indicies);
+		for (unsigned int i = 0; i < indicies.size(); ++i) {
+			add_reaction_to_compartment(rate,eq,i);
+		}
+	}
+
+	template<typename T>
+	void add_reaction_in(const double rate, ReactionEquation eq, const T& geometry) {
+		std::vector<int> indicies;
+		subvolumes.get_region(geometry,indicies);
+		for (unsigned int i = 0; i < indicies.size(); ++i) {
+			add_reaction_to_compartment(rate,eq,i);
+		}
+	}
+
+	template<typename T>
+	void add_diffusion_between(Species &s, const double rate, T& geometry_from, T& geometry_to) {
 		std::vector<int> from,to;
 		subvolumes.get_slice(geometry_from,from);
 		subvolumes.get_slice(geometry_to,to);
 		add_diffusion_between(s,rate,from,to);
 	}
 	void add_diffusion_between(Species &s, const double rate, std::vector<int>& from, std::vector<int>& to);
-	template<typename T>
-	void add_reaction(const double rate, ReactionEquation eq, T geometry) {
-		const int n = subvolumes.size();
-		for (int i = 0; i < n; ++i) {
-			if (subvolumes.geometry_intersects_cell(i, geometry)) {
-				add_reaction_to_compartment(rate, eq, i);
-			}
-		}
-	}
-	template<typename T>
-	void clear_reactions(T geometry) {
-		const int n = subvolumes.size();
-		for (int i = 0; i < n; ++i) {
-			if (subvolumes.geometry_intersects_cell(i, geometry)) {
-				subvolume_reactions[i].clear();
-			}
-		}
-	}
+
 	void clear_reactions(std::vector<int>& cell_indicies) {
-		BOOST_FOREACH(int i, cell_indicies) {
-			subvolume_reactions[i].clear();
+		//for (int i : cell_indicies) {
+		for (std::vector<int>::iterator i=cell_indicies.begin();i!=cell_indicies.end();i++) {
+			//subvolume_reactions[i].clear();
+			subvolume_reactions[*i].clear();
 		}
 	}
+
 	void reset_all_priorities();
 	void reset_priority(const int i);
 	void recalc_priority(const int i);
 	double get_next_event_time() {
 		return heap.top().time_at_next_reaction;
 	}
-	const StructuredGrid& get_grid() {return subvolumes;}
-
+	double get_time() {return time;}
+	StructuredGrid& get_grid() { return subvolumes; }
+	void add_reaction_to_compartment(const double rate, ReactionEquation eq, int i);
 
 protected:
 	virtual void reset_execute();
 	virtual void integrate(const double dt);
-	virtual void print(std::ostream& out) const {
-		out << "\tNext Subvolume Method";
-	}
+	virtual void print(std::ostream& out);
 private:
-	void add_reaction_to_compartment(const double rate, ReactionEquation eq, int i);
 	void react(ReactionEquation& r);
-	const StructuredGrid& subvolumes;
+	StructuredGrid& subvolumes;
 	PriorityHeap heap;
+	boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni;
 	double time;
+	std::vector<Species*> diffusing_species;
 	std::vector<ReactionList> subvolume_reactions;
 	std::vector<ReactionList> saved_subvolume_reactions;
 	std::vector<HeapHandle> subvolume_heap_handles;
-	boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni;
 };
+
 
 }
 

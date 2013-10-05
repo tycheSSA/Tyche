@@ -193,6 +193,7 @@ public:
 		dist4.param(boost::triangle_distribution<double>::param_type(arg.low[dim_map[DIM][1]],
 				0.5*(arg.low[dim_map[DIM][1]] + arg.high[dim_map[DIM][1]]),
 				arg.high[dim_map[DIM][1]] ));
+		return *this;
 	}
 
 	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {

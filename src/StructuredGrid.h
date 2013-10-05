@@ -61,9 +61,16 @@ public:
 	Vect3d get_random_point(const int i) const;
 
 	template<unsigned int DIM>
-	void get_slice(const Intersection<AxisAlignedPlane<DIM>,AxisAlignedPlane<DIM> >& surface, std::vector<int>& indices) const;
+	void get_slice(const AxisAlignedRectangle<DIM>& surface, std::vector<int>& indices) const;
+
 	template<unsigned int DIM>
 	void get_slice(const AxisAlignedPlane<DIM>& surface, std::vector<int>& indices) const;
+
+	template<typename T>
+	void get_slice(const T geometry, std::vector<int>& indices) const;
+
+	template<typename T>
+	void get_region(const T geometry, std::vector<int>& indices) const;
 
 	void get_overlap(const Vect3d& low, const Vect3d& high, std::vector<int>& indicies, std::vector<double>& volume) const;
 
@@ -79,14 +86,14 @@ public:
 	inline double get_cell_volume(const int i) const {
 		return cell_volume;
 	}
-	inline double get_total_volume() const {
-		return cell_volume*num_cells;
-	}
 	inline int size() const {
 		return num_cells;
 	}
 	inline Vect3d get_cell_size() const {
 		return cell_size;
+	}
+	inline Vect3d get_domain_size() const {
+		return domain_size;
 	}
 	double get_tolerance() const {
 		return tolerance;
@@ -112,51 +119,55 @@ public:
 	const std::vector<double>& get_neighbour_distances(const int i) const {
 		return neighbour_distances;
 	}
-	template<typename T>
-	bool geometry_intersects_cell(const int i, const T geometry) const;
+
 	inline bool is_in(const Vect3d& r) const {
 		return ((r.array() >= low.array()).all()) && ((r.array() < high.array()).all());
 	}
 	inline Vect3i get_cell_index_vector(const Vect3d &r) const {
-			ASSERT(((r.array() >= low.array()).all()) && ((r.array() < high.array()).all()), "point outside structured grid range!!!");
+			ASSERT(((r.array() >= low.array()).all()) && ((r.array() < high.array()).all()), "point "<<r<<" outside structured grid range!!!");
 			return ((r-low).cwiseProduct(inv_cell_size)).cast<int>();
 	}
 	inline int get_cell_index(const Vect3d &r) const {
-		ASSERT(((r.array() >= low.array()).all()) && ((r.array() < high.array()).all()), "point outside structured grid range!!!");
+		ASSERT(((r.array() >= low.array()).all()) && ((r.array() < high.array()).all()), "point "<<r<<" outside structured grid range!!!");
 		const Vect3i celli = ((r-low).cwiseProduct(inv_cell_size)).cast<int>();
 		return vect_to_index(celli);
 	}
 	template<unsigned int DIM>
 	AxisAlignedRectangle<DIM> get_intersection_of_cell(const int i, const AxisAlignedPlane<DIM>& geometry) const;
 	template<unsigned int DIM>
-	AxisAlignedRectangle<DIM> get_intersection_of_cell(const int i, const Intersection<AxisAlignedPlane<DIM>,AxisAlignedPlane<DIM> >& geometry) const;
+	AxisAlignedRectangle<DIM> get_intersection_of_cell(const int i, const AxisAlignedRectangle<DIM>& geometry) const;
+	vtkSmartPointer<vtkUnstructuredGrid> get_vtk_grid();
+	Rectangle get_face_between(const int i, const int j) const;
+	double get_laplace_coefficient(const int i, const int j) const;
+	double get_distance_between(const int i, const int j) const;
 
-	friend class OutputConcentrations1D;
 private:
+	vtkSmartPointer<vtkUnstructuredGrid> vtk_grid;
 	void calculate_neighbours();
 	inline int vect_to_index(const int i, const int j, const int k) const {
-		return i * num_cells_along_yz + j * num_cells_along_axes[1] + k;
+		return i * num_cells_along_yz + j * num_cells_along_axes[2] + k;
 	}
 	inline int vect_to_index(const Vect3i& vect) const {
-		return vect[0] * num_cells_along_yz + vect[1] * num_cells_along_axes[1] + vect[2];
+		return vect[0] * num_cells_along_yz + vect[1] * num_cells_along_axes[2] + vect[2];
 	}
-
+	inline int vect_to_index_nodes(const int i, const int j, const int k) const {
+		return i * (num_cells_along_axes[1]+1)*(num_cells_along_axes[2]+1) + j * (num_cells_along_axes[2]+1) + k;
+	}
 	Vect3i index_to_vect(const int i) const {
 		Vect3i ret;
-		ret[2] = i%num_cells_along_axes[1];
-		const int i2 = floor(i/num_cells_along_axes[1]);
-		ret[1] = i2%num_cells_along_axes[2];
-		ret[0] = floor(i2/num_cells_along_axes[2]);
+		ret[2] = i%num_cells_along_axes[2];
+		const int i2 = floor(i/num_cells_along_axes[2]);
+		ret[1] = i2%num_cells_along_axes[1];
+		ret[0] = floor(i2/num_cells_along_axes[1]);
 		return ret;
 	}
 
-
+	int num_cells;
 	Vect3d low,high,domain_size;
 	Vect3d cell_size,inv_cell_size;
 	Vect3i num_cells_along_axes;
 	double cell_volume;
 	int num_cells_along_yz;
-	int num_cells;
 	double tolerance;
 	std::vector<std::vector<int> > neighbours;
 	std::vector<double> neighbour_distances;

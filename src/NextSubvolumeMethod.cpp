@@ -31,16 +31,23 @@ ReactionSide& ReactionsWithSameRateAndLHS::pick_random_rhs(const double rand) {
 }
 
 
+
 void ReactionList::list_reactions() {
-	BOOST_FOREACH(ReactionsWithSameRateAndLHS& r, reactions) {
-		std::cout <<"With rate = " << r.rate << ":" << std::endl;
-		BOOST_FOREACH(ReactionSide& rhs, r.all_rhs) {
-			BOOST_FOREACH(ReactionComponent& c, r.lhs) {
-				std::cout << "(" << c.multiplier << "*" << c.species->id << "<" << c.compartment_index << ">) ";
+	//for (auto& r : reactions) {
+	for (std::vector<ReactionsWithSameRateAndLHS>::iterator r=reactions.begin();r!=reactions.end();r++) {
+		std::cout <<"With rate = " << r->rate << ":" << std::endl;
+		//for (auto& rhs : r.all_rhs) {
+		for (std::vector<ReactionSide>::iterator rhs=r->all_rhs.begin();rhs!=r->all_rhs.end();rhs++) {
+			//for (auto& c : r.lhs) {
+			for (std::vector<ReactionComponent>::iterator c=r->lhs.begin();c!=r->lhs.end();c++) {
+				//std::cout << "(" << c.multiplier << "*" << c.species->id << "<" << c.compartment_index << ">) ";
+				std::cout << "(" << c->multiplier << "*" << c->species->id << "<" << c->compartment_index << ">) ";
 			}
 			std::cout << "-> ";
-			BOOST_FOREACH(ReactionComponent& c, rhs) {
-				std::cout << "(" << c.multiplier << "*" << c.species->id << "<" << c.compartment_index << ">) ";
+			//for (auto& c : rhs) {
+			for (std::vector<ReactionComponent>::iterator c=rhs->begin();c!=rhs->end();c++) {
+				//std::cout << "(" << c.multiplier << "*" << c.species->id << "<" << c.compartment_index << ">) ";
+				std::cout << "(" << c->multiplier << "*" << c->species->id << "<" << c->compartment_index << ">) ";
 			}
 			std::cout << std::endl;
 		}
@@ -63,8 +70,10 @@ void ReactionList::add_reaction(const double rate, const ReactionEquation& eq) {
 	ReactionSide sorted_lhs(eq.lhs);
 	std::sort(sorted_lhs.begin(),sorted_lhs.end());
 	//std::cout <<"added sorted reaction. size of lhs = "<<sorted_lhs.size()<<std::endl;
-	BOOST_FOREACH(ReactionsWithSameRateAndLHS& r, reactions) {
-		added |= r.add_if_same_lhs(rate, sorted_lhs, eq.rhs);
+	//for (auto& r : reactions) {
+	for (std::vector<ReactionsWithSameRateAndLHS>::iterator r=reactions.begin();r!=reactions.end();r++) {
+		//added |= r.add_if_same_lhs(rate, sorted_lhs, eq.rhs);
+		added |= r->add_if_same_lhs(rate, sorted_lhs, eq.rhs);
 		if (added) break;
 	}
 	if (!added) {
@@ -80,8 +89,9 @@ void ReactionList::clear() {
 	my_size = 0;
 }
 
-bool ReactionList::delete_reaction(const ReactionEquation& eq) {
+double ReactionList::delete_reaction(const ReactionEquation& eq) {
 	const int n = reactions.size();
+	double ret_rate = 0;
 	bool found = false;
 	int i,j;
 	for (i = 0; i < n; ++i) {
@@ -99,6 +109,7 @@ bool ReactionList::delete_reaction(const ReactionEquation& eq) {
 //		return;
 //	}
 	if (found) {
+		ret_rate = reactions[i].rate;
 		reactions[i].all_rhs.erase(reactions[i].all_rhs.begin() + j);
 		if (reactions[i].all_rhs.size() == 0) {
 			reactions.erase(reactions.begin() + i);
@@ -106,7 +117,7 @@ bool ReactionList::delete_reaction(const ReactionEquation& eq) {
 		}
 		my_size--;
 	}
-	return found;
+	return ret_rate;
 }
 
 ReactionEquation ReactionList::pick_random_reaction(const double rand) {
@@ -138,18 +149,18 @@ double ReactionList::recalculate_propensities() {
 	for (int i = 0; i < n; i++) {
 		ReactionsWithSameRateAndLHS& rs = reactions[i];
 		double& propensity = propensities[i];
-		const int n = rs.lhs.size();
 		propensity = 1.0;
 		int beta = 0;
-		BOOST_FOREACH(ReactionComponent rc, rs.lhs) {
-			int copy_number = rc.species->copy_numbers[rc.compartment_index];
-			beta += rc.multiplier;
+		//for (auto& rc : rs.lhs) {
+		for (std::vector<ReactionComponent>::iterator rc=rs.lhs.begin();rc!=rs.lhs.end();rc++) {
+			int copy_number = rc->species->copy_numbers[rc->compartment_index];
+			beta += rc->multiplier;
 			ASSERT(copy_number >= 0, "copy number is less than zero!!");
-			if (copy_number < rc.multiplier) {
+			if (copy_number < rc->multiplier) {
 				propensity = 0.0;
 				break;
 			}
-			for (int k = 1; k < rc.multiplier; ++k) {
+			for (int k = 1; k < rc->multiplier; ++k) {
 				copy_number *= copy_number-k;
 			}
 			propensity *= copy_number;
@@ -166,10 +177,9 @@ double ReactionList::recalculate_propensities() {
 	return inv_total_propensity;
 }
 
-static const double LONGEST_TIME = 100000;
 
 
-NextSubvolumeMethod::NextSubvolumeMethod(const StructuredGrid& subvolumes):
+NextSubvolumeMethod::NextSubvolumeMethod(StructuredGrid& subvolumes):
 		subvolumes(subvolumes),
 		uni(generator,boost::uniform_real<>(0,1)),
 		time(0) {
@@ -184,8 +194,8 @@ NextSubvolumeMethod::NextSubvolumeMethod(const StructuredGrid& subvolumes):
 	}
 }
 
-void NextSubvolumeMethod::reset_execute() {
-	time = 0.0;
+void NextSubvolumeMethod::reset() {
+	Operator::reset();
 	reset_all_priorities();
 }
 
@@ -211,25 +221,31 @@ void  NextSubvolumeMethod::add_reaction_to_compartment(const double rate, Reacti
 	}
 }
 
+
 void NextSubvolumeMethod::add_diffusion(Species &s, const double rate) {
+	this->add_species(s);
+
 	const int n = subvolumes.size();
-		for (int i = 0; i < n; ++i) {
-			const std::vector<int>& neighbrs = subvolumes.get_neighbour_indicies(i);
-			const int nn = neighbrs.size();
-			for (int j = 0; j < nn; ++j) {
-				ReactionSide lhs;
-				lhs.push_back(ReactionComponent(1.0,s,i));
-				ReactionSide rhs;
-				rhs.push_back(ReactionComponent(1.0,s,neighbrs[j]));
-//				if (i==0) {
-//					std::cout <<"adding reaction with rate = "<<rate<<" and lhs[0].compartment_index = "<<lhs[0].compartment_index<<" and rhs[0].compartment_index"<<rhs[0].compartment_index<<" to the 0th compartment"<<std::endl;
-//				}
-				subvolume_reactions[i].add_reaction(rate,ReactionEquation(lhs,rhs));
-			}
+	for (int i = 0; i < n; ++i) {
+		const std::vector<int>& neighbrs = subvolumes.get_neighbour_indicies(i);
+		const int nn = neighbrs.size();
+		for (int j = 0; j < nn; ++j) {
+			ReactionSide lhs;
+			lhs.push_back(ReactionComponent(1.0,s,i));
+			ReactionSide rhs;
+			rhs.push_back(ReactionComponent(1.0,s,neighbrs[j]));
+			//				if (i==0) {
+			//					std::cout <<"adding reaction with rate = "<<rate<<" and lhs[0].compartment_index = "<<lhs[0].compartment_index<<" and rhs[0].compartment_index"<<rhs[0].compartment_index<<" to the 0th compartment"<<std::endl;
+			//				}
+			subvolume_reactions[i].add_reaction(rate,ReactionEquation(lhs,rhs));
 		}
+	}
+
 }
 
 void NextSubvolumeMethod::add_diffusion(Species &s) {
+	this->add_species(s);
+
 	const int n = subvolumes.size();
 		for (int i = 0; i < n; ++i) {
 			const std::vector<int>& neighbrs = subvolumes.get_neighbour_indicies(i);
@@ -288,10 +304,6 @@ void NextSubvolumeMethod::reset_priority(const int i) {
 			heap.erase(subvolume_heap_handles[i]);
 		}
 	}
-//	if (i==929) {
-//		std::cout <<"recalcing priority for 929: time to next react = "<<h.time_at_next_reaction<<" total propensity = "<<1.0/inv_total_propensity<<std::endl;
-//	}
-
 }
 
 void NextSubvolumeMethod::recalc_priority(const int i) {
@@ -321,9 +333,6 @@ void NextSubvolumeMethod::recalc_priority(const int i) {
 			heap.erase(subvolume_heap_handles[i]);
 		}
 	}
-//	if (i==929) {
-//		std::cout <<"recalcing priority for 929: time to next react = "<<h.time_at_next_reaction<<" total propensity = "<<1.0/inv_total_propensity<<std::endl;
-//	}
 }
 
 void NextSubvolumeMethod::integrate(const double dt) {
@@ -349,101 +358,146 @@ void NextSubvolumeMethod::list_reactions() {
 	}
 }
 
-void NextSubvolumeMethod::set_interface_reactions(Species& s,
-		std::vector<int>& indicies, const double dt) {
+void NextSubvolumeMethod::set_interface_reactions(
+		std::vector<int>& from_indicies,
+		std::vector<int>& to_indicies,
+		const double dt,
+		const bool corrected) {
 
-	/*
-	 * save reactions for all indicies. if no reactions assume it is already set to an interface
-	 * and do not save
-	 */
-	BOOST_FOREACH(int i,indicies) {
-		if (subvolume_reactions[i].size() > 0) {
-			saved_subvolume_reactions[i] = subvolume_reactions[i];
-			subvolume_reactions[i].clear();
-			reset_priority(i);
-		}
-	}
-
+	//std::cout << "setting interface from x["<<from_indicies.size()<<"] to y["<<to_indicies.size()<<"] with dt = "<<dt<<std::endl;
+//	for (unsigned int i = 0; i < from_indicies.size(); ++i) {
+//		std::cout << "\tfrom "<<from_indicies[i] << " to "<<to_indicies[i]<<std::endl;
+//	}
+	const unsigned int n = from_indicies.size();
+	ASSERT(n==to_indicies.size(),"from and to indicies vectors have different size");
 	/*
 	 * update diffusion reaction rates for neighbouring cells
 	 */
-	BOOST_FOREACH(int i,indicies) {
-		const std::vector<int>& neighbours = subvolumes.get_neighbour_indicies(i);
-		const std::vector<double>& neighbrs_distances = subvolumes.get_neighbour_distances(i);
-		const int n = neighbours.size();
-		for (int ii = 0; ii < n; ++ii) {
-			const int j = neighbours[ii];
-			const double distance = neighbrs_distances[ii];
-			if (subvolume_reactions[j].size() == 0) continue;
+	const int ns = diffusing_species.size();
+	for (int is = 0; is < ns; ++is) {
+		Species& s = *diffusing_species[is];
+		for (unsigned int ii = 0; ii < n; ++ii) {
+			const int i = from_indicies[ii];
+			const int j = to_indicies[ii];
 			ReactionSide lhs;
-			lhs.push_back(ReactionComponent(1.0,s,j));
+			lhs.push_back(ReactionComponent(1.0,s,i));
 			ReactionSide rhs;
-			rhs.push_back(ReactionComponent(1.0,s,i));
-			if (subvolume_reactions[j].delete_reaction(ReactionEquation(lhs,rhs))) {
-				const double rate = (2.0*distance/sqrt(PI*s.D*dt))*(s.D/pow(distance,2));
-				subvolume_reactions[j].add_reaction(rate,ReactionEquation(lhs,rhs));
-				//std::cout << "new number of reactions is "<<subvolume_reactions[j].size()<< " for compartment "<<j<<std::endl;
-				reset_priority(j);
+			rhs.push_back(ReactionComponent(1.0,s,j));
+			rhs[0].tmp = std::sqrt(2.0*s.D*dt);
+			double rate = subvolume_reactions[i].delete_reaction(ReactionEquation(lhs,rhs));
+			if (rate != 0) {
+				//rate *= 2.0*subvolumes.get_distance_between(i,j)/sqrt(PI*s.D*dt);
+				const double h = subvolumes.get_distance_between(i,j);
+				if (corrected) {
+					rate *= 2.0*h/sqrt(PI*s.D*dt);
+				} else {
+					rate *= h/sqrt(PI*s.D*dt);
+				}
+				//std::cout << "new interface rate = rate * 2*"<<subvolumes.get_distance_between(i,j)<<" div sqrt(pi*d*dt)"<<std::endl;
+				//rate *= 0.5;
+				rhs[0].compartment_index = -j;
+				subvolume_reactions[i].add_reaction(rate,ReactionEquation(lhs,rhs));
+				reset_priority(i);
 			}
+//			std::cout << "reactions for i,j = "<<i<<","<<j<<std::endl;
+//			subvolume_reactions[i].list_reactions();
 		}
 	}
 }
 
-void NextSubvolumeMethod::unset_interface_reactions(Species& s,
-		std::vector<int>& indicies) {
+void NextSubvolumeMethod::unset_interface_reactions(
+		std::vector<int>& from_indicies,
+		std::vector<int>& to_indicies) {
 	/*
 	 * update diffusion reaction rates for neighbouring cells
 	 */
-	BOOST_FOREACH(int i,indicies) {
-		const std::vector<int>& neighbours = subvolumes.get_neighbour_indicies(i);
-		const std::vector<double>& neighbrs_distances = subvolumes.get_neighbour_distances(i);
-		const int n = neighbours.size();
-		for (int ii = 0; ii < n; ++ii) {
-			const int j = neighbours[ii];
-			const double distance = neighbrs_distances[ii];
-			if (subvolume_reactions[j].size() == 0) continue;
+	const unsigned int n = from_indicies.size();
+	ASSERT(n==to_indicies.size(),"from and to indicies vectors have different size");
+
+	const unsigned int ns = diffusing_species.size();
+	for (unsigned int is = 0; is < ns; ++is) {
+		Species& s = *diffusing_species[is];
+		for (unsigned int ii = 0; ii < n; ++ii) {
+			const int i = from_indicies[ii];
+			const int j = to_indicies[ii];
 			ReactionSide lhs;
-			lhs.push_back(ReactionComponent(1.0,s,j));
+			lhs.push_back(ReactionComponent(1.0,s,i));
 			ReactionSide rhs;
-			rhs.push_back(ReactionComponent(1.0,s,i));
-			if (subvolume_reactions[j].delete_reaction(ReactionEquation(lhs,rhs))) {
-				const double rate = s.D/pow(distance,2);
-				subvolume_reactions[j].add_reaction(rate,ReactionEquation(lhs,rhs));
-				reset_priority(j);
+			rhs.push_back(ReactionComponent(1.0,s,-j));
+			double rate = subvolume_reactions[i].delete_reaction(ReactionEquation(lhs,rhs));
+			if (rate != 0) {
+				rate = s.D*subvolumes.get_laplace_coefficient(i,j);
+				if (rate != 0) {
+					rhs[0].compartment_index = j;
+					subvolume_reactions[i].add_reaction(rate,ReactionEquation(lhs,rhs));
+				}
+				reset_priority(i);
 			}
 		}
 	}
-	/*
-	 * return these cells to their original reactions list
-	 */
-	BOOST_FOREACH(int i,indicies) {
-		//ASSERT(s.copy_numbers[i] == 0, "Can't unset interface cells that have particles in them.");
-		subvolume_reactions[i] = saved_subvolume_reactions[i];
-		reset_priority(i);
-	}
-
 }
-
 
 
 void NextSubvolumeMethod::react(ReactionEquation& eq) {
-	bool print = false;
-	BOOST_FOREACH(ReactionComponent rc, eq.lhs) {
-		rc.species->copy_numbers[rc.compartment_index] -= rc.multiplier;
+	//for (auto& rc : eq.lhs) {
+	for (std::vector<ReactionComponent>::iterator rc=eq.lhs.begin();rc!=eq.lhs.end();rc++) {
+		//rc.species->copy_numbers[rc.compartment_index] -= rc.multiplier;
+		rc->species->copy_numbers[rc->compartment_index] -= rc->multiplier;
 //		if ((rc.compartment_index==0)||(rc.compartment_index==560)) {
 //			print = true;
 //			std::cout<<" compartment "<<rc.compartment_index<<" changed to have "<<rc.species->copy_numbers[rc.compartment_index]<<" molecules"<<std::endl;
 //		}
 	}
 	if (eq.lhs.size() > 0) reset_priority(eq.lhs[0].compartment_index);
-	BOOST_FOREACH(ReactionComponent rc, eq.rhs) {
-		rc.species->copy_numbers[rc.compartment_index] += rc.multiplier;
+	//for (auto& rc : eq.rhs) {
+	for (std::vector<ReactionComponent>::iterator rc=eq.rhs.begin();rc!=eq.rhs.end();rc++) {
+		if (rc->compartment_index < 0) {
+//			const double step_length = rc.tmp;
+//			const double dt = pow(step_length,2)/(2.0*rc.species->D);
+//			const double kappa = 0.86*step_length/dt;
+//			const double h = subvolumes.get_distance_between(eq.lhs[0].compartment_index,-rc.compartment_index);
+//			const double P1 = kappa*h/rc.species->D;
+//			std::cout << "absorbing with P1 = "<<P1<<std::endl;
+//			if (uni() < P1) {
+				Rectangle r = subvolumes.get_face_between(eq.lhs[0].compartment_index,-rc->compartment_index);
+				Vect3d oldr,newn;
+				r.get_random_point_and_normal_triangle(oldr, newn);
+				const double P = uni();
+				const double P2 = pow(P,2);
+				const double step_length = rc->tmp;
+				const double dist_from_intersect = step_length*(0.729614*P - 0.70252*P2)/(1.0 - 1.47494*P + 0.484371*P2);
+				const Vect3d newr = oldr + newn*dist_from_intersect;
+				rc->species->mols.add_molecule(newr,oldr);
+//			} else {
+//				rc.species->copy_numbers[rc.compartment_index] += rc.multiplier;
+//			}
+		} else {
+			rc->species->copy_numbers[rc->compartment_index] += rc->multiplier;
+		}
 //		if ((rc.compartment_index==0)||(rc.compartment_index==560)) {
 //			std::cout<<" compartment "<<rc.compartment_index<<" changed to have "<<rc.species->copy_numbers[rc.compartment_index]<<" molecules"<<std::endl;
 //		}
 	}
-	if (eq.rhs.size() > 0) recalc_priority(eq.rhs[0].compartment_index);
+	if ((eq.rhs.size() > 0) && (eq.rhs[0].compartment_index >= 0)) {
+		recalc_priority(eq.rhs[0].compartment_index);
+	}
 }
+
+
+void NextSubvolumeMethod::print(std::ostream& out) {
+	out << "\tNext Subvolume Method:"<<std::endl;
+	out << "\t\tStructured Grid:"<<std::endl;
+	out << "\t\t\tlow = "<<get_grid().get_low() << " high = "<<get_grid().get_high()<<std::endl;
+	out << "\t\t\tcompartment sizes = "<<get_grid().get_cell_size() << std::endl;
+	out << "\t\tDiffusing Species:"<<std::endl;
+	for (unsigned int i = 0; i < get_species().size(); ++i) {
+		Species *s = get_species()[i];
+		out <<"\t\t\tSpecies "<<s->id<<" (D = "<<s->D<<") has "<<
+					std::accumulate(s->copy_numbers.begin(),s->copy_numbers.end(),0)<<
+					" particles in compartments and "<<s->particles.size()<<" off-lattice particles"<<std::endl;
+	}
+}
+
 
 
 }
