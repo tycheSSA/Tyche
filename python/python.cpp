@@ -251,8 +251,7 @@ std::auto_ptr<Operator> group(const boost::python::list& ops) {
 	return std::auto_ptr<Operator>(result);
 }
 
-
-ReactionEquation* create_reaction_equation(const boost::python::list& reactants, const boost::python::list& products) {
+void NextSubvolumeMethod_add_reaction(NextSubvolumeMethod& self, const double rate, const boost::python::list& reactants, const boost::python::list& products) {
 	ReactionSide lhs;
 	const int nr = len(reactants);
 	for (int i = 0; i < nr; ++i) {
@@ -266,7 +265,48 @@ ReactionEquation* create_reaction_equation(const boost::python::list& reactants,
 		Species* s = extract<Species*>(products[i]);
 		rhs = rhs + *s;
 	}
-	ReactionEquation eq = *s1 + *s2 >> rhs;
+	ReactionEquation eq = lhs >> rhs;
+	self.add_reaction(rate,eq);
+}
+
+template<typename T>
+void NextSubvolumeMethod_add_reaction_in(NextSubvolumeMethod& self, const double rate, const boost::python::list& reactants, const boost::python::list& products, const T& geometry) {
+	ReactionSide lhs;
+	const int nr = len(reactants);
+	for (int i = 0; i < nr; ++i) {
+		Species* s = extract<Species*>(reactants[i]);
+		lhs = lhs + *s;
+	}
+
+	ReactionSide rhs;
+	const int np = len(products);
+	for (int i = 0; i < np; ++i) {
+		Species* s = extract<Species*>(products[i]);
+		rhs = rhs + *s;
+	}
+	ReactionEquation eq = lhs >> rhs;
+	self.add_reaction_in(rate,eq,geometry);
+}
+
+template<typename T>
+void NextSubvolumeMethod_add_reaction_on(NextSubvolumeMethod& self, const double rate, const boost::python::list& reactants, const boost::python::list& products, const T& geometry) {
+	ReactionSide lhs;
+	const int nr = len(reactants);
+	for (int i = 0; i < nr; ++i) {
+		Species* s = extract<Species*>(reactants[i]);
+		lhs = lhs + *s;
+	}
+
+	ReactionSide rhs;
+	const int np = len(products);
+	for (int i = 0; i < np; ++i) {
+		Species* s = extract<Species*>(products[i]);
+		rhs = rhs + *s;
+	}
+	ReactionEquation eq = lhs >> rhs;
+	self.add_reaction_on(rate,eq,geometry);
+}
+
 
 template <typename T>
 std::auto_ptr<Operator> new_jump_boundary(const T& geometry, const boost::python::list& py_jump_by){
@@ -291,6 +331,19 @@ struct vtkSmartPointer_to_python {
 		return incref(obj.ptr());
 	}
 };
+
+template<typename T>
+std::auto_ptr<T> axis_aligned_rect_new(const boost::python::list& min, const boost::python::list& max, const int normal) {
+	Vect3d cmin,cmax;
+	CHECK(len(min)==3,"length of min should be 3");
+	CHECK(len(max)==3,"length of max should be 3");
+
+	for (int i = 0; i < 3; ++i) {
+		cmin[i] = extract<double>(min[i]);
+		cmax[i] = extract<double>(max[i]);
+	}
+	return T::New(cmin,cmax,normal);
+}
 
 
 BOOST_PYTHON_MODULE(pyTyche) {
@@ -342,9 +395,9 @@ BOOST_PYTHON_MODULE(pyTyche) {
 	def("new_xplane",xplane::New);
 	def("new_yplane",yplane::New);
 	def("new_zplane",zplane::New);
-	def("new_xrect",xrect::New);
-	def("new_yrect",yrect::New);
-	def("new_zrect",zrect::New);
+	def("new_xrect",axis_aligned_rect_new<xrect>);
+	def("new_yrect",axis_aligned_rect_new<yrect>);
+	def("new_zrect",axis_aligned_rect_new<zrect>);
 
 	class_<xplane,typename std::auto_ptr<xplane> >("Xplane",boost::python::no_init);
 	class_<yplane,typename std::auto_ptr<yplane> >("Yplane",boost::python::no_init);
@@ -432,17 +485,14 @@ BOOST_PYTHON_MODULE(pyTyche) {
     	.def("unset_interface",&NextSubvolumeMethod::unset_interface<yrect>)
     	.def("unset_interface",&NextSubvolumeMethod::unset_interface<zrect>)
     	.def("add_diffusion",&NextSubvolumeMethod::add_diffusion)
-    	.def("add_diffusion",&NextSubvolumeMethod::add_diffusion)
-    	.def("add_reaction",&NextSubvolumeMethod::add_reaction)
-
-
-
-    	.def("reset",&Operator::reset)
-    					.def("add_species",&Operator::add_species)
-    					.def("get_species_index",&Operator::get_species_index)
-    					.def("integrate_for_time",&Operator::integrate_for_time)
-    					.def(self_ns::str(self_ns::self))
-    					;
+    	.def("add_reaction",&NextSubvolumeMethod_add_reaction)
+    	.def("add_reaction_on",&NextSubvolumeMethod_add_reaction_on<xplane>)
+    	.def("add_reaction_on",&NextSubvolumeMethod_add_reaction_on<yplane>)
+    	.def("add_reaction_on",&NextSubvolumeMethod_add_reaction_on<zplane>)
+    	.def("add_reaction_on",&NextSubvolumeMethod_add_reaction_on<xrect>)
+    	.def("add_reaction_on",&NextSubvolumeMethod_add_reaction_on<yrect>)
+    	.def("add_reaction_on",&NextSubvolumeMethod_add_reaction_on<zrect>)
+    	;
 
 }
 

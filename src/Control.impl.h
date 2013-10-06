@@ -37,11 +37,12 @@ void GrowingInterface<T>::integrate(const double dt) {
 		//TODO: assumes only one species;
 		Species &s = *(this->get_species()[0]);
 
-		std::vector<int> grid_indices_current, grid_indices_shrink;
+		std::vector<int> grid_indices_current, grid_indices_shrink, grid_indices_shrink2;
 		s.grid.get_slice(this->geometry,grid_indices_current);
 		this->geometry -= move_by;
+		s.grid.get_slice(this->geometry,grid_indices_shrink);
 		if (this->geometry.is_between(shrink_to,grow_to)) {
-			s.grid.get_slice(this->geometry,grid_indices_shrink);
+
 //			std::cout << "grid indicies shrink are: "
 //			for (auto i: grid_indices_shrink) {
 //				std::cout << i<<' ';
@@ -52,7 +53,7 @@ void GrowingInterface<T>::integrate(const double dt) {
 			const bool is_meaningful_shrink = (grid_indices_shrink.size() > 0) || (grid_indices_current.size() > 0);
 			if ((is_meaningful_shrink)&&(total_copy_number_shrink < shrink_threshold)) {
 				LOG(1.0,"Shrinking interface at " << this->geometry <<". found " << total_copy_number_shrink <<" molecules behind interface");
-				nsm.unset_interface_reactions(s,grid_indices_current);
+				nsm.unset_interface_reactions(grid_indices_shrink,grid_indices_current);
 				/*
 				 * If there are any molecules in the compartments, randomly
 				 * pick a position for them and either convert them to particles
@@ -69,7 +70,9 @@ void GrowingInterface<T>::integrate(const double dt) {
 						}
 					}
 				}
-				nsm.set_interface_reactions(s,grid_indices_shrink,dt);
+				this->geometry -= move_by;
+				s.grid.get_slice(this->geometry,grid_indices_shrink2);
+				nsm.set_interface_reactions(grid_indices_shrink2,grid_indices_shrink,dt,true);
 				//					OutputMolecularConcentrations out_mol("simpleReact_mi_after_shrink_mols_",0,0.0,1.0,100);out_mol.add_species(s);
 				//					OutputCompartmentConcentrations out_compart("simpleReact_mi_after_shrink_compart_",0);out_compart.add_species(s);
 				//					out_mol(this->time);out_compart(this->time);
@@ -111,8 +114,8 @@ void GrowingInterface<T>::integrate(const double dt) {
 					s.copy_numbers[s.grid.get_cell_index(s.mols.r[i])]++;
 					s.mols.delete_molecule(i);
 				}
-				nsm.unset_interface_reactions(s, grid_indices_current);
-				nsm.set_interface_reactions(s,grid_indices_grow,dt);
+				nsm.unset_interface_reactions(grid_indices_shrink, grid_indices_current);
+				nsm.set_interface_reactions(grid_indices_current,grid_indices_grow,dt,true);
 				//				nsm.clear_reactions(grid_indices_grow);
 				//				nsm.copy_reactions(grid_indices_shrink[0],)
 

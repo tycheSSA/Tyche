@@ -116,12 +116,12 @@ private:
 	double inv_total_propensity;
 };
 
-template<typename T>
-void set_interface(Operator *op, const T& geometry, const double dt, const bool corrected) {
-	NextSubvolumeMethod *nsm = dynamic_cast<NextSubvolumeMethod *>(op);
-	if (!nsm) ERROR("Must pass NextSubvolumeMethod operator to set_interface");
-	nsm->set_interface(geometry,dt,corrected);
-}
+//template<typename T>
+//void set_interface(Operator *op, const T& geometry, const double dt, const bool corrected) {
+//	NextSubvolumeMethod *nsm = dynamic_cast<NextSubvolumeMethod *>(op);
+//	if (!nsm) ERROR("Must pass NextSubvolumeMethod operator to set_interface");
+//	nsm->set_interface(geometry,dt,corrected);
+//}
 	
 
 class NextSubvolumeMethod: public Operator {
@@ -130,10 +130,7 @@ public:
 	static std::auto_ptr<NextSubvolumeMethod> New(StructuredGrid& subvolumes) {
 		return std::auto_ptr<NextSubvolumeMethod>(new NextSubvolumeMethod(subvolumes));
 	}
-	void integrate(const double dt) {
-		(*this)(dt);
-	}
-	void reset();
+
 	void list_reactions();
 	template<typename T>
 	void set_interface(const T& geometry, const double dt, const bool corrected) {
@@ -160,7 +157,6 @@ public:
 	void set_interface_reactions(std::vector<int>& from_indicies, std::vector<int>& to_indicies, const double dt, const bool corrected);
 	void unset_interface_reactions(std::vector<int>& from_indicies, std::vector<int>& to_indicies);
 	void add_diffusion(Species &s);
-	void add_diffusion(Species &s, const double rate);
 	void add_reaction(const double rate, ReactionEquation eq);
 	template<typename T>
 	void add_reaction_on(const double rate, ReactionEquation eq, const T& geometry) {

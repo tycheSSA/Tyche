@@ -60,17 +60,21 @@ public:
 			normal(arg.normal)
 	{}
 
+	static std::auto_ptr<AxisAlignedPlane<DIM> > New(const double coord, const int normal) {
+		return std::auto_ptr<AxisAlignedPlane<DIM> >(new AxisAlignedPlane<DIM>(coord,normal));
+	}
+
 	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
 		if (((p2[DIM]>=coord)&&(p1[coord]<coord))||((p2[DIM]<coord)&&(p1[coord]>=coord))) {
 			if (intersect_point != NULL) {
-				intersect_point[DIM] = coord;
-				intersect_point[dim_map[DIM][0]] = 0.5*(p1[dim_map[DIM][0]] + p2[dim_map[DIM][0]]);
-				intersect_point[dim_map[DIM][1]] = 0.5*(p1[dim_map[DIM][1]] + p2[dim_map[DIM][1]]);
+				(*intersect_point)[DIM] = coord;
+				(*intersect_point)[dim_map[DIM][0]] = 0.5*(p1[dim_map[DIM][0]] + p2[dim_map[DIM][0]]);
+				(*intersect_point)[dim_map[DIM][1]] = 0.5*(p1[dim_map[DIM][1]] + p2[dim_map[DIM][1]]);
 			}
 			if (intersect_normal != NULL) {
-				intersect_normal[DIM] = 1.0;
-				intersect_normal[dim_map[DIM][0]] = 0.0;
-				intersect_normal[dim_map[DIM][1]] = 0.0;
+				(*intersect_normal)[DIM] = 1.0;
+				(*intersect_normal)[dim_map[DIM][0]] = 0.0;
+				(*intersect_normal)[dim_map[DIM][1]] = 0.0;
 			}
 			return true;
 		} else {
@@ -176,6 +180,11 @@ public:
 						0.5*(arg.low[dim_map[DIM][1]] + arg.high[dim_map[DIM][1]]),
 						arg.high[dim_map[DIM][1]] ))
 						{}
+
+	static std::auto_ptr<AxisAlignedRectangle<DIM> > New(const Vect3d _low, const Vect3d _high, const int _normal) {
+		return std::auto_ptr<AxisAlignedRectangle<DIM> >(new AxisAlignedRectangle<DIM>(_low,_high,_normal));
+	}
+
 	AxisAlignedRectangle<DIM>& operator=(const AxisAlignedRectangle<DIM>& arg) {
 		AxisAlignedPlane<DIM>::operator=(arg);
 		low = arg.low;
@@ -203,14 +212,14 @@ public:
 				const double intersect1 = 0.5*(p1[dim_map[DIM][1]] + p2[dim_map[DIM][1]]);
 				if ((intersect1 >= low[dim_map[DIM][1]]) && (intersect1 < high[dim_map[DIM][1]])) {
 					if (intersect_point != NULL) {
-						intersect_point[DIM] = low[DIM];
-						intersect_point[dim_map[DIM][0]] = intersect0;
-						intersect_point[dim_map[DIM][1]] = intersect1;
+						(*intersect_point)[DIM] = low[DIM];
+						(*intersect_point)[dim_map[DIM][0]] = intersect0;
+						(*intersect_point)[dim_map[DIM][1]] = intersect1;
 					}
 					if (intersect_normal != NULL) {
-						intersect_normal[DIM] = 1.0;
-						intersect_normal[dim_map[DIM][0]] = 0.0;
-						intersect_normal[dim_map[DIM][1]] = 0.0;
+						(*intersect_normal)[DIM] = 1.0;
+						(*intersect_normal)[dim_map[DIM][0]] = 0.0;
+						(*intersect_normal)[dim_map[DIM][1]] = 0.0;
 					}
 					return true;
 				}
@@ -259,7 +268,7 @@ typedef AxisAlignedRectangle<2> zrect;
 
 template<unsigned int DIM>
 std::ostream& operator<< (std::ostream& out, const AxisAlignedRectangle<DIM>& p) {
-	return out << "Rectangle aligned with dimension " << DIM << ". Lower point in other dimensions is "<<p.low<<". Upper point in other dimensions is "<<p.high<<".";
+	return out << "Rectangle aligned with dimension " << DIM << ". Lower point in other dimensions is "<<p.get_low()<<". Upper point in other dimensions is "<<p.get_high()<<".";
 }
 
 class Rectangle {

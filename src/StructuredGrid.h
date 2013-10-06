@@ -31,6 +31,8 @@
 #include "Log.h"
 #include <vector>
 #include <cmath>
+#include <vtkUnstructuredGrid.h>
+#include <vtkSmartPointer.h>
 
 namespace Tyche {
 class StructuredGrid {

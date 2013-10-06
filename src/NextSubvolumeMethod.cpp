@@ -194,8 +194,7 @@ NextSubvolumeMethod::NextSubvolumeMethod(StructuredGrid& subvolumes):
 	}
 }
 
-void NextSubvolumeMethod::reset() {
-	Operator::reset();
+void NextSubvolumeMethod::reset_execute() {
 	reset_all_priorities();
 }
 
@@ -222,26 +221,26 @@ void  NextSubvolumeMethod::add_reaction_to_compartment(const double rate, Reacti
 }
 
 
-void NextSubvolumeMethod::add_diffusion(Species &s, const double rate) {
-	this->add_species(s);
-
-	const int n = subvolumes.size();
-	for (int i = 0; i < n; ++i) {
-		const std::vector<int>& neighbrs = subvolumes.get_neighbour_indicies(i);
-		const int nn = neighbrs.size();
-		for (int j = 0; j < nn; ++j) {
-			ReactionSide lhs;
-			lhs.push_back(ReactionComponent(1.0,s,i));
-			ReactionSide rhs;
-			rhs.push_back(ReactionComponent(1.0,s,neighbrs[j]));
-			//				if (i==0) {
-			//					std::cout <<"adding reaction with rate = "<<rate<<" and lhs[0].compartment_index = "<<lhs[0].compartment_index<<" and rhs[0].compartment_index"<<rhs[0].compartment_index<<" to the 0th compartment"<<std::endl;
-			//				}
-			subvolume_reactions[i].add_reaction(rate,ReactionEquation(lhs,rhs));
-		}
-	}
-
-}
+//void NextSubvolumeMethod::add_diffusion(Species &s, const double rate) {
+//	this->add_species(s);
+//
+//	const int n = subvolumes.size();
+//	for (int i = 0; i < n; ++i) {
+//		const std::vector<int>& neighbrs = subvolumes.get_neighbour_indicies(i);
+//		const int nn = neighbrs.size();
+//		for (int j = 0; j < nn; ++j) {
+//			ReactionSide lhs;
+//			lhs.push_back(ReactionComponent(1.0,s,i));
+//			ReactionSide rhs;
+//			rhs.push_back(ReactionComponent(1.0,s,neighbrs[j]));
+//			//				if (i==0) {
+//			//					std::cout <<"adding reaction with rate = "<<rate<<" and lhs[0].compartment_index = "<<lhs[0].compartment_index<<" and rhs[0].compartment_index"<<rhs[0].compartment_index<<" to the 0th compartment"<<std::endl;
+//			//				}
+//			subvolume_reactions[i].add_reaction(rate,ReactionEquation(lhs,rhs));
+//		}
+//	}
+//
+//}
 
 void NextSubvolumeMethod::add_diffusion(Species &s) {
 	this->add_species(s);
@@ -494,7 +493,7 @@ void NextSubvolumeMethod::print(std::ostream& out) {
 		Species *s = get_species()[i];
 		out <<"\t\t\tSpecies "<<s->id<<" (D = "<<s->D<<") has "<<
 					std::accumulate(s->copy_numbers.begin(),s->copy_numbers.end(),0)<<
-					" particles in compartments and "<<s->particles.size()<<" off-lattice particles"<<std::endl;
+					" particles in compartments and "<<s->mols.size()<<" off-lattice particles"<<std::endl;
 	}
 }
 

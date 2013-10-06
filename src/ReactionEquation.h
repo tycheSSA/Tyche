@@ -56,6 +56,7 @@ struct ReactionComponent {
 	int multiplier;
 	Species* species;
 	int compartment_index;
+	double tmp;
 };
 
 class ReactionSide: public std::vector<ReactionComponent> {
@@ -80,6 +81,15 @@ public:
 	}
 	~ReactionSide() {
 		this->clear();
+	}
+	void push_back (const ReactionComponent& val) {
+		for (ReactionComponent& rc: *this) {
+			if (rc.species==val.species) {
+				rc.multiplier += val.multiplier;
+				return;
+			}
+		}
+		std::vector<ReactionComponent>::push_back(val);
 	}
 	void set_compartment_index(const int i) {
 		BOOST_FOREACH(ReactionComponent& rc, *this) {

@@ -6,6 +6,8 @@
  */
 
 #include "StructuredGrid.h"
+#include <vtkHexahedron.h>
+
 
 namespace Tyche {
 void StructuredGrid::reset_domain(const Vect3d& _low, const Vect3d& _high, const Vect3d& max_grid_size) {
