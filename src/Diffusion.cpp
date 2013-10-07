@@ -21,8 +21,8 @@ void Diffusion::integrate(const double dt) {
 		const double step_length = calc_step_length(s, dt);
 		const int n = s.mols.size();
 		for (int j = 0; j < n; ++j) {
-			s.mols.r0[i] = s.mols.r[i];
-			s.mols.r[i] += step_length * Vect3d(norm(),norm(),norm());
+			s.mols.r0[j] = s.mols.r[j];
+			s.mols.r[j] += step_length * Vect3d(norm(),norm(),norm());
 		}
 	}
 

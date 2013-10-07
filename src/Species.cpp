@@ -89,6 +89,7 @@ vtkSmartPointer<vtkUnstructuredGrid> Species::get_vtk() {
 	newPts->SetNumberOfPoints(n);
 	newInt->SetNumberOfValues(n);
 	for (int i = 0; i < n; ++i) {
+		//std::cout << "adding mol to vtk at position "<<mols.r[i]<<std::endl;
 		newPts->SetPoint(i,mols.r[i][0],mols.r[i][1],mols.r[i][2]);
 		newInt->SetValue(n,mols.id[i]);
 	}
