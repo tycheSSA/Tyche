@@ -22,7 +22,12 @@ void JumpBoundary<T>::integrate(const double dt) {
 		Molecules& mols = s->mols;
 		const int n = mols.size();
 		for (int i = 0; i < n; ++i) {
-			if (this->geometry.lineXsurface(mols.r0[i],mols.r[i])) {
+//			if (this->geometry.lineXsurface(mols.r0[i],mols.r[i])) {
+//				mols.r[i] += jump_by;
+//				mols.r0[i] += jump_by;
+//				//mols.saved_index[i] = SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE;
+//			}
+			while (this->geometry.distance_to_boundary(mols.r[i]) < 0) {
 				mols.r[i] += jump_by;
 				mols.r0[i] += jump_by;
 				//mols.saved_index[i] = SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE;
@@ -186,9 +191,15 @@ void ReflectiveBoundary<T>::integrate(const double dt) {
 		Molecules& mols = s->mols;
 		const int n = mols.size();
 		for (int i = 0; i < n; ++i) {
-			Vect3d nv,ip;
-			if (this->geometry.lineXsurface(mols.r0[i],mols.r[i],&ip,&nv)) {
-				mols.r[i] += 2.0*(ip-mols.r[i]).dot(nv)*nv;
+//			Vect3d nv,ip;
+//			if (this->geometry.lineXsurface(mols.r0[i],mols.r[i],&ip,&nv)) {
+//				mols.r[i] += 2.0*(ip-mols.r[i]).dot(nv)*nv;
+//				//mols.saved_index[i] = SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE;
+//			}
+			Vect3d nv;
+			const double d = this->geometry.distance_to_boundary(mols.r[i]);
+			if (d<0) {
+				mols.r[i] += -2.0*this->geometry.shortest_vector_to_boundary(mols.r[i]);
 				//mols.saved_index[i] = SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE;
 			}
 		}
@@ -203,7 +214,10 @@ void DestroyBoundary<T>::integrate(const double dt) {
 	BOOST_FOREACH(Species *s, this->get_species()) {
 		Molecules& mols = s->mols;
 		for (int i = 0; i < mols.size(); ++i) {
-			if (this->geometry.lineXsurface(mols.r0[i],mols.r[i])) {
+//			if (this->geometry.lineXsurface(mols.r0[i],mols.r[i])) {
+//				mols.delete_molecule(i);
+//			}
+			if (Boundary<T>::geometry.distance_to_boundary(mols.r[i])<0) {
 				mols.delete_molecule(i);
 			}
 		}
