@@ -471,7 +471,7 @@ BOOST_PYTHON_MODULE(pyTyche) {
     /*
      * NextSubvolume
      */
-    class_<NextSubvolumeMethod,typename std::auto_ptr<NextSubvolumeMethod> >("NextSubvolumeMethod",boost::python::no_init)
+    class_<NextSubvolumeMethod,std::auto_ptr<NextSubvolumeMethod>, bases<Operator> >("NextSubvolumeMethod",boost::python::no_init)
     	.def("set_interface",&NextSubvolumeMethod::set_interface<xplane>)
     	.def("set_interface",&NextSubvolumeMethod::set_interface<yplane>)
     	.def("set_interface",&NextSubvolumeMethod::set_interface<zplane>)

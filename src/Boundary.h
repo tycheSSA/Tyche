@@ -301,13 +301,10 @@ private:
 template<typename T>
 class CouplingBoundary: public Boundary<T> {
 public:
-	CouplingBoundary(const T& geometry, Operator* nsm):
-		Boundary<T>(geometry),nsm(dynamic_cast<NextSubvolumeMethod *>(nsm)) {
-		if(!nsm) {
-			ERROR("Must pass operator of type NextSubvolumeMethod to CouplingBoundary");
-		}
+	CouplingBoundary(const T& geometry, NextSubvolumeMethod* nsm):
+		Boundary<T>(geometry),nsm(nsm) {
 	}
-	static std::auto_ptr<Operator> New(const T& geometry, Operator* nsm) {
+	static std::auto_ptr<Operator> New(const T& geometry, NextSubvolumeMethod* nsm) {
 		return std::auto_ptr<Operator>(new CouplingBoundary(geometry,nsm));
 	}
 protected:

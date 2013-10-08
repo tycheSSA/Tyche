@@ -34,7 +34,6 @@
 #include <vtkUnstructuredGrid.h>
 #include <vtkSmartPointer.h>
 
-#include <mutex>
 
 namespace Tyche {
 
@@ -73,15 +72,11 @@ static const StructuredGrid empty_grid;
 class Species {
 public:
 	Species(double D):D(D),grid(empty_grid) {
-		mutex.lock();
 		id = species_count++;
-		mutex.unlock();
 		clear();
 	}
 	Species(double D, const StructuredGrid& grid):D(D),grid(grid)  {
-		mutex.lock();
 		id = species_count++;
-		mutex.unlock();
 		clear();
 	}
 	static std::auto_ptr<Species> New(double D) {
@@ -110,7 +105,6 @@ public:
 	int id;
 private:
 	static int species_count;
-	static std::mutex mutex;
 };
 
 
