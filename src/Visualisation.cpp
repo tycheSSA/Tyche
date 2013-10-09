@@ -209,18 +209,20 @@ void Visualisation::add_molecules_to_vis(Species& s) {
 template<unsigned int DIM>
 void add_compartment_slice_to_vis(Species& s, AxisAlignedPlane<DIM>& p, const Vect3d& high, const Vect3d& low, Visualisation::MyVTKdata* my_vtk_data) {
 	static const int dim_map[][2] = {{1,2}, {0,2}, {0,1}};
-	Vect3i res = s.grid.get_cells_along_axes();
-	vtkSmartPointer<vtkActor> actor = add_plane_to_vis(p, res[dim_map[DIM][0]], res[dim_map[DIM][1]], high, low, my_vtk_data);
-	vtkDataSet* data = actor->GetMapper()->GetInput();
-	const int n = data->GetNumberOfCells();
-	std::vector<int> compartment_indicies;
-	s.grid.get_slice(p, compartment_indicies);
-	ASSERT(n == compartment_indicies.size(),"slice of compartments has different size to visualisation plane");
-	vtkSmartPointer<vtkDoubleArray> copynumber_data = vtkSmartPointer<vtkDoubleArray>::New();
-	for (int i = 0; i < n; ++i) {
-		copynumber_data->InsertNextValue(s.copy_numbers[compartment_indicies[i]]);
+	if (s.grid != NULL) {
+		Vect3i res = s.grid->get_cells_along_axes();
+		vtkSmartPointer<vtkActor> actor = add_plane_to_vis(p, res[dim_map[DIM][0]], res[dim_map[DIM][1]], high, low, my_vtk_data);
+		vtkDataSet* data = actor->GetMapper()->GetInput();
+		const int n = data->GetNumberOfCells();
+		std::vector<int> compartment_indicies;
+		s.grid->get_slice(p, compartment_indicies);
+		ASSERT(n == compartment_indicies.size(),"slice of compartments has different size to visualisation plane");
+		vtkSmartPointer<vtkDoubleArray> copynumber_data = vtkSmartPointer<vtkDoubleArray>::New();
+		for (int i = 0; i < n; ++i) {
+			copynumber_data->InsertNextValue(s.copy_numbers[compartment_indicies[i]]);
+		}
+		data->GetCellData()->SetScalars(copynumber_data);
 	}
-	data->GetCellData()->SetScalars(copynumber_data);
 
 }
 

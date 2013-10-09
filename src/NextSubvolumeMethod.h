@@ -200,20 +200,21 @@ public:
 		return heap.top().time_at_next_reaction;
 	}
 	double get_time() {return time;}
-	StructuredGrid& get_grid() { return subvolumes; }
+	const StructuredGrid& get_grid() const { return subvolumes; }
 	void add_reaction_to_compartment(const double rate, ReactionEquation eq, int i);
 
 protected:
+	virtual void add_species_execute(Species &s);
+
 	virtual void reset_execute();
 	virtual void integrate(const double dt);
-	virtual void print(std::ostream& out);
+	virtual void print(std::ostream& out) const;
 private:
 	void react(ReactionEquation& r);
 	StructuredGrid& subvolumes;
 	PriorityHeap heap;
 	boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni;
 	double time;
-	std::vector<Species*> diffusing_species;
 	std::vector<ReactionList> subvolume_reactions;
 	std::vector<ReactionList> saved_subvolume_reactions;
 	std::vector<HeapHandle> subvolume_heap_handles;

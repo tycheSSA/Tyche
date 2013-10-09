@@ -242,12 +242,12 @@ void CouplingBoundary_M_to_C<T>::integrate(const double dt) {
 				const Vect3d r = s.mols.r[p_i];
 				Vect3d comp_r = r;
 				if (dist_to_wall > 0) {
-					comp_r += (1.0 + s.grid.get_tolerance())*this->geometry.shortest_vector_to_boundary(r);
+					comp_r += (1.0 + s.grid->get_tolerance())*this->geometry.shortest_vector_to_boundary(r);
 				}
 //				else {
 //					comp_r += (1.0 - s.grid.get_tolerance())*this->geometry.shortest_vector_to_boundary(r);
 //				}
-				const int i = s.grid.get_cell_index(comp_r);
+				const int i = s.grid->get_cell_index(comp_r);
 				dirty_indicies.insert(i);
 				//dirty_indicies.push_back(i);
 				s.copy_numbers[i]++;
@@ -277,7 +277,7 @@ void CouplingBoundary<T>::integrate(const double dt) {
 			Vect3d intersect_point, normal;
 			const Vect3d r = s.mols.r[p_i];
 			if (this->geometry.lineXsurface(s.mols.r0[p_i],r,&intersect_point,&normal)) {
-				const int i = s.grid.get_cell_index(r);
+				const int i = s.grid->get_cell_index(r);
 				dirty_indicies.insert(i);
 				s.copy_numbers[i]++;
 				s.mols.mark_for_deletion(p_i);

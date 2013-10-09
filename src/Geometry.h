@@ -339,6 +339,23 @@ private:
 
 std::ostream& operator<< (std::ostream& out, const Rectangle& p);
 
+class Box {
+public:
+	Box(const Vect3d& lower_corner,
+			const Vect3d& upper_corner,
+			const bool in):low(lower_corner),high(upper_corner),in(in) {
+	}
+	bool is_in(const Vect3d& point) {
+		const bool inside = ((point.array() >= low.array()).all() && (point.array() < high.array()).all());
+		return inside == in;
+	}
+private:
+	Vect3d low,high;
+    bool in;
+};
+
+std::ostream& operator<< (std::ostream& out, const Box& p);
+
 }
 
 #endif /* GEOMETRY_H_ */

@@ -38,9 +38,9 @@ void GrowingInterface<T>::integrate(const double dt) {
 		Species &s = *(this->get_species()[0]);
 
 		std::vector<int> grid_indices_current, grid_indices_shrink, grid_indices_shrink2;
-		s.grid.get_slice(this->geometry,grid_indices_current);
+		s.grid->get_slice(this->geometry,grid_indices_current);
 		this->geometry -= move_by;
-		s.grid.get_slice(this->geometry,grid_indices_shrink);
+		s.grid->get_slice(this->geometry,grid_indices_shrink);
 		if (this->geometry.is_between(shrink_to,grow_to)) {
 
 //			std::cout << "grid indicies shrink are: "
@@ -62,7 +62,7 @@ void GrowingInterface<T>::integrate(const double dt) {
 				BOOST_FOREACH(int i,grid_indices_shrink) {
 					const int n = s.copy_numbers[i];
 					for (int ii = 0; ii < n; ++ii) {
-						const Vect3d r = s.grid.get_random_point(i);
+						const Vect3d r = s.grid->get_random_point(i);
 						if (this->geometry.distance_to_boundary(r) >= 0) {
 							s.mols.add_molecule(r);
 							s.copy_numbers[i]--;
@@ -71,7 +71,7 @@ void GrowingInterface<T>::integrate(const double dt) {
 					}
 				}
 				this->geometry -= move_by;
-				s.grid.get_slice(this->geometry,grid_indices_shrink2);
+				s.grid->get_slice(this->geometry,grid_indices_shrink2);
 				nsm.set_interface_reactions(grid_indices_shrink2,grid_indices_shrink,dt,true);
 				//					OutputMolecularConcentrations out_mol("simpleReact_mi_after_shrink_mols_",0,0.0,1.0,100);out_mol.add_species(s);
 				//					OutputCompartmentConcentrations out_compart("simpleReact_mi_after_shrink_compart_",0);out_compart.add_species(s);
@@ -102,7 +102,7 @@ void GrowingInterface<T>::integrate(const double dt) {
 			total_copy_number_grow += mol_indices.size();
 
 			std::vector<int> grid_indices_grow;
-			s.grid.get_slice(this->geometry,grid_indices_grow);
+			s.grid->get_slice(this->geometry,grid_indices_grow);
 			const bool is_meaningful_grow = (grid_indices_grow.size() > 0) || (grid_indices_current.size() > 0);
 			if ((is_meaningful_grow)&&(total_copy_number_grow > grow_threshold)) {
 				LOG(1.0,"Growing interface at " << this->geometry <<". found " << total_copy_number_grow <<" molecules in front of interface");
@@ -111,7 +111,7 @@ void GrowingInterface<T>::integrate(const double dt) {
 				 * delete particles behind interface and add them to compartments
 				 */
 				BOOST_FOREACH(int i, mol_indices) {
-					s.copy_numbers[s.grid.get_cell_index(s.mols.r[i])]++;
+					s.copy_numbers[s.grid->get_cell_index(s.mols.r[i])]++;
 					s.mols.delete_molecule(i);
 				}
 				nsm.unset_interface_reactions(grid_indices_shrink, grid_indices_current);

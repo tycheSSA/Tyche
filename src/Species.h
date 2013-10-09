@@ -71,11 +71,11 @@ static const StructuredGrid empty_grid;
 
 class Species {
 public:
-	Species(double D):D(D),grid(empty_grid) {
+	Species(double D):D(D),grid(NULL) {
 		id = species_count++;
 		clear();
 	}
-	Species(double D, const StructuredGrid& grid):D(D),grid(grid)  {
+	Species(double D, const StructuredGrid* grid):D(D),grid(grid)  {
 		id = species_count++;
 		clear();
 	}
@@ -84,7 +84,11 @@ public:
 	}
 	void clear() {
 		mols.clear();
-		copy_numbers.assign(grid.size(),0);
+		if (grid!=NULL) copy_numbers.assign(grid->size(),0);
+	}
+	void set_grid(const StructuredGrid* new_grid) {
+		grid = new_grid;
+		if (grid!=NULL) copy_numbers.assign(grid->size(),0);
 	}
 	void fill_uniform(const int n);
 	void fill_uniform(const Vect3d low, const Vect3d high, const unsigned int N);
@@ -101,7 +105,7 @@ public:
 	Molecules mols;
 	std::vector<int> copy_numbers;
 	std::vector<int> mol_copy_numbers;
-	const StructuredGrid& grid;
+	const StructuredGrid* grid;
 	int id;
 private:
 	static int species_count;

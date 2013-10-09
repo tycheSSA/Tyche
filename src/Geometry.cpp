@@ -30,4 +30,8 @@ std::ostream& operator<< (std::ostream& out, const AxisAlignedPlane<2>& p) {
 std::ostream& operator<< (std::ostream& out, const Rectangle& p) {
 	return out << "Rectangle with equation x = "<<p.get_low()<<" + s*"<<p.get_l()<<" + t*"<<p.get_r()<<" and normal = "<<p.get_normal();
 }
+
+std::ostream& operator<< (std::ostream& out, const Box& p) {
+	return out << "Box";
+}
 }
