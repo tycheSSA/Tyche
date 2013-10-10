@@ -7,8 +7,7 @@ cmake_minimum_required (VERSION 2.8)
 
 FIND_PACKAGE(PythonInterp REQUIRED)
 FIND_PACKAGE(PythonLibs REQUIRED)
-FIND_PACKAGE(Boost 1.50.0 COMPONENTS python REQUIRED)
-find_package(Boost 1.50.0 COMPONENTS date_time system filesystem timer REQUIRED)
+FIND_PACKAGE(Boost 1.50.0 COMPONENTS python date_time system filesystem timer REQUIRED)
 find_package(VTK REQUIRED)
 
 
