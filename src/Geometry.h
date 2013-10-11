@@ -27,6 +27,7 @@
 
 #include "Vector.h"
 #include "MyRandom.h"
+#include "Log.h"
 
 namespace Tyche {
 
@@ -345,9 +346,20 @@ public:
 			const Vect3d& upper_corner,
 			const bool in):low(lower_corner),high(upper_corner),in(in) {
 	}
-	bool is_in(const Vect3d& point) {
+	static std::auto_ptr<Box> New(const Vect3d& lower_corner,
+			const Vect3d& upper_corner, const bool in) {
+		return std::auto_ptr<Box>(new Box(lower_corner,upper_corner,in));
+	}
+	bool is_in(const Vect3d& point) const {
 		const bool inside = ((point.array() >= low.array()).all() && (point.array() < high.array()).all());
 		return inside == in;
+	}
+	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
+		ASSERT(intersect_point==NULL, "intersect point not supported for Box geometry");
+		ASSERT(intersect_normal==NULL, "intersect normal not supported for Box geometry");
+		const bool is_in1 = is_in(p1);
+		const bool is_in2 = is_in(p2);
+		return is_in1 != is_in2;
 	}
 private:
 	Vect3d low,high;
@@ -355,6 +367,44 @@ private:
 };
 
 std::ostream& operator<< (std::ostream& out, const Box& p);
+
+class BoxWithHoles {
+public:
+	BoxWithHoles(const Vect3d& lower_corner,
+			const Vect3d& upper_corner,
+			const bool in):low(lower_corner),high(upper_corner),in(in) {
+	}
+	static std::auto_ptr<BoxWithHoles> New(const Vect3d& lower_corner,
+			const Vect3d& upper_corner, const bool in) {
+		return std::auto_ptr<BoxWithHoles>(new BoxWithHoles(lower_corner,upper_corner,in));
+	}
+	void add_hole(const Vect3d& lower_corner, const Vect3d& upper_corner) {
+		holes_low.push_back(lower_corner);
+		holes_high.push_back(upper_corner);
+	}
+	bool is_in(const Vect3d& point) const {
+		bool inside = ((point.array() >= low.array()).all() && (point.array() < high.array()).all());
+		const int n = holes_low.size();
+		for (int i = 0; i < n; ++i) {
+			inside &= ((point.array() < holes_low[i].array()).any() || (point.array() >= holes_high[i].array()).any());
+		}
+		return inside == in;
+	}
+	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
+		ASSERT(intersect_point==NULL, "intersect point not supported for BoxWithHoles geometry");
+		ASSERT(intersect_normal==NULL, "intersect normal not supported for BoxWithHoles geometry");
+		const bool is_in1 = is_in(p1);
+		const bool is_in2 = is_in(p2);
+		return is_in1 != is_in2;
+	}
+private:
+	Vect3d low,high;
+	std::vector<Vect3d> holes_low;
+	std::vector<Vect3d> holes_high;
+    bool in;
+};
+
+std::ostream& operator<< (std::ostream& out, const BoxWithHoles& p);
 
 }
 

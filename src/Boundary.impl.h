@@ -274,9 +274,8 @@ void CouplingBoundary<T>::integrate(const double dt) {
 		Species &s = *(this->get_species()[s_i]);
 		const int p_n = s.mols.size();
 		for (int p_i = 0; p_i < p_n; ++p_i) {
-			Vect3d intersect_point, normal;
 			const Vect3d r = s.mols.r[p_i];
-			if (this->geometry.lineXsurface(s.mols.r0[p_i],r,&intersect_point,&normal)) {
+			if (this->geometry.lineXsurface(s.mols.r0[p_i],r)) {
 				const int i = s.grid->get_cell_index(r);
 				dirty_indicies.insert(i);
 				s.copy_numbers[i]++;

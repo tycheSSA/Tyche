@@ -37,6 +37,49 @@ using namespace boost::python;
 
 namespace Tyche {
 
+template<typename T>
+struct Vect3_from_python_list
+{
+
+	Vect3_from_python_list() {
+		boost::python::converter::registry::push_back(
+				&convertible,
+				&construct,
+				boost::python::type_id<Eigen::Matrix<T,3,1> >());
+	}
+
+	static void* convertible(PyObject* obj_ptr) {
+		if (!PyList_Check(obj_ptr)) return 0;
+		if (PyList_Size(obj_ptr) != 3) return 0;
+		return obj_ptr;
+	}
+
+	static void construct(
+			PyObject* obj_ptr,
+			boost::python::converter::rvalue_from_python_stage1_data* data) {
+		const int size = PyList_Size(obj_ptr);
+
+		// Extract the character data from the python string
+		const double x = extract<T>(PyList_GetItem(obj_ptr,0));
+		const double y = extract<T>(PyList_GetItem(obj_ptr,1));
+		const double z = extract<T>(PyList_GetItem(obj_ptr,2));
+
+
+		// Grab pointer to memory into which to construct the new QString
+		void* storage = (
+				(boost::python::converter::rvalue_from_python_storage<Eigen::Matrix<T,3,1> >*)
+				data)->storage.bytes;
+
+		// in-place construct the new QString using the character data
+		// extraced from the python object
+		new (storage) Eigen::Matrix<T,3,1>(x,y,z);
+
+		// Stash the memory chunk pointer for later use by boost.python
+		data->convertible = storage;
+	}
+
+};
+
 void python_init(boost::python::list& py_argv) {
 	using boost::python::len;
 
@@ -52,6 +95,13 @@ void python_init(boost::python::list& py_argv) {
 		delete argv[i];
 	}
 	delete argv;
+
+	// register the Vect3-to-python converter
+
+	Vect3_from_python_list<double>();
+	Vect3_from_python_list<int>();
+	Vect3_from_python_list<bool>();
+
 }
 
 //std::auto_ptr<Operator> new_reaction(const double rate, const boost::python::list& reactants, const boost::python::list& products) {
@@ -407,6 +457,15 @@ BOOST_PYTHON_MODULE(pyTyche) {
 	class_<yrect,typename std::auto_ptr<yrect> >("Yrect",boost::python::no_init);
 	class_<zrect,typename std::auto_ptr<zrect> >("Zrect",boost::python::no_init);
 
+	def("new_box", Box::New);
+	def("new_box", BoxWithHoles::New);
+
+	class_<Box,typename std::auto_ptr<Box> >("Box",boost::python::no_init)
+						;
+	class_<BoxWithHoles,typename std::auto_ptr<BoxWithHoles> >("BoxWithHoles",boost::python::no_init)
+				.def("add_hole",&BoxWithHoles::add_hole)
+				;
+
 	/*
 	 * Boundaries
 	 */
@@ -415,7 +474,8 @@ BOOST_PYTHON_MODULE(pyTyche) {
 	def("new_coupling_boundary",CouplingBoundary<zplane>::New);
 	def("new_coupling_boundary",CouplingBoundary<xrect>::New);
 	def("new_coupling_boundary",CouplingBoundary<yrect>::New);
-	def("new_coupling_boundary",CouplingBoundary<zrect>::New);
+	def("new_coupling_boundary",CouplingBoundary<Box>::New);
+	def("new_coupling_boundary",CouplingBoundary<BoxWithHoles>::New);
 
 
     def("new_reflective_boundary",ReflectiveBoundary<xplane>::New);
@@ -424,6 +484,7 @@ BOOST_PYTHON_MODULE(pyTyche) {
     def("new_reflective_boundary",ReflectiveBoundary<xrect>::New);
     def("new_reflective_boundary",ReflectiveBoundary<yrect>::New);
     def("new_reflective_boundary",ReflectiveBoundary<zrect>::New);
+
 
 //	class_<ReflectiveBoundary<xplane>,typename std::auto_ptr<ReflectiveBoundary<xplane> > >("ReflectiveBoundaryXplane",boost::python::no_init);
 //	class_<ReflectiveBoundary<yplane>,typename std::auto_ptr<ReflectiveBoundary<yplane> > >("ReflectiveBoundaryYplane",boost::python::no_init);
