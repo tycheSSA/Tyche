@@ -31,6 +31,8 @@
 
 namespace Tyche {
 
+const double GEOMETRY_TOLERANCE = 1.0/1000000.0;
+
 class NullGeometry {
 public:
 	NullGeometry() {}
@@ -90,7 +92,9 @@ public:
 			return ((coord < plane1.coord) && (coord > plane2.coord));
 		}
 	}
-
+	bool is_in(const Vect3d& point) const {
+		return normal*(point[DIM]-coord) < GEOMETRY_TOLERANCE;
+	}
 
 	const Vect3d shortest_vector_to_boundary(const Vect3d& r) const {
 	   Vect3d shortest = Vect3d::Zero();
@@ -229,6 +233,15 @@ public:
 		return false;
 	}
 
+	bool is_in(const Vect3d& point) const {
+		return (normal_vector[DIM]*(point[DIM]-low[DIM]) < GEOMETRY_TOLERANCE) &&
+				(point[dim_map[DIM][0]] > low[dim_map[DIM][0]]+GEOMETRY_TOLERANCE) &&
+				(point[dim_map[DIM][1]] > low[dim_map[DIM][1]]+GEOMETRY_TOLERANCE) &&
+				(point[dim_map[DIM][0]] < high[dim_map[DIM][0]]-GEOMETRY_TOLERANCE) &&
+				(point[dim_map[DIM][1]] < high[dim_map[DIM][1]]-GEOMETRY_TOLERANCE)
+				;
+	}
+
 	void get_random_point_and_normal(Vect3d& p, Vect3d& n) {
 	   p = get_random_point();
 	   n = normal_vector;
@@ -351,7 +364,13 @@ public:
 		return std::auto_ptr<Box>(new Box(lower_corner,upper_corner,in));
 	}
 	bool is_in(const Vect3d& point) const {
-		const bool inside = ((point.array() >= low.array()).all() && (point.array() < high.array()).all());
+		bool inside;
+		if (in) {
+			inside = ((point.array() > low.array()+GEOMETRY_TOLERANCE).all() && (point.array() < high.array()-GEOMETRY_TOLERANCE).all());
+		} else {
+			inside = ((point.array() > low.array()-GEOMETRY_TOLERANCE).all() && (point.array() < high.array()+GEOMETRY_TOLERANCE).all());
+		}
+		//std::cout << "testing point "<<point<<". result = "<< (inside==in) << std::endl;
 		return inside == in;
 	}
 	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
@@ -361,6 +380,48 @@ public:
 		const bool is_in2 = is_in(p2);
 		return is_in1 != is_in2;
 	}
+
+	const Vect3d shortest_vector_to_boundary(const Vect3d& point) const {
+		Vect3d box_point;
+		if ((point.array() >= low.array()).all() && (point.array() <= high.array()).all()) {
+			double min_value = 100000*(high[0]-low[0]);
+			int min_d;
+			bool is_low;
+			for (int d = 0; d < 3; ++d) {
+				if (point[d]-low[d] < min_value) {
+					min_value = point[d]-low[d];
+					is_low = true;
+					min_d = d;
+				}
+				if (high[d]-point[d] < min_value) {
+					min_value = high[d]-point[d];
+					is_low = false;
+					min_d = d;
+				}
+			}
+			box_point = point;
+			if (is_low) {
+				box_point[min_d] = low[min_d];
+			} else {
+				box_point[min_d] = high[min_d];
+			}
+		} else {
+			for (int d = 0; d < 3; ++d) {
+				if (point[d]<=low[d]) {
+					box_point[d] = low[d];
+				} else if (point[d]>=high[d]) {
+					box_point[d] = high[d];
+				} else {
+					box_point[d] = point[d];
+				}
+			}
+		}
+		return box_point - point;
+	}
+
+	double distance_to_boundary(const Vect3d& point) const {
+		return shortest_vector_to_boundary(point).norm();
+	}
 private:
 	Vect3d low,high;
     bool in;
@@ -368,27 +429,24 @@ private:
 
 std::ostream& operator<< (std::ostream& out, const Box& p);
 
-class BoxWithHoles {
+class MultipleBoxes {
 public:
-	BoxWithHoles(const Vect3d& lower_corner,
-			const Vect3d& upper_corner,
-			const bool in):low(lower_corner),high(upper_corner),in(in) {
+	MultipleBoxes(const bool in):in(in) {
 	}
-	static std::auto_ptr<BoxWithHoles> New(const Vect3d& lower_corner,
-			const Vect3d& upper_corner, const bool in) {
-		return std::auto_ptr<BoxWithHoles>(new BoxWithHoles(lower_corner,upper_corner,in));
+	static std::auto_ptr<MultipleBoxes> New( const bool in) {
+		return std::auto_ptr<MultipleBoxes>(new MultipleBoxes(in));
 	}
-	void add_hole(const Vect3d& lower_corner, const Vect3d& upper_corner) {
-		holes_low.push_back(lower_corner);
-		holes_high.push_back(upper_corner);
+	void add_box(const Vect3d& lower_corner, const Vect3d& upper_corner) {
+		boxes.push_back(Box(lower_corner,upper_corner,in));
 	}
 	bool is_in(const Vect3d& point) const {
-		bool inside = ((point.array() >= low.array()).all() && (point.array() < high.array()).all());
-		const int n = holes_low.size();
+		bool ret = true;
+		const int n = boxes.size();
+		if (n==0) return !in;
 		for (int i = 0; i < n; ++i) {
-			inside &= ((point.array() < holes_low[i].array()).any() || (point.array() >= holes_high[i].array()).any());
+			ret &= boxes[i].is_in(point);
 		}
-		return inside == in;
+		return ret;
 	}
 	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
 		ASSERT(intersect_point==NULL, "intersect point not supported for BoxWithHoles geometry");
@@ -398,13 +456,11 @@ public:
 		return is_in1 != is_in2;
 	}
 private:
-	Vect3d low,high;
-	std::vector<Vect3d> holes_low;
-	std::vector<Vect3d> holes_high;
+	std::vector<Box> boxes;
     bool in;
 };
 
-std::ostream& operator<< (std::ostream& out, const BoxWithHoles& p);
+std::ostream& operator<< (std::ostream& out, const MultipleBoxes& p);
 
 }
 

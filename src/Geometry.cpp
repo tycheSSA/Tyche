@@ -35,7 +35,7 @@ std::ostream& operator<< (std::ostream& out, const Box& p) {
 	return out << "Box";
 }
 
-std::ostream& operator<< (std::ostream& out, const BoxWithHoles& p) {
-	return out << "Box With Holes";
+std::ostream& operator<< (std::ostream& out, const MultipleBoxes& p) {
+	return out << "Multiple Boxes";
 }
 }

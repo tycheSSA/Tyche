@@ -40,7 +40,8 @@ struct ReactionComponent {
 	ReactionComponent(const ReactionComponent& arg):
 		multiplier(arg.multiplier),
 		species(arg.species),
-		compartment_index(arg.compartment_index) {}
+		compartment_index(arg.compartment_index),
+		tmp(arg.tmp) {}
 
 	bool operator==(const ReactionComponent& arg) const {
 		return (multiplier == arg.multiplier) &&
@@ -118,8 +119,8 @@ struct ReactionEquation {
 
 	ReactionEquation(ReactionSide& lhs, ReactionSide& rhs):
 		lhs(lhs),rhs(rhs) {}
-	ReactionSide& lhs;
-	ReactionSide& rhs;
+	ReactionSide lhs;
+	ReactionSide rhs;
 };
 
 std::ostream& operator<< (std::ostream& out, const ReactionSide &side);

@@ -301,11 +301,11 @@ private:
 template<typename T>
 class CouplingBoundary: public Boundary<T> {
 public:
-	CouplingBoundary(const T& geometry, NextSubvolumeMethod* nsm):
-		Boundary<T>(geometry),nsm(nsm) {
+	CouplingBoundary(const T& geometry, NextSubvolumeMethod* nsm, const bool corrected):
+		Boundary<T>(geometry),nsm(nsm),corrected(corrected) {
 	}
-	static std::auto_ptr<Operator> New(const T& geometry, NextSubvolumeMethod* nsm) {
-		return std::auto_ptr<Operator>(new CouplingBoundary(geometry,nsm));
+	static std::auto_ptr<Operator> New(const T& geometry, NextSubvolumeMethod* nsm, const bool corrected) {
+		return std::auto_ptr<Operator>(new CouplingBoundary(geometry,nsm,corrected));
 	}
 protected:
 	virtual void integrate(const double dt);
@@ -315,6 +315,7 @@ protected:
 
 private:
 	NextSubvolumeMethod* nsm;
+	bool corrected;
 
 };
 

@@ -35,7 +35,7 @@ ReactionSide& UniMolecularReaction::get_random_reaction(const double rand) {
 }
 
 UniMolecularReaction::UniMolecularReaction(const double rate,const ReactionEquation& eq, const double init_radius):Reaction(rate) {
-	CHECK((eq.lhs.size()==1) && (eq.lhs[0].multiplier == 1), "Reaction equation is not unimolecular!");
+	CHECK((eq.lhs.size()==1) && (eq.lhs[0].multiplier == 1), "Reaction equation "<<eq<<" is not unimolecular!");
 	this->add_species(*(eq.lhs[0].species));
 	product_list.push_back(eq.rhs);
 	probabilities.push_back(0);

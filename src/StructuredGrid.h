@@ -74,6 +74,9 @@ public:
 	template<typename T>
 	void get_region(const T geometry, std::vector<int>& indices) const;
 
+	template<typename T>
+	bool is_in(const T geometry, const int index) const;
+
 	void get_overlap(const Vect3d& low, const Vect3d& high, std::vector<int>& indicies, std::vector<double>& volume) const;
 
 	void reset_domain(const Vect3d& low, const Vect3d& high, const Vect3d& max_grid_size);

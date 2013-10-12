@@ -199,7 +199,9 @@ void ReflectiveBoundary<T>::integrate(const double dt) {
 			Vect3d nv;
 			const double d = this->geometry.distance_to_boundary(mols.r[i]);
 			if (d<0) {
-				mols.r[i] += -2.0*this->geometry.shortest_vector_to_boundary(mols.r[i]);
+				const Vect3d vect_to_wall = this->geometry.shortest_vector_to_boundary(mols.r[i]);
+				mols.r0[i] = mols.r[i] + vect_to_wall;
+				mols.r[i] += 2.0*vect_to_wall;
 				//mols.saved_index[i] = SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE;
 			}
 		}
@@ -267,6 +269,7 @@ void CouplingBoundary_M_to_C<T>::integrate(const double dt) {
 
 template<typename T>
 void CouplingBoundary<T>::integrate(const double dt) {
+	boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni(generator,boost::uniform_real<>(0,1));
 
 	const int s_n = this->get_species().size();
 	std::set<int> dirty_indicies;
@@ -275,11 +278,26 @@ void CouplingBoundary<T>::integrate(const double dt) {
 		const int p_n = s.mols.size();
 		for (int p_i = 0; p_i < p_n; ++p_i) {
 			const Vect3d r = s.mols.r[p_i];
-			if (this->geometry.lineXsurface(s.mols.r0[p_i],r)) {
+			const Vect3d rold = s.mols.r0[p_i];
+			if (this->geometry.is_in(r)) {
 				const int i = s.grid->get_cell_index(r);
 				dirty_indicies.insert(i);
 				s.copy_numbers[i]++;
 				s.mols.mark_for_deletion(p_i);
+			} else if (corrected) {
+				const double old_dist_to_wall = this->geometry.distance_to_boundary(rold);
+				if (old_dist_to_wall==0.0) continue;
+				const Vect3d vect_to_wall = this->geometry.shortest_vector_to_boundary(r);
+				const double dist_to_wall = vect_to_wall.norm();
+				//std::cout << "rold = "<<rold<<" old_dist_to_wall = "<<old_dist_to_wall<<" r = "<<r<<" dist_to_wall = "<<dist_to_wall<<std::endl;
+
+				const double P = exp(-dist_to_wall*old_dist_to_wall/(s.D*dt));
+				if (uni() < P) {
+					const int i = s.grid->get_cell_index(r + 1.000001*vect_to_wall);
+					dirty_indicies.insert(i);
+					s.copy_numbers[i]++;
+					s.mols.mark_for_deletion(p_i);
+				}
 			}
 		}
 		s.mols.delete_molecules();

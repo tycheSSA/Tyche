@@ -127,33 +127,68 @@ private:
 class NextSubvolumeMethod: public Operator {
 public:
 	NextSubvolumeMethod(StructuredGrid& subvolumes);
-	static std::auto_ptr<NextSubvolumeMethod> New(StructuredGrid& subvolumes) {
-		return std::auto_ptr<NextSubvolumeMethod>(new NextSubvolumeMethod(subvolumes));
+	static std::auto_ptr<NextSubvolumeMethod> New(const Vect3d& min, const Vect3d& max, const Vect3d& h) {
+		StructuredGrid* grid = new StructuredGrid(min,max,h);
+		return std::auto_ptr<NextSubvolumeMethod>(new NextSubvolumeMethod(*grid));
 	}
 
 	void list_reactions();
 	template<typename T>
 	void set_interface(const T& geometry, const double dt, const bool corrected) {
-		std::vector<int> to_indicies,from_indicies;
-		T to_geometry = geometry;
-		to_geometry += 0.5*subvolumes.get_cell_size()[T::dim];
-		T from_geometry = geometry;
-		from_geometry.swap_normal();
-		from_geometry += 0.5*subvolumes.get_cell_size()[T::dim];
-		subvolumes.get_slice(from_geometry,from_indicies);
-		subvolumes.get_slice(to_geometry,to_indicies);
+		std::vector<int> to_indicies,from_indicies,slice_indicies;
+		subvolumes.get_slice(geometry,slice_indicies);
+		const int n = slice_indicies.size();
+		for (int i = 0; i < n; ++i) {
+			const std::vector<int>& neighbrs = subvolumes.get_neighbour_indicies(slice_indicies[i]);
+			const int nn = neighbrs.size();
+			for (int j = 0; j < nn; ++j) {
+				if (!subvolumes.is_in(geometry,neighbrs[j])) {
+					to_indicies.push_back(neighbrs[j]);
+					from_indicies.push_back(slice_indicies[i]);
+				}
+			}
+		}
 		set_interface_reactions(from_indicies,to_indicies,dt,corrected);
 	}
-
+//	template<int Dim>
+//	void set_interface(const AxisAlignedPlane<DIM>& geometry, const double dt, const bool corrected) {
+//		std::vector<int> to_indicies,from_indicies;
+//		T to_geometry = geometry;
+//		to_geometry += 0.5*subvolumes.get_cell_size()[T::dim];
+//		T from_geometry = geometry;
+//		from_geometry.swap_normal();
+//		from_geometry += 0.5*subvolumes.get_cell_size()[T::dim];
+//		subvolumes.get_slice(from_geometry,from_indicies);
+//		subvolumes.get_slice(to_geometry,to_indicies);
+//		set_interface_reactions(from_indicies,to_indicies,dt,corrected);
+//	}
 	template<typename T>
 	void unset_interface(const T& geometry) {
-		std::vector<int> to_indicies,from_indicies;
-		subvolumes.get_slice(geometry,to_indicies);
-		T opposite_normal = geometry;
-		opposite_normal.swap_normal();
-		subvolumes.get_slice(geometry,from_indicies);
+		std::vector<int> to_indicies,from_indicies,slice_indicies;
+		subvolumes.get_slice(geometry,slice_indicies);
+		const int n = slice_indicies.size();
+		for (int i = 0; i < n; ++i) {
+			const std::vector<int>& neighbrs = subvolumes.get_neighbour_indicies(slice_indicies[i]);
+			const int nn = neighbrs.size();
+			for (int j = 0; j < nn; ++j) {
+				if (!subvolumes.is_in(geometry,neighbrs[j])) {
+					to_indicies.push_back(neighbrs[j]);
+					from_indicies.push_back(slice_indicies[i]);
+				}
+			}
+		}
 		unset_interface_reactions(from_indicies,to_indicies);
 	}
+
+//	template<typename T>
+//	void unset_interface(const T& geometry) {
+//		std::vector<int> to_indicies,from_indicies;
+//		subvolumes.get_slice(geometry,to_indicies);
+//		T opposite_normal = geometry;
+//		opposite_normal.swap_normal();
+//		subvolumes.get_slice(geometry,from_indicies);
+//		unset_interface_reactions(from_indicies,to_indicies);
+//	}
 	void set_interface_reactions(std::vector<int>& from_indicies, std::vector<int>& to_indicies, const double dt, const bool corrected);
 	void unset_interface_reactions(std::vector<int>& from_indicies, std::vector<int>& to_indicies);
 	void add_diffusion(Species &s);

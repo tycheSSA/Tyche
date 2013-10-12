@@ -97,8 +97,8 @@ void StructuredGrid::get_slice(const AxisAlignedPlane<DIM>& surface, std::vector
 template<typename T>
 void StructuredGrid::get_slice(const T geometry, std::vector<int>& indices) const {
 	indices.clear();
-	const int nedges = 12;
-	const int edges[nedges][2][3] = {{{0,0,0},{0,0,1}},
+	const int nedges = 14;
+	const double edges[nedges][2][3] = {{{0,0,0},{0,0,1}},
 			              {{0,0,0},{0,1,0}},
 			              {{0,0,0},{1,0,0}},
 			              {{0,0,1},{0,1,1}},
@@ -109,7 +109,9 @@ void StructuredGrid::get_slice(const T geometry, std::vector<int>& indices) cons
 			              {{1,0,0},{1,0,1}},
 			              {{0,1,1},{1,1,1}},
 			              {{1,1,0},{1,1,1}},
-			              {{1,0,1},{1,1,1}}};
+			              {{1,0,1},{1,1,1}},
+						  {{0,0,0},{0.5,0.5,0.5}},
+						  {{0.5,0.5,0.5},{1,1,1}}};
 
 	for (int i = 0; i < num_cells; ++i) {
 		const Vect3d low_point = index_to_vect(i).cast<double>().cwiseProduct(cell_size)+low;
@@ -118,6 +120,7 @@ void StructuredGrid::get_slice(const T geometry, std::vector<int>& indices) cons
 			const Vect3d p2 = low_point + Vect3d(edges[j][1][0],edges[j][1][1],edges[j][1][2]).cwiseProduct(cell_size);
 			if (geometry.lineXsurface(p1,p2)) {
 				indices.push_back(i);
+				break;
 			}
 
 		}
@@ -128,22 +131,29 @@ template<typename T>
 void StructuredGrid::get_region(const T geometry, std::vector<int>& indices) const {
 	indices.clear();
 	for (int i = 0; i < num_cells; ++i) {
-		Vect3d low_point = index_to_vect(i).cast<double>().cwiseProduct(cell_size)+low;
-
-		for (int i = 0; i < 2; ++i) {
-			for (int j = 0; j < 2; ++j) {
-				for (int k = 0; k < 2; ++k) {
-					const Vect3d test_point = low_point + Vect3d(i,j,k).cwiseProduct(cell_size);
-					const double dist = geometry.is_in(test_point);
-					if (dist < 0) {
-						indices.push_back(i);
-						continue;
-					}
+		if (is_in(geometry,i)) {
+			indices.push_back(i);
+		}
+	}
+}
+template<typename T>
+bool StructuredGrid::is_in(const T geometry, const int i) const {
+	Vect3d low_point = index_to_vect(i).cast<double>().cwiseProduct(cell_size)+low;
+	const Vect3d test_point = low_point + Vect3d(0.5,0.5,0.5).cwiseProduct(cell_size);
+	if (geometry.is_in(test_point)) return true;
+	for (int i = 0; i < 2; ++i) {
+		for (int j = 0; j < 2; ++j) {
+			for (int k = 0; k < 2; ++k) {
+				const Vect3d test_point = low_point + Vect3d(i,j,k).cwiseProduct(cell_size);
+				if (geometry.is_in(test_point)) {
+					return true;
 				}
 			}
 		}
 	}
+	return false;
 }
+
 }
 
 #endif /* STRUCTUREDGRID_IMPL_H_ */

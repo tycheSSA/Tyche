@@ -26,7 +26,6 @@
 #include <boost/python.hpp>
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 #include "Tyche.h"
-//#include <python2.7/Python.h>
 #include <numpy/arrayobject.h>
 
 #include <vtkUnstructuredGrid.h>
@@ -36,6 +35,59 @@
 using namespace boost::python;
 
 namespace Tyche {
+
+struct ReactionEquation_from_python_list
+{
+
+	ReactionEquation_from_python_list() {
+		boost::python::converter::registry::push_back(
+				&convertible,
+				&construct,
+				boost::python::type_id<ReactionEquation>());
+	}
+
+	static void* convertible(PyObject* obj_ptr) {
+		if (!PyList_Check(obj_ptr)) return 0;
+		if (PyList_Size(obj_ptr) != 2) return 0;
+		if (!PyList_Check(PyList_GetItem(obj_ptr,0)) || !PyList_Check(PyList_GetItem(obj_ptr,1))) return 0;
+		return obj_ptr;
+	}
+
+	static void construct(
+			PyObject* obj_ptr,
+			boost::python::converter::rvalue_from_python_stage1_data* data) {
+
+		// Extract the character data from the python string
+		PyObject* reactants = PyList_GetItem(obj_ptr,0);
+		PyObject* products = PyList_GetItem(obj_ptr,1);
+		const int num_reactants = PyList_Size(reactants);
+		const int num_products = PyList_Size(products);
+
+
+		ReactionSide lhs;
+		for (int i = 0; i < num_reactants; ++i) {
+			Species* s = extract<Species*>(PyList_GetItem(reactants,i));
+			lhs = lhs + *s;
+		}
+		ReactionSide rhs;
+		for (int i = 0; i < num_products; ++i) {
+			Species* s = extract<Species*>(PyList_GetItem(products,i));
+			rhs = rhs + *s;
+		}
+		// Grab pointer to memory into which to construct the new QString
+		void* storage = (
+				(boost::python::converter::rvalue_from_python_storage<ReactionEquation>*)
+				data)->storage.bytes;
+
+		// in-place construct the new QString using the character data
+		// extraced from the python object
+		new (storage) ReactionEquation(lhs,rhs);
+
+		// Stash the memory chunk pointer for later use by boost.python
+		data->convertible = storage;
+	}
+
+};
 
 template<typename T>
 struct Vect3_from_python_list
@@ -98,198 +150,49 @@ void python_init(boost::python::list& py_argv) {
 
 	// register the Vect3-to-python converter
 
-	Vect3_from_python_list<double>();
-	Vect3_from_python_list<int>();
-	Vect3_from_python_list<bool>();
 
 }
 
-//std::auto_ptr<Operator> new_reaction(const double rate, const boost::python::list& reactants, const boost::python::list& products) {
-//	using boost::python;
-//	std::auto_ptr<Operator> result;
-//	const int nr = len(reactants);
-//	if (nr == 0) {
-//		result = ZeroOrderMolecularReaction::New(rate,min,max);
-//	} else if (nr == 1) {
-//
-//	} else if (nr == 2) {
-//
-//	} else {
-//		ERROR("Number of reactants must be 0, 1 or 2");
-//	}
-//	return result;
-//}
 
-std::auto_ptr<NextSubvolumeMethod> new_compartments(const boost::python::list& min,const boost::python::list& max, const boost::python::list& h) {
-	Vect3d cmin,cmax,ch;
-	CHECK(len(min)==3,"length of min should be 3");
-	CHECK(len(max)==3,"length of max should be 3");
-	CHECK(len(h)==3,"length of h should be 3");
-	for (int i = 0; i < 3; ++i) {
-		cmin[i] = extract<double>(min[i]);
-		cmax[i] = extract<double>(max[i]);
-		ch[i] = extract<double>(h[i]);
-	}
-	StructuredGrid *grid = new StructuredGrid(cmin,cmax,ch);
-	return NextSubvolumeMethod::New(*grid);
-}
+BOOST_PYTHON_FUNCTION_OVERLOADS(new_uni_reaction_overloads, UniMolecularReaction::New, 2, 3);
 
-std::auto_ptr<Operator> new_zero_reaction(const double rate, const boost::python::list& min,const boost::python::list& max) {
-	Vect3d cmin,cmax;
-	CHECK(len(min)==3,"length of min should be 3");
-	CHECK(len(max)==3,"length of max should be 3");
-	for (int i = 0; i < 3; ++i) {
-		cmin[i] = extract<double>(min[i]);
-		cmax[i] = extract<double>(max[i]);
-	}
-	return ZeroOrderMolecularReaction::New(rate,cmin,cmax);
-}
 
-std::auto_ptr<Operator> new_uni_reaction(const double rate, Species* s, const boost::python::list& products,const double init_radius=0.0) {
-	ReactionSide rhs;
-	const int np = len(products);
-
-	for (int i = 0; i < np; ++i) {
-		Species *s = extract<Species*>(products[i]);
-		rhs = rhs + *s;
-	}
-	return UniMolecularReaction::New(rate,*s >> rhs,init_radius);
-}
-
-BOOST_PYTHON_FUNCTION_OVERLOADS(new_uni_reaction_overloads, new_uni_reaction, 3, 4);
-
-std::auto_ptr<Operator> new_bi_reaction(const double rate, Species* s1, Species* s2, const boost::python::list& products,
+std::auto_ptr<Operator> new_bi_reaction(const double rate, const ReactionEquation& eq,
 					const double binding,
 					const double unbinding,
 					const double dt,
-					const boost::python::list& min, const boost::python::list& max, const boost::python::list& periodic,
+					const Vect3d& min, const Vect3d& max, const Vect3b& periodic,
 					const bool reversible=false) {
-	Vect3d cmin,cmax;
-	Vect3b cperiodic;
-	CHECK(len(min)==3,"length of min should be 3");
-	CHECK(len(max)==3,"length of max should be 3");
-	CHECK(len(periodic)==3,"length of periodic should be 3");
-	for (int i = 0; i < 3; ++i) {
-		cmin[i] = extract<double>(min[i]);
-		cmax[i] = extract<double>(max[i]);
-		cperiodic[i] = extract<bool>(periodic[i]);
 
-	}
-	ReactionSide rhs;
-	const int np = len(products);
-	for (int i = 0; i < np; ++i) {
-		Species* s = extract<Species*>(products[i]);
-		rhs = rhs + *s;
-	}
-	ReactionEquation eq = *s1 + *s2 >> rhs;
-
-	return BiMolecularReaction<BucketSort>::New(rate,eq,binding,unbinding,dt,cmin,cmax,cperiodic,reversible);
+	return BiMolecularReaction<BucketSort>::New(rate,eq,binding,unbinding,dt,min,max,periodic,reversible);
 }
 
-BOOST_PYTHON_FUNCTION_OVERLOADS(new_bi_reaction_overloads, new_bi_reaction, 10, 11);
+BOOST_PYTHON_FUNCTION_OVERLOADS(new_bi_reaction_overloads, new_bi_reaction, 8, 9);
 
-std::auto_ptr<Operator> new_bi_reaction2(const double rate, Species* s1, Species* s2, const boost::python::list& products,
+std::auto_ptr<Operator> new_bi_reaction2(const double rate, const ReactionEquation& eq,
 					const double dt,
-					const boost::python::list& min, const boost::python::list& max, const boost::python::list& periodic,
+					const Vect3d& min, const Vect3d& max, const Vect3b& periodic,
 					const bool reversible=false) {
-	Vect3d cmin,cmax;
-	Vect3b cperiodic;
-	CHECK(len(min)==3,"length of min should be 3");
-	CHECK(len(max)==3,"length of max should be 3");
-	CHECK(len(periodic)==3,"length of periodic should be 3");
-	for (int i = 0; i < 3; ++i) {
-		cmin[i] = extract<double>(min[i]);
-		cmax[i] = extract<double>(max[i]);
-		cperiodic[i] = extract<bool>(periodic[i]);
 
-	}
-	ReactionSide rhs;
-	const int np = len(products);
-	for (int i = 0; i < np; ++i) {
-		Species* s = extract<Species*>(products[i]);
-		rhs = rhs + *s;
-	}
-	ReactionEquation eq = *s1 + *s2 >> rhs;
-
-	return BiMolecularReaction<BucketSort>::New(rate,eq,dt,cmin,cmax,cperiodic,reversible);
+	return BiMolecularReaction<BucketSort>::New(rate,eq,dt,min,max,periodic,reversible);
 }
 
-BOOST_PYTHON_FUNCTION_OVERLOADS(new_bi_reaction_overloads2, new_bi_reaction2, 8, 9);
-
-std::auto_ptr<Operator> new_tri_reaction(const double rate, Species* s1, Species* s2, Species* s3,
-					const boost::python::list& products,
-					const double dt,
-					const boost::python::list& min, const boost::python::list& max, const boost::python::list& periodic) {
-	Vect3d cmin,cmax;
-	Vect3b cperiodic;
-	CHECK(len(min)==3,"length of min should be 3");
-	CHECK(len(max)==3,"length of max should be 3");
-	CHECK(len(periodic)==3,"length of periodic should be 3");
-	for (int i = 0; i < 3; ++i) {
-		cmin[i] = extract<double>(min[i]);
-		cmax[i] = extract<double>(max[i]);
-		cperiodic[i] = extract<bool>(periodic[i]);
-
-	}
-	ReactionSide rhs;
-	const int np = len(products);
-	for (int i = 0; i < np; ++i) {
-		Species* s = extract<Species*>(products[i]);
-		rhs = rhs + *s;
-	}
-	ReactionEquation eq = *s1 + *s2 + *s3 >> rhs;
-
-	return TriMolecularReaction::New(rate,eq,dt,cmin,cmax,cperiodic);
-}
-
-void Species_fill_uniform2(Species& self, const boost::python::list& min, const boost::python::list& max, const unsigned int n) {
-	Vect3d cmin,cmax;
-	CHECK(len(min)==3,"length of min should be 3");
-	CHECK(len(max)==3,"length of max should be 3");
-	for (int i = 0; i < 3; ++i) {
-		cmin[i] = extract<double>(min[i]);
-		cmax[i] = extract<double>(max[i]);
-	}
-	self.fill_uniform(cmin,cmax,n);
-}
+BOOST_PYTHON_FUNCTION_OVERLOADS(new_bi_reaction_overloads2, new_bi_reaction2, 6, 7);
 
 
-std::vector<double>* Species_get_concentration1(Species& self, const boost::python::list& min, const boost::python::list& max, const boost::python::list& n) {
+
+std::vector<double>* Species_get_concentration1(Species& self, const Vect3d& min, const Vect3d& max, const Vect3i& n) {
 	std::vector<double>* result = new std::vector<double>();
-	Vect3d cmin,cmax;
-	Vect3i cn;
-	CHECK(len(min)==3,"length of min should be 3");
-	CHECK(len(max)==3,"length of max should be 3");
-	CHECK(len(n)==3,"length of n should be 3");
-
-	for (int i = 0; i < 3; ++i) {
-		cmin[i] = extract<double>(min[i]);
-		cmax[i] = extract<double>(max[i]);
-		cn[i] = extract<int>(n[i]);
-
-	}
-	self.get_concentration(cmin,cmax,cn,*result);
+	self.get_concentration(min,max,n,*result);
 	return result;
 }
 
-void Species_get_concentration2(Species& self, const boost::python::list& min, const boost::python::list& max, const boost::python::list& n, std::vector<double>& result) {
-	Vect3d cmin,cmax;
-	Vect3i cn;
-	CHECK(len(min)==3,"length of min should be 3");
-	CHECK(len(max)==3,"length of max should be 3");
-	CHECK(len(n)==3,"length of n should be 3");
-
-	for (int i = 0; i < 3; ++i) {
-		cmin[i] = extract<double>(min[i]);
-		cmax[i] = extract<double>(max[i]);
-		cn[i] = extract<int>(n[i]);
-
-	}
-	self.get_concentration(cmin,cmax,cn,result);
+void Species_get_concentration2(Species& self, const Vect3d& min, const Vect3d& max, const Vect3i& n, std::vector<double>& result) {
+	self.get_concentration(min,max,n,result);
 }
 
 void    (Species::*fill_uniform1)(const int) = &Species::fill_uniform;
-
+void    (Species::*fill_uniform2)(const Vect3d, const Vect3d, const unsigned int) = &Species::fill_uniform;
 
 std::auto_ptr<Operator> group(const boost::python::list& ops) {
 	OperatorList* result = new OperatorList();
@@ -299,73 +202,6 @@ std::auto_ptr<Operator> group(const boost::python::list& ops) {
 		result->push_back(s);
 	}
 	return std::auto_ptr<Operator>(result);
-}
-
-void NextSubvolumeMethod_add_reaction(NextSubvolumeMethod& self, const double rate, const boost::python::list& reactants, const boost::python::list& products) {
-	ReactionSide lhs;
-	const int nr = len(reactants);
-	for (int i = 0; i < nr; ++i) {
-		Species* s = extract<Species*>(reactants[i]);
-		lhs = lhs + *s;
-	}
-
-	ReactionSide rhs;
-	const int np = len(products);
-	for (int i = 0; i < np; ++i) {
-		Species* s = extract<Species*>(products[i]);
-		rhs = rhs + *s;
-	}
-	ReactionEquation eq = lhs >> rhs;
-	self.add_reaction(rate,eq);
-}
-
-template<typename T>
-void NextSubvolumeMethod_add_reaction_in(NextSubvolumeMethod& self, const double rate, const boost::python::list& reactants, const boost::python::list& products, const T& geometry) {
-	ReactionSide lhs;
-	const int nr = len(reactants);
-	for (int i = 0; i < nr; ++i) {
-		Species* s = extract<Species*>(reactants[i]);
-		lhs = lhs + *s;
-	}
-
-	ReactionSide rhs;
-	const int np = len(products);
-	for (int i = 0; i < np; ++i) {
-		Species* s = extract<Species*>(products[i]);
-		rhs = rhs + *s;
-	}
-	ReactionEquation eq = lhs >> rhs;
-	self.add_reaction_in(rate,eq,geometry);
-}
-
-template<typename T>
-void NextSubvolumeMethod_add_reaction_on(NextSubvolumeMethod& self, const double rate, const boost::python::list& reactants, const boost::python::list& products, const T& geometry) {
-	ReactionSide lhs;
-	const int nr = len(reactants);
-	for (int i = 0; i < nr; ++i) {
-		Species* s = extract<Species*>(reactants[i]);
-		lhs = lhs + *s;
-	}
-
-	ReactionSide rhs;
-	const int np = len(products);
-	for (int i = 0; i < np; ++i) {
-		Species* s = extract<Species*>(products[i]);
-		rhs = rhs + *s;
-	}
-	ReactionEquation eq = lhs >> rhs;
-	self.add_reaction_on(rate,eq,geometry);
-}
-
-
-template <typename T>
-std::auto_ptr<Operator> new_jump_boundary(const T& geometry, const boost::python::list& py_jump_by){
-	CHECK(len(py_jump_by)==3,"length of jump_by should be 3");
-	Vect3d jump_by;
-	for (int i = 0; i < 3; ++i) {
-		jump_by[i] = extract<double>(py_jump_by[i]);
-	}
-	return JumpBoundary<T>::New(geometry,jump_by);
 }
 
 
@@ -382,18 +218,6 @@ struct vtkSmartPointer_to_python {
 	}
 };
 
-template<typename T>
-std::auto_ptr<T> axis_aligned_rect_new(const boost::python::list& min, const boost::python::list& max, const int normal) {
-	Vect3d cmin,cmax;
-	CHECK(len(min)==3,"length of min should be 3");
-	CHECK(len(max)==3,"length of max should be 3");
-
-	for (int i = 0; i < 3; ++i) {
-		cmin[i] = extract<double>(min[i]);
-		cmax[i] = extract<double>(max[i]);
-	}
-	return T::New(cmin,cmax,normal);
-}
 
 
 BOOST_PYTHON_MODULE(pyTyche) {
@@ -407,6 +231,10 @@ BOOST_PYTHON_MODULE(pyTyche) {
 	    ;
 
 	to_python_converter<vtkSmartPointer<vtkUnstructuredGrid>,vtkSmartPointer_to_python<vtkUnstructuredGrid> >();
+	Vect3_from_python_list<double>();
+	Vect3_from_python_list<int>();
+	Vect3_from_python_list<bool>();
+	ReactionEquation_from_python_list();
 
 	/*
 	 * Species
@@ -414,7 +242,7 @@ BOOST_PYTHON_MODULE(pyTyche) {
 
 	class_<Species,typename std::auto_ptr<Species> >("Species",boost::python::init<double>())
 			.def("fill_uniform",fill_uniform1)
-			.def("fill_uniform",Species_fill_uniform2)
+			.def("fill_uniform",fill_uniform2)
 			.def("get_concentration",Species_get_concentration1, return_value_policy<manage_new_object>())
 			.def("get_concentration",Species_get_concentration2)
 			.def("get_vtk",&Species::get_vtk)
@@ -445,9 +273,9 @@ BOOST_PYTHON_MODULE(pyTyche) {
 	def("new_xplane",xplane::New);
 	def("new_yplane",yplane::New);
 	def("new_zplane",zplane::New);
-	def("new_xrect",axis_aligned_rect_new<xrect>);
-	def("new_yrect",axis_aligned_rect_new<yrect>);
-	def("new_zrect",axis_aligned_rect_new<zrect>);
+	def("new_xrect",xrect::New);
+	def("new_yrect",xrect::New);
+	def("new_zrect",xrect::New);
 
 	class_<xplane,typename std::auto_ptr<xplane> >("Xplane",boost::python::no_init);
 	class_<yplane,typename std::auto_ptr<yplane> >("Yplane",boost::python::no_init);
@@ -458,12 +286,12 @@ BOOST_PYTHON_MODULE(pyTyche) {
 	class_<zrect,typename std::auto_ptr<zrect> >("Zrect",boost::python::no_init);
 
 	def("new_box", Box::New);
-	def("new_box", BoxWithHoles::New);
+	def("new_multiple_boxes", MultipleBoxes::New);
 
 	class_<Box,typename std::auto_ptr<Box> >("Box",boost::python::no_init)
 						;
-	class_<BoxWithHoles,typename std::auto_ptr<BoxWithHoles> >("BoxWithHoles",boost::python::no_init)
-				.def("add_hole",&BoxWithHoles::add_hole)
+	class_<MultipleBoxes,typename std::auto_ptr<MultipleBoxes> >("MultipleBoxes",boost::python::no_init)
+				.def("add_hole",&MultipleBoxes::add_box)
 				;
 
 	/*
@@ -475,7 +303,6 @@ BOOST_PYTHON_MODULE(pyTyche) {
 	def("new_coupling_boundary",CouplingBoundary<xrect>::New);
 	def("new_coupling_boundary",CouplingBoundary<yrect>::New);
 	def("new_coupling_boundary",CouplingBoundary<Box>::New);
-	def("new_coupling_boundary",CouplingBoundary<BoxWithHoles>::New);
 
 
     def("new_reflective_boundary",ReflectiveBoundary<xplane>::New);
@@ -486,48 +313,35 @@ BOOST_PYTHON_MODULE(pyTyche) {
     def("new_reflective_boundary",ReflectiveBoundary<zrect>::New);
 
 
-//	class_<ReflectiveBoundary<xplane>,typename std::auto_ptr<ReflectiveBoundary<xplane> > >("ReflectiveBoundaryXplane",boost::python::no_init);
-//	class_<ReflectiveBoundary<yplane>,typename std::auto_ptr<ReflectiveBoundary<yplane> > >("ReflectiveBoundaryYplane",boost::python::no_init);
-//	class_<ReflectiveBoundary<zplane>,typename std::auto_ptr<ReflectiveBoundary<zplane> > >("ReflectiveBoundaryZplane",boost::python::no_init);
-
-
-    def("new_jump_boundary",new_jump_boundary<xplane>);
-    def("new_jump_boundary",new_jump_boundary<yplane>);
-    def("new_jump_boundary",new_jump_boundary<zplane>);
-    def("new_jump_boundary",new_jump_boundary<xrect>);
-    def("new_jump_boundary",new_jump_boundary<yrect>);
-    def("new_jump_boundary",new_jump_boundary<zrect>);
-
-//	class_<JumpBoundary<xplane>,typename std::auto_ptr<JumpBoundary<xplane> > >("JumpBoundaryXplane",boost::python::no_init);
-//	class_<JumpBoundary<yplane>,typename std::auto_ptr<JumpBoundary<yplane> > >("JumpBoundaryYplane",boost::python::no_init);
-//	class_<JumpBoundary<zplane>,typename std::auto_ptr<JumpBoundary<zplane> > >("JumpBoundaryZplane",boost::python::no_init);
+    def("new_jump_boundary",JumpBoundary<xplane>::New);
+    def("new_jump_boundary",JumpBoundary<yplane>::New);
+    def("new_jump_boundary",JumpBoundary<zplane>::New);
+    def("new_jump_boundary",JumpBoundary<xrect>::New);
+    def("new_jump_boundary",JumpBoundary<yrect>::New);
+    def("new_jump_boundary",JumpBoundary<zrect>::New);
 
 
     /*
      * Diffusion
      */
     def("new_diffusion",Diffusion::New);
-//	class_<Diffusion,typename std::auto_ptr<Diffusion> >("Diffusion",boost::python::no_init);
-
 
     /*
      * Reactions
      */
-    def("new_zero_reaction",new_zero_reaction);
-//	class_<ZeroOrderMolecularReaction,typename std::auto_ptr<ZeroOrderMolecularReaction> >("ZeroOrderMolecularReaction",boost::python::no_init);
+    def("new_zero_reaction",ZeroOrderMolecularReaction::New);
 
-    def("new_uni_reaction",new_uni_reaction, new_uni_reaction_overloads());
-//	class_<UniMolecularReaction,typename std::auto_ptr<UniMolecularReaction> >("UniMolecularReaction",boost::python::no_init);
+
+    def("new_uni_reaction",UniMolecularReaction::New, new_uni_reaction_overloads());
 
     def("new_bi_reaction",new_bi_reaction, new_bi_reaction_overloads());
     def("new_bi_reaction",new_bi_reaction2, new_bi_reaction_overloads2());
-//	class_<BiMolecularReaction<BucketSort>,typename std::auto_ptr<BiMolecularReaction<BucketSort> > >("BiMolecularReaction",boost::python::no_init);
-    def("new_tri_reaction",new_tri_reaction);
+    def("new_tri_reaction",TriMolecularReaction::New);
 
     /*
      * Compartments
      */
-    def("new_compartments",new_compartments);
+    def("new_compartments",NextSubvolumeMethod::New);
 
     /*
      * NextSubvolume
@@ -539,20 +353,30 @@ BOOST_PYTHON_MODULE(pyTyche) {
     	.def("set_interface",&NextSubvolumeMethod::set_interface<xrect>)
     	.def("set_interface",&NextSubvolumeMethod::set_interface<yrect>)
     	.def("set_interface",&NextSubvolumeMethod::set_interface<zrect>)
+    	.def("set_interface",&NextSubvolumeMethod::set_interface<Box>)
+    	.def("set_interface",&NextSubvolumeMethod::set_interface<MultipleBoxes>)
     	.def("unset_interface",&NextSubvolumeMethod::unset_interface<xplane>)
     	.def("unset_interface",&NextSubvolumeMethod::unset_interface<yplane>)
     	.def("unset_interface",&NextSubvolumeMethod::unset_interface<zplane>)
     	.def("unset_interface",&NextSubvolumeMethod::unset_interface<xrect>)
     	.def("unset_interface",&NextSubvolumeMethod::unset_interface<yrect>)
     	.def("unset_interface",&NextSubvolumeMethod::unset_interface<zrect>)
+    	.def("unset_interface",&NextSubvolumeMethod::unset_interface<Box>)
+    	.def("unset_interface",&NextSubvolumeMethod::unset_interface<MultipleBoxes>)
     	.def("add_diffusion",&NextSubvolumeMethod::add_diffusion)
-    	.def("add_reaction",&NextSubvolumeMethod_add_reaction)
-    	.def("add_reaction_on",&NextSubvolumeMethod_add_reaction_on<xplane>)
-    	.def("add_reaction_on",&NextSubvolumeMethod_add_reaction_on<yplane>)
-    	.def("add_reaction_on",&NextSubvolumeMethod_add_reaction_on<zplane>)
-    	.def("add_reaction_on",&NextSubvolumeMethod_add_reaction_on<xrect>)
-    	.def("add_reaction_on",&NextSubvolumeMethod_add_reaction_on<yrect>)
-    	.def("add_reaction_on",&NextSubvolumeMethod_add_reaction_on<zrect>)
+    	.def("add_diffusion_between",&NextSubvolumeMethod::add_diffusion_between<xplane>)
+    	.def("add_diffusion_between",&NextSubvolumeMethod::add_diffusion_between<yplane>)
+    	.def("add_diffusion_between",&NextSubvolumeMethod::add_diffusion_between<zplane>)
+    	.def("add_diffusion_between",&NextSubvolumeMethod::add_diffusion_between<xrect>)
+    	.def("add_diffusion_between",&NextSubvolumeMethod::add_diffusion_between<yrect>)
+    	.def("add_diffusion_between",&NextSubvolumeMethod::add_diffusion_between<zrect>)
+    	.def("add_reaction",&NextSubvolumeMethod::add_reaction)
+    	.def("add_reaction_on",&NextSubvolumeMethod::add_reaction_on<xplane>)
+    	.def("add_reaction_on",&NextSubvolumeMethod::add_reaction_on<yplane>)
+    	.def("add_reaction_on",&NextSubvolumeMethod::add_reaction_on<zplane>)
+    	.def("add_reaction_on",&NextSubvolumeMethod::add_reaction_on<xrect>)
+    	.def("add_reaction_on",&NextSubvolumeMethod::add_reaction_on<yrect>)
+    	.def("add_reaction_on",&NextSubvolumeMethod::add_reaction_on<zrect>)
     	;
 
 }
