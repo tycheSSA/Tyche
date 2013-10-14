@@ -107,6 +107,7 @@ public:
 	std::vector<int> mol_copy_numbers;
 	const StructuredGrid* grid;
 	int id;
+	std::vector<double> tmpx,tmpy,tmpz;
 private:
 	static int species_count;
 };
