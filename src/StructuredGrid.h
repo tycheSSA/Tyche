@@ -146,12 +146,16 @@ public:
 	double get_laplace_coefficient(const int i, const int j) const;
 	double get_distance_between(const int i, const int j) const;
 
-private:
-	vtkSmartPointer<vtkUnstructuredGrid> vtk_grid;
-	void calculate_neighbours();
 	inline int vect_to_index(const int i, const int j, const int k) const {
 		return i * num_cells_along_yz + j * num_cells_along_axes[2] + k;
 	}
+
+private:
+	vtkSmartPointer<vtkUnstructuredGrid> vtk_grid;
+	void calculate_neighbours();
+//	inline int vect_to_index(const int i, const int j, const int k) const {
+//		return i * num_cells_along_yz + j * num_cells_along_axes[2] + k;
+//	}
 	inline int vect_to_index(const Vect3i& vect) const {
 		return vect[0] * num_cells_along_yz + vect[1] * num_cells_along_axes[2] + vect[2];
 	}
