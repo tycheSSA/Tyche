@@ -415,6 +415,20 @@ void NextSubvolumeMethod::set_interface_reactions(
 	}
 }
 
+void NextSubvolumeMethod::fill_uniform(Species& s, const Vect3d low, const Vect3d high, const unsigned int N) {
+	add_species(s);
+	LOG(2,"Adding "<<N<<" molecules of Species ("<<s.id<<") within the rectangle defined by "<<low<<" and "<<high);
+
+	boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni(generator, boost::uniform_real<>(0,1));
+	const Vect3d dist = high-low;
+	for(int i=0;i<N;i++) {
+		const Vect3d pos = Vect3d(uni()*dist[0],uni()*dist[1],uni()*dist[2])+low;
+		if (subvolumes.is_in(pos)) {
+			s.copy_numbers[subvolumes.get_cell_index(pos)]++;
+		}
+	}
+}
+
 void NextSubvolumeMethod::unset_interface_reactions(
 		std::vector<int>& from_indicies,
 		std::vector<int>& to_indicies) {

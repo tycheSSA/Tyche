@@ -25,6 +25,7 @@
 
 #include <boost/python.hpp>
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
+#include <numpy/ndarrayobject.h>
 #include "Tyche.h"
 #include <numpy/arrayobject.h>
 
@@ -180,19 +181,21 @@ std::auto_ptr<Operator> new_bi_reaction2(const double rate, const ReactionEquati
 BOOST_PYTHON_FUNCTION_OVERLOADS(new_bi_reaction_overloads2, new_bi_reaction2, 6, 7);
 
 
-PyObject *Species_get_compartments(Species& self) {
+boost::python::object Species_get_compartments(Species& self) {
 	Vect3i grid_size = self.grid->get_cells_along_axes();
 	npy_intp size[3] = {grid_size[0],grid_size[1],grid_size[2]};
 	PyObject *out = PyArray_SimpleNew(3, size, NPY_INT);
 	for (int i = 0; i < grid_size[0]; ++i) {
 		for (int j = 0; j < grid_size[1]; ++j) {
 			for (int k = 0; k < grid_size[2]; ++k) {
-				*(PyArray_GETPTR3(out, i, j, k)) = self.copy_numbers[self.grid->vect_to_index(i,j,k)];
+				*((int *)PyArray_GETPTR3(out, i, j, k)) = self.copy_numbers[self.grid->vect_to_index(i,j,k)];
 			}
 		}
 	}
+	boost::python::handle<> handle(out);
+	boost::python::numeric::array arr(handle);
+	return arr;
 
-	return out;
 }
 
 boost::python::tuple Species_get_particles(Species& self) {
@@ -204,35 +207,39 @@ boost::python::tuple Species_get_particles(Species& self) {
 	PyObject *out_z = PyArray_SimpleNew(1, &size, NPY_DOUBLE);
 
 	for (int i = 0; i < n; ++i) {
-		*(PyArray_GETPTR1(out_x,i)) = self.mols.r[i][0];
-		*(PyArray_GETPTR1(out_y,i)) = self.mols.r[i][1];
-		*(PyArray_GETPTR1(out_z,i)) = self.mols.r[i][2];
+		*((double *)PyArray_GETPTR1(out_x,i)) = self.mols.r[i][0];
+		*((double *)PyArray_GETPTR1(out_y,i)) = self.mols.r[i][1];
+		*((double *)PyArray_GETPTR1(out_z,i)) = self.mols.r[i][2];
 	}
 	return boost::python::make_tuple(boost::python::handle<>(out_x),boost::python::handle<>(out_y),boost::python::handle<>(out_z));
 }
 
-PyObject *Species_get_concentration1(Species& self, const Vect3d& min, const Vect3d& max, const Vect3i& n) {
+boost::python::object Species_get_concentration1(Species& self, const Vect3d& min, const Vect3d& max, const Vect3i& n) {
 	const Vect3d spacing = (max-min).cwiseQuotient(n.cast<double>());
 	std::vector<double> concentration;
 	StructuredGrid calc_grid(min,max,spacing);
 	self.get_concentration(calc_grid,concentration);
-
-	Vect3i grid_size = calc_grid->get_cells_along_axes();
+	Vect3i grid_size = calc_grid.get_cells_along_axes();
 	npy_intp size[3] = {grid_size[0],grid_size[1],grid_size[2]};
+
 	PyObject *out = PyArray_SimpleNew(3, size, NPY_DOUBLE);
 	for (int i = 0; i < grid_size[0]; ++i) {
 		for (int j = 0; j < grid_size[1]; ++j) {
 			for (int k = 0; k < grid_size[2]; ++k) {
-				*(PyArray_GETPTR3(out, i, j, k)) = concentration[calc_grid->vect_to_index(i,j,k)];
+				const int index = calc_grid.vect_to_index(i,j,k);
+				*((double *)PyArray_GETPTR3(out, i, j, k)) = concentration[index];
 			}
 		}
 	}
-	return out;
+	boost::python::handle<> handle(out);
+	boost::python::numeric::array arr(handle);
+	return arr;
+//	std::cout <<"c after set PyObject"<<std::endl;
+//	object obj(handle<>(out));
+//	return extract<numeric::array>(obj);
 }
 
 
-void    (Species::*fill_uniform1)(const int) = &Species::fill_uniform;
-void    (Species::*fill_uniform2)(const Vect3d, const Vect3d, const unsigned int) = &Species::fill_uniform;
 
 std::auto_ptr<Operator> group(const boost::python::list& ops) {
 	OperatorList* result = new OperatorList();
@@ -261,6 +268,8 @@ struct vtkSmartPointer_to_python {
 
 
 BOOST_PYTHON_MODULE(pyTyche) {
+	import_array();
+	numeric::array::set_module_and_type("numpy", "ndarray");
 	def("init", python_init);
 
 	/*
@@ -281,12 +290,11 @@ BOOST_PYTHON_MODULE(pyTyche) {
 	 */
 
 	class_<Species,typename std::auto_ptr<Species> >("Species",boost::python::init<double>())
-			.def("fill_uniform",fill_uniform1)
-			.def("fill_uniform",fill_uniform2)
-			.def("get_concentration",Species_get_concentration1, return_value_policy<manage_new_object>())
+			.def("fill_uniform",&Species::fill_uniform)
+			.def("get_concentration",Species_get_concentration1)
 			.def("get_vtk",&Species::get_vtk)
-			.def("get_compartments",Species_get_compartments, return_value_policy<manage_new_object>())
-			.def("get_compartments",Species_get_particles)
+			.def("get_compartments",Species_get_compartments)
+			.def("get_particles",Species_get_particles)
 			.def(self_ns::str(self_ns::self))
 			;
 	def("new_species",Species::New);
@@ -418,6 +426,7 @@ BOOST_PYTHON_MODULE(pyTyche) {
     	.def("add_reaction_on",&NextSubvolumeMethod::add_reaction_on<xrect>)
     	.def("add_reaction_on",&NextSubvolumeMethod::add_reaction_on<yrect>)
     	.def("add_reaction_on",&NextSubvolumeMethod::add_reaction_on<zrect>)
+    	.def("fill_uniform",&NextSubvolumeMethod::fill_uniform)
     	;
 
 }

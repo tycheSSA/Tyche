@@ -63,22 +63,10 @@ void Species::fill_uniform(const Vect3d low, const Vect3d high, const unsigned i
 	const Vect3d dist = high-low;
 	for(int i=0;i<N;i++) {
 		const Vect3d pos = Vect3d(uni()*dist[0],uni()*dist[1],uni()*dist[2])+low;
-		if ((grid!=NULL)&&(grid->is_in(pos))) {
-			copy_numbers[grid->get_cell_index(pos)]++;
-		} else {
-			mols.add_molecule(pos);
-		}
+		mols.add_molecule(pos);
 	}
 }
 
-void Species::fill_uniform(const int n) {
-	if (grid == NULL) return;
-	boost::uniform_int<> uni_dist(0,copy_numbers.size()-1);
-	boost::variate_generator<base_generator_type&, boost::uniform_int<> > uni(generator, uni_dist);
-	for(int i=0;i<n;i++) {
-		copy_numbers[uni()]++;
-	}
-}
 
 vtkSmartPointer<vtkUnstructuredGrid> Species::get_vtk() {
 	vtkSmartPointer<vtkUnstructuredGrid> grid = vtkSmartPointer<vtkUnstructuredGrid>::New();

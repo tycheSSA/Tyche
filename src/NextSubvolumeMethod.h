@@ -227,6 +227,7 @@ public:
 			subvolume_reactions[*i].clear();
 		}
 	}
+	void fill_uniform(Species& s, const Vect3d low, const Vect3d high, const unsigned int N);
 
 	void reset_all_priorities();
 	void reset_priority(const int i);
