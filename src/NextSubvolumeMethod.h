@@ -233,7 +233,11 @@ public:
 	void reset_priority(const int i);
 	void recalc_priority(const int i);
 	double get_next_event_time() {
-		return heap.top().time_at_next_reaction;
+		if (!heap.empty()) {
+			return heap.top().time_at_next_reaction;
+		} else {
+			return INFINITY;
+		}
 	}
 	double get_time() {return time;}
 	const StructuredGrid& get_grid() const { return subvolumes; }
