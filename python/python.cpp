@@ -386,6 +386,10 @@ BOOST_PYTHON_MODULE(pyTyche) {
     def("new_bi_reaction",new_bi_reaction, new_bi_reaction_overloads());
     def("new_bi_reaction",new_bi_reaction2, new_bi_reaction_overloads2());
     def("new_tri_reaction",TriMolecularReaction::New);
+	def("new_binding_reaction", BindingReaction::New);
+
+	class_<BindingReaction, bases<Operator>, std::auto_ptr<BindingReaction> >("BindingReaction", boost::python::no_init)
+		.def("get_site_state", &BindingReaction::get_site_state);
 
     /*
      * Compartments

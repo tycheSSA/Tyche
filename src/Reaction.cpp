@@ -107,6 +107,89 @@ void UniMolecularReaction::integrate(const double dt) {
 
 }
 
+class bindingreaction_rootf {
+public:
+	bindingreaction_rootf(const double k1, const double R, const double sigma, const double D, const double dt):
+		k1(k1), R(R), sigma(sigma), D(D), dt(dt) {
+	}
+
+	double operator()(const double P_lambda) {
+		const double pre = 4*PI;
+		double fac = sqrt(P_lambda/(2.*dt*D));
+		double Rl = R*fac;
+		double sl = sigma*fac;
+		double tRl = tanh(Rl);
+
+		return pre*sigma*D*(Rl-tRl)/(tRl*cosh(Rl-sl)-sinh(Rl-sl))-k1;
+	}
+protected:
+	double k1;
+	double R;
+	double sigma;
+	double D;
+	double dt;
+};
+
+double BindingReaction::calculate_lambda(const double dt) {
+	double P_lambda_min = 1e-10;
+	double P_lambda_max = 1;
+
+	unsigned int maximum_iterations = 100;
+	boost::uintmax_t max_iter = maximum_iterations;
+	boost::math::tools::eps_tolerance<double> tol(30);
+	std::pair<double, double> r;
+
+    bindingreaction_rootf f(rate, binding_radius, unbinding_radius, get_species()[0]->D, binding_radius_dt);
+	if (f(P_lambda_min)*f(P_lambda_max) >= 0) {
+		ERROR("brackets of root not valid. f(P_lambda_min) = "<<f(P_lambda_min)<<" and f(P_lambda_max) = "<<f(P_lambda_max));
+	}
+
+	LOG(2,"solving root with f(P_lambda_min) = "<<f(P_lambda_min)<<" and f(P_lambda_max) = "<<f(P_lambda_max));
+
+	r = boost::math::tools::toms748_solve(f,
+			P_lambda_min, P_lambda_max, tol, max_iter);
+	CHECK(max_iter < maximum_iterations, "could not solve for root. binding_min = "<<r.first<<" and binding_max = "<<r.second);
+
+	LOG(2,"f(binding) = f("<<0.5*(r.first+r.second)<<") = "<<f(0.5*(r.first + r.second)));
+	LOG(2,"f(first) = f("<<r.first<<") = "<<f(r.first));
+	LOG(2,"f(second) = f("<<r.second<<") = "<< f(r.second));
+
+	return 0.5*(r.first + r.second);
+}
+
+void BindingReaction::integrate(const double dt) {
+	Molecules* mols = &get_species()[0]->mols;
+
+	boost::uniform_real<> uni_dist(0.0,1.0);
+	boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni(generator, uni_dist);
+
+	const double binding_radius2 = binding_radius*binding_radius;
+	//neighbourhood_search.embed_points(mols1->r);
+	const int n = mols->size();
+	for (int mols_i = 0; mols_i < n; ++mols_i) {
+		if (!(mols->alive[mols_i])) continue;
+		const Vect3d pos = mols->r[mols_i];
+		const int id = mols->id[mols_i];
+		if ((pos-position).squaredNorm() < binding_radius2) {
+			if (uni() < P_lambda) {
+				site_state++;
+				mols->mark_for_deletion(mols_i);
+				break;
+			}
+		}
+	}
+	mols->delete_molecules();
+
+    for (unsigned long i = 0; i < site_state; i++) {
+		if (uni() < P_diss) {
+			site_state--;
+			double phi = 2*PI*uni();
+			double thet = PI/2.*uni();
+			Vect3d npos = Vect3d(unbinding_radius*sin(thet)*cos(phi), unbinding_radius*sin(thet)*sin(phi), unbinding_radius*cos(thet)) + position;
+			mols->add_molecule(npos, npos);
+		}
+	}
+}
 
 //class reversiblef {
 //public:
@@ -743,6 +826,28 @@ BiMolecularReaction<T>::BiMolecularReaction(const double rate, const ReactionEqu
 //}
 
 template class BiMolecularReaction<BucketSort>;
+
+
+BindingReaction::BindingReaction(const double rate,
+								 const double diss_rate, Species& species,
+								 const double binding,
+								 const double unbinding,
+								 const double dt,
+								 Vect3d pos,
+								 unsigned long initial_state):
+		Reaction(rate),
+		P_diss(diss_rate*dt),
+		binding_radius_dt(dt),
+		position(pos),
+		binding_radius(binding),
+		unbinding_radius(unbinding),
+        site_state(initial_state) {
+	this->add_species(species);
+
+	P_lambda = calculate_lambda(dt);
+
+	LOG(2,"created binding reaction at position " << pos << " for species " << species <<" binding radius = " << binding_radius <<" unbinding radius = "<<unbinding_radius<< " P_lambda = " << P_lambda);
+};
 
 
 void ZeroOrderMolecularReaction::add_species_execute(Species& s) {
