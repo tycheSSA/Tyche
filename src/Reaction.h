@@ -100,6 +100,55 @@ private:
 
 
 
+class BindingReaction: public Reaction {
+public:
+		BindingReaction(const double rate,
+						const double diss_rate,
+						Species& species,
+						const double binding,
+						const double unbinding,
+						const double dt,
+						Vect3d pos,
+						const unsigned long initial_state=0);
+
+	static std::auto_ptr<Operator> New(const double rate,
+									   const double diss_rate,
+									   Species& species,
+									   const double binding,
+									   const double unbinding,
+									   const double dt,
+									   Vect3d pos,
+									   const unsigned long initial_state=0) {
+		return std::auto_ptr<Operator>(new BindingReaction(rate,diss_rate,species,binding,unbinding,dt,pos,initial_state));
+	}
+
+	double get_rate() const {return this->rate;}
+	double get_P_lambda() const {return this->P_lambda;}
+	double get_binding_radius() const {return binding_radius;}
+	double get_unbinding_radius() const {return unbinding_radius;}
+	double get_site_state() const {return site_state;}
+	void report_dt_suitability(const double dt);
+
+protected:
+
+	virtual void integrate(const double dt);
+	virtual void print(std::ostream& out) const {
+		out << "\tBinding Reaction: ("<<get_species()[0]->id<<") (rate = "<<rate<<", binding radius = "<<get_binding_radius()<<")";
+	}
+
+	double calculate_lambda(const double dt);
+
+	void suggest_binding_unbinding(const double dt);
+	void suggest_binding(const double dt);
+
+	double binding_radius_dt;
+	Vect3d position;
+	double binding_radius,unbinding_radius;
+	double P_lambda;
+	double P_diss;
+	unsigned long site_state;
+};
+
 template<typename T>
 class BiMolecularReaction: public Reaction {
 public:
