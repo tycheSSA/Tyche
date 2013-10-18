@@ -34,6 +34,8 @@
 #include "Log.h"
 
 #include <vector>
+#include <list>
+#include <utility>
 #include <boost/random.hpp>
 
 namespace Tyche {
@@ -127,6 +129,11 @@ public:
 	double get_binding_radius() const {return binding_radius;}
 	double get_unbinding_radius() const {return unbinding_radius;}
 	double get_site_state() const {return site_state;}
+	std::list< std::pair< unsigned long, double > > get_state_sequence(bool clear=false) {
+		std::list< std::pair< unsigned long, double > > retlist = std::list< std::pair< unsigned long, double > >(state_sequence);
+		if (clear) state_sequence.clear();
+		return retlist;
+	}
 	void report_dt_suitability(const double dt);
 
 protected:
@@ -147,6 +154,7 @@ protected:
 	double P_lambda;
 	double P_diss;
 	unsigned long site_state;
+	std::list< std::pair< unsigned long, double > > state_sequence;
 };
 
 template<typename T>

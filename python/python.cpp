@@ -239,7 +239,19 @@ boost::python::object Species_get_concentration1(Species& self, const Vect3d& mi
 //	return extract<numeric::array>(obj);
 }
 
+boost::python::object BindingReaction_get_state_sequence(BindingReaction& self) {
+	boost::python::list retlist = boost::python::list();
+	std::list<std::pair<unsigned long, double > > slist = self.get_state_sequence(true);
+	std::list<std::pair<unsigned long, double > >::const_iterator iter;
 
+	for (iter = slist.begin(); iter != slist.end(); ++iter) {
+		unsigned long state = (*iter).first;
+		double time = (*iter).second;
+		retlist.append(boost::python::make_tuple(state, time));
+	}
+
+	return retlist;
+}
 
 std::auto_ptr<Operator> group(const boost::python::list& ops) {
 	OperatorList* result = new OperatorList();
@@ -389,7 +401,8 @@ BOOST_PYTHON_MODULE(pyTyche) {
 	def("new_binding_reaction", BindingReaction::New);
 
 	class_<BindingReaction, bases<Operator>, std::auto_ptr<BindingReaction> >("BindingReaction", boost::python::no_init)
-		.def("get_site_state", &BindingReaction::get_site_state);
+		.def("get_site_state", &BindingReaction::get_site_state)
+		.def("get_state_sequence", &BindingReaction_get_state_sequence);
 
     /*
      * Compartments

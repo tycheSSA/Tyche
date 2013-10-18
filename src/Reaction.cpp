@@ -173,6 +173,10 @@ void BindingReaction::integrate(const double dt) {
 		if ((pos-position).squaredNorm() < binding_radius2) {
 			if (uni() < P_lambda) {
 				site_state++;
+
+				std::pair<unsigned long, double> state_pair = std::pair<unsigned long, double>(site_state, get_time());
+				state_sequence.push_back(state_pair);
+
 				mols->mark_for_deletion(mols_i);
 				break;
 			}
@@ -183,6 +187,10 @@ void BindingReaction::integrate(const double dt) {
     for (unsigned long i = 0; i < site_state; i++) {
 		if (uni() < P_diss) {
 			site_state--;
+
+			std::pair<unsigned long, double> state_pair = std::pair<unsigned long, double>(site_state, get_time());
+			state_sequence.push_back(state_pair);
+
 			double phi = 2*PI*uni();
 			double thet = PI/2.*uni();
 			Vect3d npos = Vect3d(unbinding_radius*sin(thet)*cos(phi), unbinding_radius*sin(thet)*sin(phi), unbinding_radius*cos(thet)) + position;
@@ -845,6 +853,8 @@ BindingReaction::BindingReaction(const double rate,
 	this->add_species(species);
 
 	P_lambda = calculate_lambda(dt);
+
+	state_sequence = std::list<std::pair<unsigned long, double > >();
 
 	LOG(2,"created binding reaction at position " << pos << " for species " << species <<" binding radius = " << binding_radius <<" unbinding radius = "<<unbinding_radius<< " P_lambda = " << P_lambda);
 };
