@@ -283,6 +283,7 @@ BOOST_PYTHON_MODULE(pyTyche) {
 	import_array();
 	numeric::array::set_module_and_type("numpy", "ndarray");
 	def("init", python_init);
+	def("random_seed", random_seed);
 
 	/*
 	 * vector

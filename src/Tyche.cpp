@@ -33,4 +33,8 @@ void init(int argc, char *argv[]) {
 	generator.seed(time(NULL));
 }
 
+void random_seed(unsigned int seed) {
+  generator.seed(seed);
+}
+
 }

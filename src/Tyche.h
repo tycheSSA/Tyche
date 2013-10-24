@@ -44,6 +44,7 @@
 namespace Tyche {
 
 void init(int argc, char *argv[]);
+void random_seed(unsigned int);
 
 }
 
