@@ -10,6 +10,7 @@ extern "C" {
 #include "rxnparam.h"
 }
 #include <map>
+#include <vector>
 #include <boost/math/tools/roots.hpp>
 
 namespace Tyche {
@@ -139,36 +140,41 @@ void BindingReaction::integrate(const double dt) {
 	const double binding_radius2 = binding_radius*binding_radius;
 	//neighbourhood_search.embed_points(mols1->r);
 	const int n = mols->size();
-	for (int mols_i = 0; mols_i < n; ++mols_i) {
-		if (!(mols->alive[mols_i])) continue;
-		const Vect3d pos = mols->r[mols_i];
-		const int id = mols->id[mols_i];
-		if ((pos-position).squaredNorm() < binding_radius2) {
-			if (uni() < P_lambda) {
-				site_state++;
 
-				std::pair<unsigned long, double> state_pair = std::pair<unsigned long, double>(site_state, get_time());
-				state_sequence.push_back(state_pair);
+	for (int i = site_state; i < binding_sites; i++) {
+	  std::vector<int> bind_candidates(0);
+	  for (int mols_i = 0; mols_i < n; ++mols_i) {
+	    if (!(mols->alive[mols_i])) continue;
+	    const Vect3d pos = mols->r[mols_i];
+	    if ((pos-position).squaredNorm() < binding_radius2)
+	      bind_candidates.push_back(mols_i);
+	  }
 
-				mols->mark_for_deletion(mols_i);
-				break;
-			}
-		}
+	  if (uni() < (1.-pow(1-P_lambda,bind_candidates.size()))) {
+	    boost::uniform_int<> uni_int(0, bind_candidates.size()-1);
+	    boost::variate_generator<base_generator_type&, boost::uniform_int<> > rint(generator, uni_int);
+	    mols->mark_for_deletion(bind_candidates[rint()]);
+
+	    site_state++;
+	    
+	    std::pair<int, double> state_pair = std::pair<int, double>(site_state, get_time());
+	    state_sequence.push_back(state_pair);	    
+	  }
 	}
 	mols->delete_molecules();
 
-    for (unsigned long i = 0; i < site_state; i++) {
-		if (uni() < P_diss) {
-			site_state--;
-
-			std::pair<unsigned long, double> state_pair = std::pair<unsigned long, double>(site_state, get_time());
-			state_sequence.push_back(state_pair);
-
-			double phi = 2*PI*uni();
-			double thet = PI/2.*uni();
-			Vect3d npos = Vect3d(unbinding_radius*sin(thet)*cos(phi), unbinding_radius*sin(thet)*sin(phi), unbinding_radius*cos(thet)) + position;
-			mols->add_molecule(npos, npos);
-		}
+	for (int i = 0; i < site_state; i++) {
+	  if (uni() < P_diss) {
+	    site_state--;
+	  
+	    std::pair<int, double> state_pair = std::pair<int, double>(site_state, get_time());
+	    state_sequence.push_back(state_pair);
+	    
+	    double phi = 2*PI*uni();
+	    double thet = PI/2.*uni();
+	    Vect3d npos = Vect3d(unbinding_radius*sin(thet)*cos(phi), unbinding_radius*sin(thet)*sin(phi), unbinding_radius*cos(thet)) + position;
+	    mols->add_molecule(npos, npos);
+	  }
 	}
 }
 
@@ -890,24 +896,26 @@ template class BiMolecularReaction<BucketSort>;
 
 
 BindingReaction::BindingReaction(const double rate,
-								 const double diss_rate, Species& species,
-								 const double binding,
-								 const double unbinding,
-								 const double dt,
-								 Vect3d pos,
-								 unsigned long initial_state):
+				 const double diss_rate, Species& species,
+				 const double binding,
+				 const double unbinding,
+				 const double dt,
+				 Vect3d pos,
+				 const int binding_sites,
+				 const int initial_state):
 		Reaction(rate),
 		P_diss(1.-exp(-diss_rate*dt)),
 		binding_radius_dt(dt),
 		position(pos),
 		binding_radius(binding),
 		unbinding_radius(unbinding),
-        site_state(initial_state) {
+		binding_sites(binding_sites),
+		site_state(initial_state) {
 	this->add_species(species);
 
 	P_lambda = calculate_lambda(dt);
 
-	state_sequence = std::list<std::pair<unsigned long, double > >();
+	state_sequence = std::list<std::pair<int, double > >();
 
 	LOG(2,"created binding reaction at position " << pos << " for species " << species <<" binding radius = " << binding_radius <<" unbinding radius = "<<unbinding_radius<< " P_lambda = " << P_lambda << " P_diss = " << P_diss);
 };

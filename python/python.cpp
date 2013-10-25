@@ -241,11 +241,11 @@ boost::python::object Species_get_concentration1(Species& self, const Vect3d& mi
 
 boost::python::object BindingReaction_get_state_sequence(BindingReaction& self) {
 	boost::python::list retlist = boost::python::list();
-	std::list<std::pair<unsigned long, double > > slist = self.get_state_sequence(true);
-	std::list<std::pair<unsigned long, double > >::const_iterator iter;
+	std::list<std::pair<int, double > > slist = self.get_state_sequence(true);
+	std::list<std::pair<int, double > >::const_iterator iter;
 
 	for (iter = slist.begin(); iter != slist.end(); ++iter) {
-		unsigned long state = (*iter).first;
+		int state = (*iter).first;
 		double time = (*iter).second;
 		retlist.append(boost::python::make_tuple(state, time));
 	}
