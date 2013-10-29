@@ -37,6 +37,7 @@
 #include <list>
 #include <utility>
 #include <boost/random.hpp>
+#include <boost/function.hpp>
 
 namespace Tyche {
 
@@ -138,6 +139,11 @@ public:
 	}
 	void report_dt_suitability(const double dt);
 
+	void set_state_changed_cb(const boost::function< void(int) > callback)
+	{
+	  state_changed_cb = callback;
+	}
+
 protected:
 
 	virtual void integrate(const double dt);
@@ -158,6 +164,7 @@ protected:
 	int binding_sites;
 	int site_state;
 	std::list< std::pair< int, double > > state_sequence;
+	boost::function< void(int) > state_changed_cb;
 };
 
 template<typename T>

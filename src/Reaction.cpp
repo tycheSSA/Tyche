@@ -158,7 +158,9 @@ void BindingReaction::integrate(const double dt) {
 	    site_state++;
 	    
 	    std::pair<int, double> state_pair = std::pair<int, double>(site_state, get_time());
-	    state_sequence.push_back(state_pair);	    
+	    state_sequence.push_back(state_pair);
+
+	    state_changed_cb(site_state);
 	  }
 	}
 	mols->delete_molecules();
@@ -170,6 +172,8 @@ void BindingReaction::integrate(const double dt) {
 	    std::pair<int, double> state_pair = std::pair<int, double>(site_state, get_time());
 	    state_sequence.push_back(state_pair);
 	    
+	    state_changed_cb(site_state);
+
 	    double phi = 2*PI*uni();
 	    double thet = PI/2.*uni();
 	    Vect3d npos = Vect3d(unbinding_radius*sin(thet)*cos(phi), unbinding_radius*sin(thet)*sin(phi), unbinding_radius*cos(thet)) + position;
