@@ -322,6 +322,8 @@ BOOST_PYTHON_MODULE(pyTyche) {
 			.def("add_species",&Operator::add_species)
 			.def("get_species_index",&Operator::get_species_index)
 			.def("integrate_for_time",&Operator::integrate_for_time)
+	                .def("get_active", &Operator::get_active)
+	                .def("set_active", &Operator::set_active)
 			.def(self_ns::str(self_ns::self))
 			;
 
