@@ -239,7 +239,33 @@ boost::python::object Species_get_concentration1(Species& self, const Vect3d& mi
 //	return extract<numeric::array>(obj);
 }
 
+boost::python::object BindingReaction_get_state_sequence(BindingReaction& self) {
+	boost::python::list retlist = boost::python::list();
+	std::list<std::pair<int, double > > slist = self.get_state_sequence(true);
+	std::list<std::pair<int, double > >::const_iterator iter;
 
+	for (iter = slist.begin(); iter != slist.end(); ++iter) {
+		int state = (*iter).first;
+		double time = (*iter).second;
+		retlist.append(boost::python::make_tuple(state, time));
+	}
+
+	return retlist;
+}
+
+struct BR_Python_Callback {
+  boost::python::object py_callable;
+  boost::python::tuple args;
+  void operator()(int state) {
+    py_callable(state, args);
+  }
+};
+
+void BindingReaction_set_state_changed_cb(BindingReaction& self, boost::python::object& callable, boost::python::tuple& args)
+{
+  BR_Python_Callback cb {callable, args};
+  self.set_state_changed_cb(boost::function<void(int)>(cb));
+}
 
 std::auto_ptr<Operator> group(const boost::python::list& ops) {
 	OperatorList* result = new OperatorList();
@@ -271,6 +297,7 @@ BOOST_PYTHON_MODULE(pyTyche) {
 	import_array();
 	numeric::array::set_module_and_type("numpy", "ndarray");
 	def("init", python_init);
+	def("random_seed", random_seed);
 
 	/*
 	 * vector
@@ -309,6 +336,8 @@ BOOST_PYTHON_MODULE(pyTyche) {
 			.def("add_species",&Operator::add_species)
 			.def("get_species_index",&Operator::get_species_index)
 			.def("integrate_for_time",&Operator::integrate_for_time)
+	                .def("get_active", &Operator::get_active)
+	                .def("set_active", &Operator::set_active)
 			.def(self_ns::str(self_ns::self))
 			;
 
@@ -386,10 +415,12 @@ BOOST_PYTHON_MODULE(pyTyche) {
     def("new_bi_reaction",new_bi_reaction, new_bi_reaction_overloads());
     def("new_bi_reaction",new_bi_reaction2, new_bi_reaction_overloads2());
     def("new_tri_reaction",TriMolecularReaction::New);
-	def("new_binding_reaction", BindingReaction::New);
+    def("new_binding_reaction", BindingReaction::New);
 
 	class_<BindingReaction, bases<Operator>, std::auto_ptr<BindingReaction> >("BindingReaction", boost::python::no_init)
-		.def("get_site_state", &BindingReaction::get_site_state);
+		.def("get_site_state", &BindingReaction::get_site_state)
+		.def("get_state_sequence", &BindingReaction_get_state_sequence)
+	        .def("set_state_changed_cb", &BindingReaction_set_state_changed_cb);
 
     /*
      * Compartments

@@ -21,6 +21,7 @@ Operator::Operator() {
 	time = 0;
 	all_species.clear();
 
+	active = true;
 }
 
 int Operator::get_species_index(Species& s) {
@@ -56,7 +57,8 @@ void Operator::operator ()(const double dt) {
 	Operator::resume_timer();
 	LOG(2, "Starting Operator: " << *this);
 
-	integrate(dt);
+	if (active)
+	  integrate(dt);
 
 	time += dt;
 	LOG(2, "Stopping Operator: " << *this);

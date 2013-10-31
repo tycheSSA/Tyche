@@ -51,6 +51,9 @@ public:
 		return out;
 	}
 
+	bool get_active() { return active;};
+	void set_active(bool a) { active = a; };
+
 protected:
 	virtual void add_species_execute(Species &s);
 	virtual void reset_execute();
@@ -66,6 +69,7 @@ private:
 	double time;
 	//boost::timer global_timer;
 	std::vector<Species*> all_species;
+	bool active;
 };
 
 class CountMolsOnGrid: public Operator {

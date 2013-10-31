@@ -34,7 +34,10 @@
 #include "Log.h"
 
 #include <vector>
+#include <list>
+#include <utility>
 #include <boost/random.hpp>
+#include <boost/function.hpp>
 
 namespace Tyche {
 
@@ -103,31 +106,43 @@ private:
 class BindingReaction: public Reaction {
 public:
 		BindingReaction(const double rate,
-						const double diss_rate,
-						Species& species,
-						const double binding,
-						const double unbinding,
-						const double dt,
-						Vect3d pos,
-						const unsigned long initial_state=0);
+				const double diss_rate,
+				Species& species,
+				const double binding,
+				const double unbinding,
+				const double dt,
+				Vect3d pos,
+				const int binding_sites,
+				const int initial_state);
 
 	static std::auto_ptr<Operator> New(const double rate,
-									   const double diss_rate,
-									   Species& species,
-									   const double binding,
-									   const double unbinding,
-									   const double dt,
-									   Vect3d pos,
-									   const unsigned long initial_state=0) {
-		return std::auto_ptr<Operator>(new BindingReaction(rate,diss_rate,species,binding,unbinding,dt,pos,initial_state));
+					   const double diss_rate,
+					   Species& species,
+					   const double binding,
+					   const double unbinding,
+					   const double dt,
+					   Vect3d pos,
+					   const int binding_sites,
+					   const int initial_state) {
+	  return std::auto_ptr<Operator>(new BindingReaction(rate,diss_rate,species,binding,unbinding,dt,pos,binding_sites,initial_state));
 	}
 
 	double get_rate() const {return this->rate;}
 	double get_P_lambda() const {return this->P_lambda;}
 	double get_binding_radius() const {return binding_radius;}
 	double get_unbinding_radius() const {return unbinding_radius;}
-	double get_site_state() const {return site_state;}
+        int get_site_state() const {return site_state;}
+	std::list< std::pair< int, double > > get_state_sequence(bool clear=false) {
+		std::list< std::pair< int, double > > retlist = std::list< std::pair< int, double > >(state_sequence);
+		if (clear) state_sequence.clear();
+		return retlist;
+	}
 	void report_dt_suitability(const double dt);
+
+	void set_state_changed_cb(const boost::function< void(int) > callback)
+	{
+	  state_changed_cb = callback;
+	}
 
 protected:
 
@@ -146,7 +161,10 @@ protected:
 	double binding_radius,unbinding_radius;
 	double P_lambda;
 	double P_diss;
-	unsigned long site_state;
+	int binding_sites;
+	int site_state;
+	std::list< std::pair< int, double > > state_sequence;
+	boost::function< void(int) > state_changed_cb;
 };
 
 template<typename T>

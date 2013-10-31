@@ -10,6 +10,7 @@ extern "C" {
 #include "rxnparam.h"
 }
 #include <map>
+#include <vector>
 #include <boost/math/tools/roots.hpp>
 
 namespace Tyche {
@@ -130,33 +131,6 @@ protected:
 	double dt;
 };
 
-double BindingReaction::calculate_lambda(const double dt) {
-	double P_lambda_min = 1e-10;
-	double P_lambda_max = 1;
-
-	unsigned int maximum_iterations = 100;
-	boost::uintmax_t max_iter = maximum_iterations;
-	boost::math::tools::eps_tolerance<double> tol(30);
-	std::pair<double, double> r;
-
-    bindingreaction_rootf f(rate, binding_radius, unbinding_radius, get_species()[0]->D, binding_radius_dt);
-	if (f(P_lambda_min)*f(P_lambda_max) >= 0) {
-		ERROR("brackets of root not valid. f(P_lambda_min) = "<<f(P_lambda_min)<<" and f(P_lambda_max) = "<<f(P_lambda_max));
-	}
-
-	LOG(2,"solving root with f(P_lambda_min) = "<<f(P_lambda_min)<<" and f(P_lambda_max) = "<<f(P_lambda_max));
-
-	r = boost::math::tools::toms748_solve(f,
-			P_lambda_min, P_lambda_max, tol, max_iter);
-	CHECK(max_iter < maximum_iterations, "could not solve for root. binding_min = "<<r.first<<" and binding_max = "<<r.second);
-
-	LOG(2,"f(binding) = f("<<0.5*(r.first+r.second)<<") = "<<f(0.5*(r.first + r.second)));
-	LOG(2,"f(first) = f("<<r.first<<") = "<<f(r.first));
-	LOG(2,"f(second) = f("<<r.second<<") = "<< f(r.second));
-
-	return 0.5*(r.first + r.second);
-}
-
 void BindingReaction::integrate(const double dt) {
 	Molecules* mols = &get_species()[0]->mols;
 
@@ -166,28 +140,45 @@ void BindingReaction::integrate(const double dt) {
 	const double binding_radius2 = binding_radius*binding_radius;
 	//neighbourhood_search.embed_points(mols1->r);
 	const int n = mols->size();
-	for (int mols_i = 0; mols_i < n; ++mols_i) {
-		if (!(mols->alive[mols_i])) continue;
-		const Vect3d pos = mols->r[mols_i];
-		const int id = mols->id[mols_i];
-		if ((pos-position).squaredNorm() < binding_radius2) {
-			if (uni() < P_lambda) {
-				site_state++;
-				mols->mark_for_deletion(mols_i);
-				break;
-			}
-		}
+
+	for (int i = site_state; i < binding_sites; i++) {
+	  std::vector<int> bind_candidates(0);
+	  for (int mols_i = 0; mols_i < n; ++mols_i) {
+	    if (!(mols->alive[mols_i])) continue;
+	    const Vect3d pos = mols->r[mols_i];
+	    if ((pos-position).squaredNorm() < binding_radius2)
+	      bind_candidates.push_back(mols_i);
+	  }
+
+	  if (uni() < (1.-pow(1-P_lambda,bind_candidates.size()))) {
+	    boost::uniform_int<> uni_int(0, bind_candidates.size()-1);
+	    boost::variate_generator<base_generator_type&, boost::uniform_int<> > rint(generator, uni_int);
+	    mols->mark_for_deletion(bind_candidates[rint()]);
+
+	    site_state++;
+	    
+	    std::pair<int, double> state_pair = std::pair<int, double>(site_state, get_time());
+	    state_sequence.push_back(state_pair);
+
+	    state_changed_cb(site_state);
+	  }
 	}
 	mols->delete_molecules();
 
-    for (unsigned long i = 0; i < site_state; i++) {
-		if (uni() < P_diss) {
-			site_state--;
-			double phi = 2*PI*uni();
-			double thet = PI/2.*uni();
-			Vect3d npos = Vect3d(unbinding_radius*sin(thet)*cos(phi), unbinding_radius*sin(thet)*sin(phi), unbinding_radius*cos(thet)) + position;
-			mols->add_molecule(npos, npos);
-		}
+	for (int i = 0; i < site_state; i++) {
+	  if (uni() < P_diss) {
+	    site_state--;
+	  
+	    std::pair<int, double> state_pair = std::pair<int, double>(site_state, get_time());
+	    state_sequence.push_back(state_pair);
+	    
+	    state_changed_cb(site_state);
+
+	    double phi = 2*PI*uni();
+	    double thet = PI/2.*uni();
+	    Vect3d npos = Vect3d(unbinding_radius*sin(thet)*cos(phi), unbinding_radius*sin(thet)*sin(phi), unbinding_radius*cos(thet)) + position;
+	    mols->add_molecule(npos, npos);
+	  }
 	}
 }
 
@@ -472,6 +463,41 @@ public:
     const bool self_reaction;
 };
 
+void  BindingReaction::suggest_binding_unbinding(const double dt) {
+	double difc = get_species()[0]->D/2.0;
+	const double lbr = binding_radius/10.0;
+	const double hbr = binding_radius*10.0;
+	const int N = 100;
+	std::cout <<"Suggested binding radii (with unbinding = "<<unbinding_radius<<"):"<<std::endl;
+	for (int i = 0; i < N; ++i) {
+		const double br = lbr + i*(hbr-lbr)/N;
+		const double gamma = sqrt(2.0*difc*dt)/br;
+		const double alpha = unbinding_radius/br;
+		const double goal_kappa = rate*dt/pow(br,3);
+
+		calculate_kappa_reversible ftest(gamma,alpha,goal_kappa,false);
+		double result = ftest(1);
+		if (result > 0) {
+			std::cout << br<<" = "<<result<<std::endl;
+		}
+	}
+	const double lur = unbinding_radius/10.0;
+	const double hur = unbinding_radius*10.0;
+	std::cout <<"Suggested unbinding radii (with binding = "<<binding_radius<<"):"<<std::endl;
+	for (int i = 0; i < N; ++i) {
+		const double ur = lur + i*(hur-lur)/N;
+		const double gamma = sqrt(2.0*difc*dt)/binding_radius;
+		const double alpha = ur/binding_radius;
+		const double goal_kappa = rate*dt/pow(binding_radius,3);
+
+		calculate_kappa_reversible ftest(gamma,alpha,goal_kappa,false);
+		double result = ftest(1);
+		if (result > 0) {
+			std::cout << ur<<" = "<<result<<std::endl;
+		}
+	}
+}
+
 template<typename T>
 void  BiMolecularReaction<T>::suggest_binding_unbinding(const double dt) {
 	double difc;
@@ -579,6 +605,51 @@ double BiMolecularReaction<T>::calculate_lambda_reversible(const double dt) {
 
 	return 0.5*(r.first + r.second);
 
+}
+
+static std::map<std::tuple<double, double, double >, double> P_lambda_cache;
+double BindingReaction::calculate_lambda(const double dt) {
+	double P_lambda_min = 0;
+	double P_lambda_max = 1;
+
+	unsigned int maximum_iterations = 100;
+	boost::uintmax_t max_iter = maximum_iterations;
+	boost::math::tools::eps_tolerance<double> tol(30);
+	std::pair<double, double> r;
+
+	const double alpha = unbinding_radius/binding_radius;
+	const double goal_kappa = 2.0*rate*dt/pow(binding_radius,3);
+	const double gamma = sqrt(get_species()[0]->D*dt)/binding_radius;
+
+	std::tuple<double, double, double> cache_key = std::make_tuple(gamma, alpha, goal_kappa);
+	std::map<std::tuple<double, double, double >, double >::const_iterator kv_pair = P_lambda_cache.find(cache_key);
+	if (kv_pair != P_lambda_cache.end())
+	  return kv_pair->second;
+
+	std::cout << "gamma = "<<gamma<<std::endl;
+	calculate_kappa_reversible f(gamma,alpha,goal_kappa,false);
+	if (f(P_lambda_min)*f(P_lambda_max) >= 0) {
+		suggest_binding_unbinding(dt);
+		ERROR("brackets of root not valid. f(P_lambda_min) = "<<f(P_lambda_min)<<" and f(P_lambda_max) = "<<f(P_lambda_max));
+	}
+
+	LOG(1,"solving root with f(P_lambda_min) = "<<f(P_lambda_min)<<" and f(P_lambda_max) = "<<f(P_lambda_max));
+
+	r = boost::math::tools::toms748_solve(f,
+			P_lambda_min, P_lambda_max, tol, max_iter);
+	CHECK(max_iter < maximum_iterations, "could not solve for root. binding_min = "<<r.first<<" and binding_max = "<<r.second);
+
+	LOG(1,"f(binding) = f("<<0.5*(r.first+r.second)<<") = "<<f(0.5*(r.first + r.second)));
+	LOG(1,"f(first) = f("<<r.first<<") = "<<f(r.first));
+	LOG(1,"f(second) = f("<<r.second<<") = "<< f(r.second));
+
+	calculate_kappa_reversible fcalccondition(gamma,alpha,goal_kappa,false,true);
+	fcalccondition(0.5*(r.first + r.second));
+
+	double P_lambda = 0.5*(r.first+r.second);
+	P_lambda_cache[cache_key] = P_lambda;	
+
+	return P_lambda;
 }
 
 template<typename T>
@@ -829,24 +900,28 @@ template class BiMolecularReaction<BucketSort>;
 
 
 BindingReaction::BindingReaction(const double rate,
-								 const double diss_rate, Species& species,
-								 const double binding,
-								 const double unbinding,
-								 const double dt,
-								 Vect3d pos,
-								 unsigned long initial_state):
+				 const double diss_rate, Species& species,
+				 const double binding,
+				 const double unbinding,
+				 const double dt,
+				 Vect3d pos,
+				 const int binding_sites,
+				 const int initial_state):
 		Reaction(rate),
-		P_diss(diss_rate*dt),
+		P_diss(1.-exp(-diss_rate*dt)),
 		binding_radius_dt(dt),
 		position(pos),
 		binding_radius(binding),
 		unbinding_radius(unbinding),
-        site_state(initial_state) {
+		binding_sites(binding_sites),
+		site_state(initial_state) {
 	this->add_species(species);
 
 	P_lambda = calculate_lambda(dt);
 
-	LOG(2,"created binding reaction at position " << pos << " for species " << species <<" binding radius = " << binding_radius <<" unbinding radius = "<<unbinding_radius<< " P_lambda = " << P_lambda);
+	state_sequence = std::list<std::pair<int, double > >();
+
+	LOG(2,"created binding reaction at position " << pos << " for species " << species <<" binding radius = " << binding_radius <<" unbinding radius = "<<unbinding_radius<< " P_lambda = " << P_lambda << " P_diss = " << P_diss);
 };
 
 
