@@ -138,32 +138,41 @@ void BindingReaction::integrate(const double dt) {
 	boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni(generator, uni_dist);
 
 	const double binding_radius2 = binding_radius*binding_radius;
-	//neighbourhood_search.embed_points(mols1->r);
 	const int n = mols->size();
+	const int open_sites = binding_sites-site_state;
+	const double bprob = 1.-P_lambda;
+	std::vector<int> bind_candidates(0);
 
-	for (int i = site_state; i < binding_sites; i++) {
-	  std::vector<int> bind_candidates(0);
-	  for (int mols_i = 0; mols_i < n; ++mols_i) {
-	    if (!(mols->alive[mols_i])) continue;
-	    const Vect3d pos = mols->r[mols_i];
-	    if ((pos-position).squaredNorm() < binding_radius2)
-	      bind_candidates.push_back(mols_i);
-	  }
-
-	  if (uni() < (1.-pow(1-P_lambda,bind_candidates.size()))) {
-	    boost::uniform_int<> uni_int(0, bind_candidates.size()-1);
-	    boost::variate_generator<base_generator_type&, boost::uniform_int<> > rint(generator, uni_int);
-	    mols->mark_for_deletion(bind_candidates[rint()]);
-
-	    site_state++;
-	    
-	    std::pair<int, double> state_pair = std::pair<int, double>(site_state, get_time());
-	    state_sequence.push_back(state_pair);
-
-	    state_changed_cb(site_state);
-	  }
+	for (int mols_i=0; mols_i<n; mols_i++) {
+	  if (!(mols->alive[mols_i])) continue;
+	  const Vect3d pos = mols->r[mols_i];
+	  if ((position-pos).squaredNorm() < binding_radius2)
+		bind_candidates.push_back(mols_i);
 	}
-	mols->delete_molecules();
+	
+	if(bind_candidates.size()>0) {
+	  for (int i=0; i < open_sites; i++) {
+		int nr_bind_candidates = bind_candidates.size();
+		if (nr_bind_candidates==0) break;
+		double prob = 1.-pow(bprob, nr_bind_candidates);
+		double r = uni();
+		if (r < prob) {
+		  //boost::uniform_int<> uni_int(0, nr_bind_candidates-1);
+		  //boost::variate_generator<base_generator_type&, boost::uniform_int<> > rint(generator, uni_int);
+		  std::vector<int>::iterator bind_it = bind_candidates.begin()+floor(r*nr_bind_candidates/prob);
+		  mols->mark_for_deletion(*bind_it);
+		  bind_candidates.erase(bind_it);
+		  
+		  site_state++;
+		  
+		  std::pair<int, double> state_pair = std::pair<int, double>(site_state, get_time());
+		  state_sequence.push_back(state_pair);
+		  
+		  state_changed_cb(site_state);
+		}
+	  }
+	  mols->delete_molecules();
+	}
 
 	for (int i = 0; i < site_state; i++) {
 	  if (uni() < P_diss) {
