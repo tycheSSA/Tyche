@@ -39,6 +39,8 @@ public:
 	void add_compartment_slice(const yplane& geometry);
 	void add_compartment_slice(const zplane& geometry);
 
+	struct MyVTKdata;
+
 protected:
 	virtual void reset_execute() {
 		next_vis = get_time() + vis_dt;
@@ -61,7 +63,6 @@ private:
 	Vect3d low, high;
 	double vis_dt;
 	double next_vis;
-	struct MyVTKdata;
 	MyVTKdata* my_vtk_data;
 };
 
