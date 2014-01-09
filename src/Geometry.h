@@ -422,6 +422,14 @@ public:
 	double distance_to_boundary(const Vect3d& point) const {
 		return shortest_vector_to_boundary(point).norm();
 	}
+
+	Vect3d get_random_point_in() const {
+		ASSERT(in==true,"must be an finite volume");
+		boost::variate_generator<base_generator_type&, boost::uniform_real<> >
+		uni(generator,boost::uniform_real<>(0,1));
+		Vect3d test_point;
+		return (high-low)*Vect3d(uni(),uni(),uni()) + low;
+	}
 private:
 	Vect3d low,high;
     bool in;
@@ -515,6 +523,19 @@ public:
 
 		return test_point;
 	}
+	const Vect3d& get_centre() {
+		return centre;
+	}
+	void set_centre(const Vect3d& arg) {
+		centre = arg;
+	}
+	const double& get_radius() {
+		return radius;
+	}
+	void set_radius(const double arg) {
+		radius = arg;
+		radius2 = pow(radius,2);
+	}
 private:
 	Vect3d centre;
 	double radius,radius2;
@@ -559,9 +580,15 @@ public:
 
 	const Vect3d shortest_vector_to_boundary(const Vect3d& point) const {
 		Vect3d ret;
-		const double dr = (point-centre).norm();
 
-		return (point - centre)*(radius-dr)/dr;
+		const double dr = (point-centre).norm();
+		if (dr-inner_radius < dr-outer_radius) {
+			ret = (point - centre)*(inner_radius-dr)/dr;
+		} else {
+			ret = (point - centre)*(outer_radius-dr)/dr;
+		}
+
+		return ret;
 	}
 
 	double distance_to_boundary(const Vect3d& point) const {
@@ -574,7 +601,7 @@ public:
 			uni(generator,boost::uniform_real<>(0,1));
 		Vect3d test_point;
 		do {
-			test_point = 2*radius*Vect3d(uni(),uni(),uni()) + centre - radius;
+			test_point = 2*outer_radius*Vect3d(uni(),uni(),uni()) + centre - outer_radius;
 		} while (!is_in(test_point));
 
 		return test_point;

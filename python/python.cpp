@@ -317,7 +317,14 @@ BOOST_PYTHON_MODULE(pyTyche) {
 	 */
 
 	class_<Species,typename std::auto_ptr<Species> >("Species",boost::python::init<double>())
-			.def("fill_uniform",&Species::fill_uniform)
+			.def("fill_uniform",&Species::fill_uniform<Box>)
+			.def("fill_uniform",&Species::fill_uniform<Sphere>)
+			.def("fill_uniform",&Species::fill_uniform<Shell>)
+
+			.def("count_mols_in",&Species::count_mols_in<Box>)
+			.def("count_mols_in",&Species::count_mols_in<Sphere>)
+			.def("count_mols_in",&Species::count_mols_in<Shell>)
+
 			.def("get_concentration",Species_get_concentration1)
 			.def("get_vtk",&Species::get_vtk)
 			.def("get_compartments",Species_get_compartments)
@@ -355,6 +362,7 @@ BOOST_PYTHON_MODULE(pyTyche) {
 	def("new_yrect",xrect::New);
 	def("new_zrect",xrect::New);
 
+
 	class_<xplane,typename std::auto_ptr<xplane> >("Xplane",boost::python::no_init);
 	class_<yplane,typename std::auto_ptr<yplane> >("Yplane",boost::python::no_init);
 	class_<zplane,typename std::auto_ptr<zplane> >("Zplane",boost::python::no_init);
@@ -370,6 +378,16 @@ BOOST_PYTHON_MODULE(pyTyche) {
 						;
 	class_<MultipleBoxes,typename std::auto_ptr<MultipleBoxes> >("MultipleBoxes",boost::python::no_init)
 				.def("add_hole",&MultipleBoxes::add_box)
+				;
+
+	def("new_sphere",Sphere::New);
+	def("new_shell",Shell::New);
+
+	class_<Sphere,typename std::auto_ptr<Sphere> >("Sphere",boost::python::no_init)
+				.add_property("centre", &Sphere::get_centre, &Sphere::set_centre)
+				.add_property("radius", &Sphere::get_radius, &Sphere::set_radius)
+				;
+	class_<Shell,typename std::auto_ptr<Shell> >("Shell",boost::python::no_init)
 				;
 
 	/*

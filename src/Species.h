@@ -90,10 +90,11 @@ public:
 		grid = new_grid;
 		if (grid!=NULL) copy_numbers.assign(grid->size(),0);
 	}
-	void fill_uniform(const Vect3d low, const Vect3d high, const unsigned int N);
+	//void fill_uniform(const Vect3d low, const Vect3d high, const unsigned int N);
 	template<typename T>
 	void fill_uniform(const T& geometry, const unsigned int N);
-
+	template<typename T>
+	unsigned int count_mols_in(const T& geometry);
 	void get_concentrations(const StructuredGrid& calc_grid, std::vector<double>& mol_concentrations, std::vector<double>& compartment_concentrations) const;
 	void get_concentration(const StructuredGrid& calc_grid, std::vector<double>& concentration) const;
 	void get_concentration(const Vect3d low, const Vect3d high, const Vect3i n, std::vector<double>& concentration) const;
@@ -120,6 +121,16 @@ void Species::fill_uniform(const T& geometry, const unsigned int N) {
 	for(int i=0;i<N;i++) {
 		mols.add_molecule(geometry.get_random_point_in());
 	}
+}
+
+template<typename T>
+unsigned int Species::count_mols_in(const T& geometry) {
+	unsigned int count;
+	const int n = mols.size();
+	for (int i = 0; i < n; ++i) {
+		if (geometry.is_in(mols.r[i])) count++;
+	}
+	return count;
 }
 
 
