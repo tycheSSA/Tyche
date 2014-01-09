@@ -464,4 +464,128 @@ std::ostream& operator<< (std::ostream& out, const MultipleBoxes& p);
 
 }
 
+class Sphere {
+public:
+	Sphere(const Vect3d& centre,
+			const double radius,
+			const bool in):centre(centre),radius(radius),radius2(radius*radius),in(in) {
+	}
+	static std::auto_ptr<Sphere> New(const Vect3d& centre,
+			const double radius, const bool in) {
+		return std::auto_ptr<Sphere>(new Sphere(centre,radius,in));
+	}
+	bool is_in(const Vect3d& point) const {
+		double dr2;
+		if (in) {
+			dr2 = (point-centre).squaredNorm()-pow(GEOMETRY_TOLERANCE,2);
+		} else {
+			dr2 = (point-centre).squaredNorm()+pow(GEOMETRY_TOLERANCE,2);
+		}
+
+		//std::cout << "testing point "<<point<<". result = "<< (inside==in) << std::endl;
+		return (dr2 > radius2)^in;
+	}
+	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
+		ASSERT(intersect_point==NULL, "intersect point not supported for Sphere geometry");
+		ASSERT(intersect_normal==NULL, "intersect normal not supported for Sphere geometry");
+		const bool is_in1 = is_in(p1);
+		const bool is_in2 = is_in(p2);
+		return is_in1 != is_in2;
+	}
+
+	const Vect3d shortest_vector_to_boundary(const Vect3d& point) const {
+		Vect3d ret;
+		const double dr = (point-centre).norm();
+
+		return (point - centre)*(radius-dr)/dr;
+	}
+
+	double distance_to_boundary(const Vect3d& point) const {
+		return shortest_vector_to_boundary(point).norm();
+	}
+
+	Vect3d get_random_point_in() const {
+		ASSERT(in==true,"must be an finite volume");
+		boost::variate_generator<base_generator_type&, boost::uniform_real<> >
+			uni(generator,boost::uniform_real<>(0,1));
+		Vect3d test_point;
+		do {
+			test_point = 2*radius*Vect3d(uni(),uni(),uni()) + centre - radius;
+		} while (!is_in(test_point));
+
+		return test_point;
+	}
+private:
+	Vect3d centre;
+	double radius,radius2;
+    bool in;
+};
+
+std::ostream& operator<< (std::ostream& out, const Sphere& p);
+
+class Shell {
+public:
+	Shell(const Vect3d& centre,
+			const double inner_radius, const double outer_radius,
+			const bool in):centre(centre),inner_radius(inner_radius),
+			outer_radius(outer_radius),inner_radius2(inner_radius*inner_radius),
+			outer_radius2(outer_radius*outer_radius),in(in) {
+	}
+	static std::auto_ptr<Shell> New(const Vect3d& centre,
+			const double inner_radius, const double outer_radius, const bool in) {
+		return std::auto_ptr<Shell>(new Shell(centre,inner_radius,outer_radius,in));
+	}
+	bool is_in(const Vect3d& point) const {
+		bool ret;
+		const double dr2 = (point-centre).squaredNorm();
+		if (in) {
+			ret = (dr2 > inner_radius2 - pow(GEOMETRY_TOLERANCE,2)) &&
+					(dr2 < outer_radius2 + pow(GEOMETRY_TOLERANCE,2));
+		} else {
+			ret = (dr2 < inner_radius2 + pow(GEOMETRY_TOLERANCE,2)) &&
+					(dr2 > outer_radius2 - pow(GEOMETRY_TOLERANCE,2));
+		}
+
+		//std::cout << "testing point "<<point<<". result = "<< (inside==in) << std::endl;
+		return ret;
+	}
+	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
+		ASSERT(intersect_point==NULL, "intersect point not supported for Sphere geometry");
+		ASSERT(intersect_normal==NULL, "intersect normal not supported for Sphere geometry");
+		const bool is_in1 = is_in(p1);
+		const bool is_in2 = is_in(p2);
+		return is_in1 != is_in2;
+	}
+
+	const Vect3d shortest_vector_to_boundary(const Vect3d& point) const {
+		Vect3d ret;
+		const double dr = (point-centre).norm();
+
+		return (point - centre)*(radius-dr)/dr;
+	}
+
+	double distance_to_boundary(const Vect3d& point) const {
+		return shortest_vector_to_boundary(point).norm();
+	}
+
+	Vect3d get_random_point_in() const {
+		ASSERT(in==true,"must be an finite volume");
+		boost::variate_generator<base_generator_type&, boost::uniform_real<> >
+			uni(generator,boost::uniform_real<>(0,1));
+		Vect3d test_point;
+		do {
+			test_point = 2*radius*Vect3d(uni(),uni(),uni()) + centre - radius;
+		} while (!is_in(test_point));
+
+		return test_point;
+	}
+private:
+	Vect3d centre;
+	double inner_radius,outer_radius;
+	double inner_radius2,outer_radius2;
+    bool in;
+};
+
+std::ostream& operator<< (std::ostream& out, const Sphere& p);
+
 #endif /* GEOMETRY_H_ */

@@ -91,6 +91,9 @@ public:
 		if (grid!=NULL) copy_numbers.assign(grid->size(),0);
 	}
 	void fill_uniform(const Vect3d low, const Vect3d high, const unsigned int N);
+	template<typename T>
+	void fill_uniform(const T& geometry, const unsigned int N);
+
 	void get_concentrations(const StructuredGrid& calc_grid, std::vector<double>& mol_concentrations, std::vector<double>& compartment_concentrations) const;
 	void get_concentration(const StructuredGrid& calc_grid, std::vector<double>& concentration) const;
 	void get_concentration(const Vect3d low, const Vect3d high, const Vect3i n, std::vector<double>& concentration) const;
@@ -110,6 +113,14 @@ public:
 private:
 	static int species_count;
 };
+
+template<typename T>
+void Species::fill_uniform(const T& geometry, const unsigned int N) {
+	LOG(2,"Adding "<<N<<" molecules of Species ("<<id<<") within "<<geometry);
+	for(int i=0;i<N;i++) {
+		mols.add_molecule(geometry.get_random_point_in());
+	}
+}
 
 
 extern Species null_species;
