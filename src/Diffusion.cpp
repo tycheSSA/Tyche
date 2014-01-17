@@ -21,8 +21,10 @@ void Diffusion::integrate(const double dt) {
 		const double step_length = calc_step_length(s, dt);
 		const int n = s.mols.size();
 		for (int j = 0; j < n; ++j) {
-			s.mols.r0[j] = s.mols.r[j];
-			s.mols.r[j] += step_length * Vect3d(norm(),norm(),norm());
+			Vect3d& r = s.mols.get_position_nonconst(i);
+			Vect3d& r0 = s.mols.get_old_position_nonconst(i);
+			r0 = r;
+			r += step_length * Vect3d(norm(),norm(),norm());
 		}
 	}
 
@@ -45,8 +47,9 @@ void Diffusion1D::integrate(const double dt) {
 	for (int i = 0; i < n; ++i) {
 		Species &s = *(get_species()[i]);
 		const double step_length = calc_step_length(s, dt);
-		BOOST_FOREACH(Vect3d &r,s.mols.r) {
-			r[dim] += step_length * norm();
+		const int nm = s.mols.size();
+		for (int j = 0; j < nm; ++j) {
+			s.mols.get_position_nonconst(j)[dim] += step_length * norm();
 		}
 	}
 

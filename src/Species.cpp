@@ -8,129 +8,41 @@
 #include "Species.h"
 #include <boost/random.hpp>
 
-#include <vtkDoubleArray.h>
-#include <vtkIntArray.h>
-
-#include <vtkPointData.h>
-
 
 namespace Tyche {
 int Species::species_count = 0;
 Species null_species(0);
 
-vtkSmartPointer<vtkUnstructuredGrid> Molecules::get_vtk_grid() {
-	/*
-	 * setup points
-	 */
-	vtkSmartPointer<vtkPoints> newPts = vtkSmartPointer<vtkPoints>::New();
-	const int num_points = r.size();
-	for (int i = 0; i < num_points; i++) {
-		newPts->InsertNextPoint(r[i][0],r[i][1],r[i][2]);
-	}
 
-	/*
-	 * setup grid
-	 */
-	vtkSmartPointer<vtkUnstructuredGrid> vtk_grid = vtkSmartPointer<vtkUnstructuredGrid>::New();
-	vtk_grid->SetPoints(newPts);
-
-	return vtk_grid;
-}
-
-
-int Molecules::delete_molecule(const unsigned int i) {
-	const int last_index = this->size()-1;
-	if (i != last_index) {
-		(*this)[i] = (*this)[last_index];
-	}
-	this->pop_back();
-}
-
-
-void Molecules::fill_uniform(const Vect3d low, const Vect3d high,
-		const unsigned int n) {
-	//TODO: assumes a 3d rectangular region
-	boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni(generator, boost::uniform_real<>(0,1));
-	const Vect3d dist = high-low;
-	for(int i=0;i<n;i++) {
-		add_molecule(Vect3d(uni()*dist[0],uni()*dist[1],uni()*dist[2])+low);
-	}
-}
-
-void Species::fill_uniform(const Vect3d low, const Vect3d high, const unsigned int N) {
-	LOG(2,"Adding "<<N<<" molecules of Species ("<<id<<") within the rectangle defined by "<<low<<" and "<<high);
-	boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni(generator, boost::uniform_real<>(0,1));
-	const Vect3d dist = high-low;
-	for(int i=0;i<N;i++) {
-		const Vect3d pos = Vect3d(uni()*dist[0],uni()*dist[1],uni()*dist[2])+low;
-		mols.add_molecule(pos);
-	}
-}
+//void Species::fill_uniform(const Vect3d low, const Vect3d high, const unsigned int N) {
+//	LOG(2,"Adding "<<N<<" molecules of Species ("<<id<<") within the rectangle defined by "<<low<<" and "<<high);
+//	boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni(generator, boost::uniform_real<>(0,1));
+//	const Vect3d dist = high-low;
+//	for(int i=0;i<N;i++) {
+//		const Vect3d pos = Vect3d(uni()*dist[0],uni()*dist[1],uni()*dist[2])+low;
+//		mols.add_particle(pos);
+//	}
+//}
 
 
 vtkSmartPointer<vtkUnstructuredGrid> Species::get_vtk() {
-	vtkSmartPointer<vtkUnstructuredGrid> grid = vtkSmartPointer<vtkUnstructuredGrid>::New();
-	vtkSmartPointer<vtkPoints> newPts = vtkSmartPointer<vtkPoints>::New();
-	vtkSmartPointer<vtkIntArray> newInt = vtkSmartPointer<vtkIntArray>::New();
-	newInt->SetName("id");
-	const vtkIdType n = mols.size();
-	newPts->SetNumberOfPoints(n);
-	newInt->SetNumberOfValues(n);
-	for (int i = 0; i < n; ++i) {
-		//std::cout << "adding mol to vtk at position "<<mols.r[i]<<std::endl;
-		newPts->SetPoint(i,mols.r[i][0],mols.r[i][1],mols.r[i][2]);
-		newInt->SetValue(n,mols.id[i]);
-	}
-	newPts->ComputeBounds();
-
-	grid->SetPoints(newPts);
-	grid->GetPointData()->AddArray(newInt);
-
-	return grid;
+	return mols.get_vtk_grid();
 }
-
-int Molecules::add_molecule(const Vect3d& position) {
-	this->push_back(position, position, true, next_id++, SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE);
-}
-int Molecules::add_molecule(const Vect3d& position, const Vect3d& old_position) {
-	this->push_back(position, old_position, true, next_id++, SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE);
-}
-
-int Molecules::delete_molecules() {
-   int i = 0;
-   while (i < this->size()) {
-		if (!alive[i]) {
-			delete_molecule(i);
-		} else {
-		   i++;
-		}
-	}
-}
-
-int Molecules::mark_for_deletion(const unsigned int i) {
-	alive[i] = false;
-}
-
-void Molecules::save_indicies() {
-	const int n = this->size();
-	for (int i = 0; i < n; ++i) {
-		saved_index[i] = i;
-	}
-}
-
 
 void Species::get_concentrations(const StructuredGrid& calc_grid,
 		std::vector<double>& mol_concentrations,
 		std::vector<double>& compartment_concentrations) const {
 
 	mol_concentrations.assign(calc_grid.size(),0);
-	BOOST_FOREACH(Vect3d r,mols.r) {
+	const unsigned int nm = mols.size();
+	for (unsigned int i = 0; i < nm; ++i) {
+		const Vect3d& r = mols.get_position(i);
 		if (calc_grid.is_in(r)) {
 			mol_concentrations[calc_grid.get_cell_index(r)]++;
 		}
 	}
 
-	const int n = calc_grid.size();
+	const unsigned int n = calc_grid.size();
 	compartment_concentrations.assign(calc_grid.size(),0);
 	if ((grid!=NULL)&&(copy_numbers.size() != 0)) {
 		for (int i = 0; i < n; ++i) {

@@ -34,6 +34,7 @@ typedef Eigen::Matrix<int, 6, 1> Vect6i;
 typedef Eigen::Matrix<bool, 3, 1> Vect3b;
 typedef Eigen::Vector2d Vect2d;
 typedef Eigen::Array2i Array2i;
+typedef Eigen::Array3Xf Array3Xf;
 
 template<typename T,int N>
 std::ostream& operator<< (std::ostream& out, const Eigen::Matrix<T,N,1>& v) {

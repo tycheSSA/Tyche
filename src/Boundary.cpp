@@ -13,7 +13,7 @@ namespace Tyche {
 void FluxBoundary::integrate(const double dt) {
 
 	BOOST_FOREACH(Species *s, get_species()) {
-		Molecules& mols = s->mols;
+		Particles& mols = s->mols;
 		boost::poisson_distribution<> p_dist(dt*rate);
 		boost::variate_generator<base_generator_type&, boost::poisson_distribution<> > poisson(generator, p_dist);
 		const unsigned int n = poisson();

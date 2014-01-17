@@ -108,15 +108,16 @@ def experiment(num_particles):
     timesteps = 100000;
     max_t = 4.0/(2.0*num_particles**0.5);
     mol_dt = max_t/timesteps;
+    mol_dt = 0.001
     
-    k2 = num_particles
-    k1 = 0.01
+    k2 = float(num_particles)
+    k1 = k2
     
     print 'hcrit = ',k1/(2.0*D)
 
 
-    binding = 0.01
-    unbinding = 0.01
+    binding = 0.5
+    unbinding =0.6*binding 
     
     A = tyche.new_species(D)
     
@@ -142,12 +143,10 @@ def experiment(num_particles):
     boundaries = tyche.group([xminboundary, xmaxboundary, yminboundary, ymaxboundary, zminboundary, zmaxboundary])
     boundaries.add_species(A)
 
-    dr2 = tyche.new_bi_reaction(k1, A, A, [A], binding,unbinding, mol_dt, 
+    dr2 = tyche.new_bi_reaction(k1, [[A, A], [A]], binding,unbinding, mol_dt, 
                           [0,0,0], [L,L,L], [True, True, True],True)
-    dr3 = tyche.new_bi_reaction(k1, A, A, [A], mol_dt, 
-                          [0,0,0], [L,L,L], [True, True, True],True)  
      
-    dr = tyche.new_uni_reaction(k2,A,[A,A],unbinding)
+    dr = tyche.new_uni_reaction(k2,[[A],[A,A]],unbinding)
 
 
     algorithm = tyche.group([bd,boundaries,dr2,dr,boundaries])
@@ -170,4 +169,4 @@ def experiment(num_particles):
         
         
 tyche.init(sys.argv);
-experiment(1000)
+experiment(1.0)

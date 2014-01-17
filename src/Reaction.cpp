@@ -65,7 +65,7 @@ void UniMolecularReaction::integrate(const double dt) {
 	calculate_probabilities(dt);
 	boost::uniform_real<> uni_dist(0.0,1.0);
 	boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni(generator, uni_dist);
-	Molecules &mols = get_species()[0]->mols;
+	Particles<1> &mols = get_species()[0]->mols;
 	const int n = mols.size();
 	for (int i = 0; i < n; ++i) {
 		//if (mols.saved_index[i] == SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE) continue;
@@ -79,7 +79,7 @@ void UniMolecularReaction::integrate(const double dt) {
 					0.5*init_radii[0]*cos(angle));
 			BOOST_FOREACH(ReactionComponent component, products) {
 				for (int j = 0; j < component.multiplier; ++j) {
-					component.species->mols.add_molecule(mols.r[i] + new_pos,mols.r[i]);
+					component.species->mols.add_particle(mols.get_position(i) + new_pos,mols.get_position(i));
 					new_pos = -new_pos;
 
 #ifdef DEBUG
@@ -99,7 +99,7 @@ void UniMolecularReaction::integrate(const double dt) {
 #endif
 		}
 	}
-	mols.delete_molecules();
+	mols.delete_particles();
 #ifdef DEBUG
 	for (it = count.begin();it!=count.end();it++) {
 		LOG(2,"Created/Deleted "<<it->second<<" molecules of species ("<<it->first<<")");
@@ -132,7 +132,7 @@ protected:
 };
 
 void BindingReaction::integrate(const double dt) {
-	Molecules* mols = &get_species()[0]->mols;
+	Particles<1>* mols = &get_species()[0]->mols;
 
 	boost::uniform_real<> uni_dist(0.0,1.0);
 	boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni(generator, uni_dist);
@@ -144,8 +144,8 @@ void BindingReaction::integrate(const double dt) {
 	std::vector<int> bind_candidates(0);
 
 	for (int mols_i=0; mols_i<n; mols_i++) {
-	  if (!(mols->alive[mols_i])) continue;
-	  const Vect3d pos = mols->r[mols_i];
+	  if (!(mols->is_alive(mols_i))) continue;
+	  const Vect3d& pos = mols->get_position(mols_i);
 	  if ((position-pos).squaredNorm() < binding_radius2)
 		bind_candidates.push_back(mols_i);
 	}
@@ -171,7 +171,7 @@ void BindingReaction::integrate(const double dt) {
 		  state_changed_cb(site_state);
 		}
 	  }
-	  mols->delete_molecules();
+	  mols->delete_particles();
 	}
 
 	for (int i = 0; i < site_state; i++) {
@@ -186,7 +186,7 @@ void BindingReaction::integrate(const double dt) {
 	    double phi = 2*PI*uni();
 	    double thet = PI/2.*uni();
 	    Vect3d npos = Vect3d(unbinding_radius*sin(thet)*cos(phi), unbinding_radius*sin(thet)*sin(phi), unbinding_radius*cos(thet)) + position;
-	    mols->add_molecule(npos, npos);
+	    mols->add_particle(npos, npos);
 	  }
 	}
 }
@@ -717,8 +717,8 @@ void BiMolecularReaction<T>::integrate(const double dt) {
 //		neighbourhood_search.reset(neighbourhood_search.get_low(), neighbourhood_search.get_high(), binding_radius);
 //	}
 
-	Molecules* mols1 = &get_species()[0]->mols;
-	Molecules* mols2;
+	Particles<1>* mols1 = &get_species()[0]->mols;
+	Particles<1>* mols2;
 	if (self_reaction) {
 		mols2 = mols1;
 	} else {
@@ -730,19 +730,19 @@ void BiMolecularReaction<T>::integrate(const double dt) {
 	//LOG(1,"starting bi integrate");
 
 	const double binding_radius2 = binding_radius*binding_radius;
-	neighbourhood_search.embed_points(mols1->r);
+	neighbourhood_search.embed_points(mols1->get_position());
 	const int n = mols2->size();
 	for (int mols2_i = 0; mols2_i < n; ++mols2_i) {
-		if (!(mols2->alive[mols2_i])) continue;
+		if (!(mols2->is_alive(mols2_i))) continue;
 		//if (mols2->saved_index[mols2_i] == SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE) continue;
-		const Vect3d pos2 = mols2->r[mols2_i];
-		const int id2 = mols2->id[mols2_i];
+		const Vect3d& pos2 = mols2->get_position(mols2_i);
+		const int id2 = mols2->get_id(mols2_i);
 		std::vector<int>& neighbrs_list = neighbourhood_search.find_broadphase_neighbours(pos2, mols2_i,self_reaction);
 		for (auto mols1_i : neighbrs_list) {
-			if (!(mols1->alive[mols1_i])) continue;
+			if (!(mols1->is_alive(mols1_i))) continue;
 			//if (mols1->saved_index[mols1_i] == SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE) continue;
-			const Vect3d pos1 = mols1->r[mols1_i];
-			const int id1 = mols1->id[mols1_i];
+			const Vect3d& pos1 = mols1->get_position(mols1_i);
+			const int id1 = mols1->get_id(mols1_i);
 			if (self_reaction && (id1==id2)) continue;
 			if ((pos2-neighbourhood_search.correct_position_for_periodicity(pos2, pos1)).squaredNorm() < binding_radius2) {
 				//LOG(1,"testing between particle "<<id1<<pos1<<" and "<<id2<<pos2);
@@ -750,7 +750,7 @@ void BiMolecularReaction<T>::integrate(const double dt) {
 					//LOG(1,"deleting particle "<<id1<<" and "<<id2);
 					for (auto component : products) {
 						for (int i = 0; i < component.multiplier; ++i) {
-							component.species->mols.add_molecule(0.5*(pos1+pos2),pos1);
+							component.species->mols.add_particle(0.5*(pos1+pos2),pos1);
 						}
 					}
 					mols1->mark_for_deletion(mols1_i);
@@ -761,10 +761,10 @@ void BiMolecularReaction<T>::integrate(const double dt) {
 		}
 	}
 	if (self_reaction) {
-		mols1->delete_molecules();
+		mols1->delete_particles();
 	} else {
-		mols1->delete_molecules();
-		mols2->delete_molecules();
+		mols1->delete_particles();
+		mols2->delete_particles();
 	}
 }
 
@@ -954,7 +954,7 @@ void ZeroOrderMolecularReaction::integrate(const double dt) {
 		boost::poisson_distribution<> p_dist(rates[i_s]*volume*dt);
 		boost::variate_generator<base_generator_type&, boost::poisson_distribution<> > P(generator, p_dist);
 
-		Molecules &mols = get_species()[i_s]->mols;
+		Particles &mols = get_species()[i_s]->mols;
 		const int num_created = P();
 		for (int i = 0; i < num_created; ++i) {
 			const Vect3d new_position = min + max_minus_min.cwiseProduct(Vect3d(N(),N(),N()));
@@ -1009,9 +1009,9 @@ TriMolecularReaction::TriMolecularReaction(const double rate, const ReactionEqua
 
 
 void TriMolecularReaction::integrate(const double dt) {
-	Molecules* mols1 = &get_species()[0]->mols;
-	Molecules* mols2 = &get_species()[1]->mols;
-	Molecules* mols3 = &get_species()[2]->mols;
+	Particles* mols1 = &get_species()[0]->mols;
+	Particles* mols2 = &get_species()[1]->mols;
+	Particles* mols3 = &get_species()[2]->mols;
 
 	neighbourhood_search2.embed_points(mols2->r);
 	neighbourhood_search3.embed_points(mols3->r);

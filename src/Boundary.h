@@ -118,11 +118,11 @@ protected:
       test_this_distance_from_wall = 5.0*sqrt(2.0*s.D*new_dt);
       //test_this_distance_from_wall = 0;
    }
-   void init_prev_distance(Molecules& mols, std::vector<double>& prev_distance) {
-      const int n = mols.size();
+   void init_prev_distance(Species& s, std::vector<double>& prev_distance) {
+      const int n = s.mols.size();
       prev_distance.resize(n);
       for (int i = 0; i < n; ++i) {
-         prev_distance[i] = this->geometry.distance_to_boundary(mols.r[i]);
+         prev_distance[i] = this->geometry.distance_to_boundary(s.mols.get_position(i));
       }
    }
    std::vector<std::vector<double>* > all_prev_distance, all_curr_distance;
@@ -136,7 +136,7 @@ class RemoveBoundaryWithCorrection: public DiffusionCorrectedBoundary<T> {
 public:
 	RemoveBoundaryWithCorrection(const T& geometry):
 		DiffusionCorrectedBoundary<T>(geometry) {}
-	Molecules& get_removed(Species& s);
+	Particles<1>& get_removed(Species& s);
 protected:
 	virtual void integrate(const double dt);
 	virtual void add_species_execute(Species& s);
@@ -145,7 +145,7 @@ protected:
 	}
 
 private:
-	std::vector<Molecules> removed_molecules;
+	std::vector<Particles<1> > removed_molecules;
 };
 
 
@@ -165,7 +165,7 @@ class RemoveBoundary: public Boundary<T> {
 public:
 	RemoveBoundary(const T& geometry):
 		Boundary<T>(geometry) {}
-	Molecules& get_removed(Species& s);
+	Particles<1>& get_removed(Species& s);
 
 protected:
 
@@ -176,7 +176,7 @@ protected:
 	}
 
 private:
-	std::vector<Molecules> removed_molecules;
+	std::vector<Particles<1> > removed_molecules;
 };
 
 

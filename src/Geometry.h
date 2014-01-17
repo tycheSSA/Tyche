@@ -428,7 +428,7 @@ public:
 		boost::variate_generator<base_generator_type&, boost::uniform_real<> >
 		uni(generator,boost::uniform_real<>(0,1));
 		Vect3d test_point;
-		return (high-low)*Vect3d(uni(),uni(),uni()) + low;
+		return ((high-low).array()*Vect3d(uni(),uni(),uni()).array()).matrix() + low;
 	}
 private:
 	Vect3d low,high;
@@ -470,7 +470,7 @@ private:
 
 std::ostream& operator<< (std::ostream& out, const MultipleBoxes& p);
 
-}
+
 
 class Sphere {
 public:
@@ -515,10 +515,10 @@ public:
 	Vect3d get_random_point_in() const {
 		ASSERT(in==true,"must be an finite volume");
 		boost::variate_generator<base_generator_type&, boost::uniform_real<> >
-			uni(generator,boost::uniform_real<>(0,1));
+			uni(generator,boost::uniform_real<>(-1,1));
 		Vect3d test_point;
 		do {
-			test_point = 2*radius*Vect3d(uni(),uni(),uni()) + centre - radius;
+			test_point = radius*Vect3d(uni(),uni(),uni()) + centre;
 		} while (!is_in(test_point));
 
 		return test_point;
@@ -598,10 +598,10 @@ public:
 	Vect3d get_random_point_in() const {
 		ASSERT(in==true,"must be an finite volume");
 		boost::variate_generator<base_generator_type&, boost::uniform_real<> >
-			uni(generator,boost::uniform_real<>(0,1));
+			uni(generator,boost::uniform_real<>(-1,1));
 		Vect3d test_point;
 		do {
-			test_point = 2*outer_radius*Vect3d(uni(),uni(),uni()) + centre - outer_radius;
+			test_point = outer_radius*Vect3d(uni(),uni(),uni()) + centre;
 		} while (!is_in(test_point));
 
 		return test_point;
@@ -614,5 +614,7 @@ private:
 };
 
 std::ostream& operator<< (std::ostream& out, const Sphere& p);
+
+}
 
 #endif /* GEOMETRY_H_ */

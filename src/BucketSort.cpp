@@ -89,7 +89,7 @@ void BucketSort::reset(const Vect3d& _low, const Vect3d& _high, double _max_inte
 	}
 }
 
-void BucketSort::embed_points(std::vector<Vect3d>& positions) {
+void BucketSort::embed_points(const std::vector<Vect3d>& positions) {
 	const unsigned int n = positions.size();
 	linked_list.assign(n, CELL_EMPTY);
 	const bool particle_based = dirty_cells.size() < cells.size();

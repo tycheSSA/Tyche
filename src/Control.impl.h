@@ -64,7 +64,7 @@ void GrowingInterface<T>::integrate(const double dt) {
 					for (int ii = 0; ii < n; ++ii) {
 						const Vect3d r = s.grid->get_random_point(i);
 						if (this->geometry.distance_to_boundary(r) >= 0) {
-							s.mols.add_molecule(r);
+							s.mols.add_particle(r);
 							s.copy_numbers[i]--;
 							ASSERT(s.copy_numbers[i]>=0,"can't have negative copy numbers");
 						}
@@ -91,7 +91,7 @@ void GrowingInterface<T>::integrate(const double dt) {
 			const int n = s.mols.size();
 			int total_copy_number_grow = 0; 
 			for (int i = 0; i < n; ++i) {
-				const double dist = this->geometry.distance_to_boundary(s.mols.r[i]);
+				const double dist = this->geometry.distance_to_boundary(s.mols.get_position(i));
 				if ((dist < 0)&&(dist > -move_by)) {
 					mol_indices.push_back(i);
 				} else if ((dist >= 0)&&(dist < check_distance-move_by)) {
@@ -111,8 +111,8 @@ void GrowingInterface<T>::integrate(const double dt) {
 				 * delete particles behind interface and add them to compartments
 				 */
 				BOOST_FOREACH(int i, mol_indices) {
-					s.copy_numbers[s.grid->get_cell_index(s.mols.r[i])]++;
-					s.mols.delete_molecule(i);
+					s.copy_numbers[s.grid->get_cell_index(s.mols.get_position(i))]++;
+					s.mols.delete_particle(i);
 				}
 				nsm.unset_interface_reactions(grid_indices_shrink, grid_indices_current);
 				nsm.set_interface_reactions(grid_indices_current,grid_indices_grow,dt,true);
