@@ -529,7 +529,7 @@ public:
 	void set_centre(const Vect3d& arg) {
 		centre = arg;
 	}
-	const double& get_radius() {
+	const double get_radius() {
 		return radius;
 	}
 	void set_radius(const double arg) {
@@ -613,7 +613,7 @@ private:
     bool in;
 };
 
-std::ostream& operator<< (std::ostream& out, const Sphere& p);
+std::ostream& operator<< (std::ostream& out, const Shell& p);
 
 }
 

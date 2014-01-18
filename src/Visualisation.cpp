@@ -175,7 +175,9 @@ void Visualisation::add_planes_to_vis() {
 void Visualisation::add_molecules_to_vis(Species& s) {
 	vtkSmartPointer<vtkPoints> points =
 			vtkSmartPointer<vtkPoints>::New();
-	BOOST_FOREACH(Vect3d r, s.mols.r) {
+	const int n = s.mols.size();
+	for (int i = 0; i < n; ++i) {
+		const Vect3d& r = s.mols.get_position(i);
 		points->InsertNextPoint(r[0],r[1],r[2]);
 	}
 

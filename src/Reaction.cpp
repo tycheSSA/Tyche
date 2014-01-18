@@ -954,11 +954,11 @@ void ZeroOrderMolecularReaction::integrate(const double dt) {
 		boost::poisson_distribution<> p_dist(rates[i_s]*volume*dt);
 		boost::variate_generator<base_generator_type&, boost::poisson_distribution<> > P(generator, p_dist);
 
-		Particles &mols = get_species()[i_s]->mols;
+		Particles<1> &mols = get_species()[i_s]->mols;
 		const int num_created = P();
 		for (int i = 0; i < num_created; ++i) {
 			const Vect3d new_position = min + max_minus_min.cwiseProduct(Vect3d(N(),N(),N()));
-			mols.add_molecule(new_position);
+			mols.add_particle(new_position);
 		}
 	}
 }
@@ -1009,25 +1009,25 @@ TriMolecularReaction::TriMolecularReaction(const double rate, const ReactionEqua
 
 
 void TriMolecularReaction::integrate(const double dt) {
-	Particles* mols1 = &get_species()[0]->mols;
-	Particles* mols2 = &get_species()[1]->mols;
-	Particles* mols3 = &get_species()[2]->mols;
+	Particles<1>* mols1 = &get_species()[0]->mols;
+	Particles<1>* mols2 = &get_species()[1]->mols;
+	Particles<1>* mols3 = &get_species()[2]->mols;
 
-	neighbourhood_search2.embed_points(mols2->r);
-	neighbourhood_search3.embed_points(mols3->r);
+	neighbourhood_search2.embed_points(mols2->get_position());
+	neighbourhood_search3.embed_points(mols3->get_position());
 
 	const int n = mols1->size();
 	for (int mols1_i = 0; mols1_i < n; ++mols1_i) {
-		if (!(mols1->alive[mols1_i])) continue;
-		const Vect3d pos1 = mols1->r[mols1_i];
-		const int id1 = mols1->id[mols1_i];
+		if (!(mols1->is_alive(mols1_i))) continue;
+		const Vect3d& pos1 = mols1->get_position(mols1_i);
+		const int& id1 = mols1->get_id(mols1_i);
 		bool reacted = false;
 		std::vector<int>& neighbrs_list2 = neighbourhood_search2.find_broadphase_neighbours(pos1, mols1_i,false);
 		for (auto mols2_i : neighbrs_list2) {
 			if (reacted) break;
-			if (!(mols2->alive[mols2_i])) continue;
-			const Vect3d pos2 = mols2->r[mols2_i];
-			const int id2 = mols2->id[mols2_i];
+			if (!(mols2->is_alive(mols2_i))) continue;
+			const Vect3d& pos2 = mols2->get_position(mols2_i);
+			const int& id2 = mols2->get_id(mols2_i);
 			const Vect3d pos2_corrected = neighbourhood_search2.correct_position_for_periodicity(pos1, pos2);
 			const double r12check = (pos1-pos2_corrected).squaredNorm() * invDbar1;
 			if (r12check <= radius_check) {
@@ -1036,9 +1036,9 @@ void TriMolecularReaction::integrate(const double dt) {
 				std::vector<int>& neighbrs_list3 = neighbourhood_search3.find_broadphase_neighbours(x12_corrected, mols1_i,false);
 				for (auto mols3_i : neighbrs_list3) {
 					if (reacted) break;
-					if (!(mols3->alive[mols3_i])) continue;
-					const Vect3d pos3 = mols3->r[mols3_i];
-					const int id3 = mols3->id[mols3_i];
+					if (!(mols3->is_alive(mols3_i))) continue;
+					const Vect3d& pos3 = mols3->get_position(mols3_i);
+					const int& id3 = mols3->get_id(mols3_i);
 					const Vect3d pos3_corrected = neighbourhood_search3.correct_position_for_periodicity(x12_corrected, pos3);
 					const double r123check = (x12_corrected-pos3_corrected).squaredNorm() * invDbar2;
 					if (r12check + r123check < radius_check) {
@@ -1047,8 +1047,8 @@ void TriMolecularReaction::integrate(const double dt) {
 //								component.species->mols.add_molecule(0.5*(pos1+pos2+pos3));
 //							}
 //						}
-						products[0].species->mols.add_molecule(pos2);
-						products[1].species->mols.add_molecule(pos3);
+						products[0].species->mols.add_particle(pos2);
+						products[1].species->mols.add_particle(pos3);
 
 						mols1->mark_for_deletion(mols1_i);
 						mols2->mark_for_deletion(mols2_i);
@@ -1059,9 +1059,9 @@ void TriMolecularReaction::integrate(const double dt) {
 			}
 		}
 	}
-	mols1->delete_molecules();
-	mols2->delete_molecules();
-	mols3->delete_molecules();
+	mols1->delete_particles();
+	mols2->delete_particles();
+	mols3->delete_particles();
 }
 
 

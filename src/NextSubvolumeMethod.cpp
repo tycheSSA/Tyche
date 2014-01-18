@@ -492,7 +492,7 @@ void NextSubvolumeMethod::react(ReactionEquation& eq) {
 				const double step_length = rc->tmp;
 				const double dist_from_intersect = step_length*(0.729614*P - 0.70252*P2)/(1.0 - 1.47494*P + 0.484371*P2);
 				const Vect3d newr = oldr + newn*dist_from_intersect;
-				rc->species->mols.add_molecule(newr,oldr);
+				rc->species->mols.add_particle(newr,oldr);
 //			} else {
 //				rc.species->copy_numbers[rc.compartment_index] += rc.multiplier;
 //			}

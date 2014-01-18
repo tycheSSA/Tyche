@@ -207,9 +207,9 @@ boost::python::tuple Species_get_particles(Species& self) {
 	PyObject *out_z = PyArray_SimpleNew(1, &size, NPY_DOUBLE);
 
 	for (int i = 0; i < n; ++i) {
-		*((double *)PyArray_GETPTR1(out_x,i)) = self.mols.r[i][0];
-		*((double *)PyArray_GETPTR1(out_y,i)) = self.mols.r[i][1];
-		*((double *)PyArray_GETPTR1(out_z,i)) = self.mols.r[i][2];
+		*((double *)PyArray_GETPTR1(out_x,i)) = self.mols.get_position(i)[0];
+		*((double *)PyArray_GETPTR1(out_y,i)) = self.mols.get_position(i)[1];
+		*((double *)PyArray_GETPTR1(out_z,i)) = self.mols.get_position(i)[2];
 	}
 	return boost::python::make_tuple(boost::python::handle<>(out_x),boost::python::handle<>(out_y),boost::python::handle<>(out_z));
 }
@@ -343,8 +343,8 @@ BOOST_PYTHON_MODULE(pyTyche) {
 			.def("add_species",&Operator::add_species)
 			.def("get_species_index",&Operator::get_species_index)
 			.def("integrate_for_time",&Operator::integrate_for_time)
-	                .def("get_active", &Operator::get_active)
-	                .def("set_active", &Operator::set_active)
+			.def("get_active", &Operator::get_active)
+	        .def("set_active", &Operator::set_active)
 			.def(self_ns::str(self_ns::self))
 			;
 
@@ -384,7 +384,7 @@ BOOST_PYTHON_MODULE(pyTyche) {
 	def("new_shell",Shell::New);
 
 	class_<Sphere,typename std::auto_ptr<Sphere> >("Sphere",boost::python::no_init)
-				.add_property("centre", &Sphere::get_centre, &Sphere::set_centre)
+				.add_property("centre", boost::python::make_function( &Sphere::get_centre, return_internal_reference<>() ), &Sphere::set_centre)
 				.add_property("radius", &Sphere::get_radius, &Sphere::set_radius)
 				;
 	class_<Shell,typename std::auto_ptr<Shell> >("Shell",boost::python::no_init)

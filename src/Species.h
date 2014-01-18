@@ -49,7 +49,7 @@ namespace Tyche {
 template<int DataSize = 1>
 class Particles {
 public:
-	static const int SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE = -1;
+	const int SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE = -1;
 
 	Particles() {
 		next_id = 0;
@@ -120,7 +120,7 @@ public:
 	bool is_alive(const unsigned int i) const {
 		return info.alive[i];
 	}
-	const unsigned int& get_id(const unsigned int i) const {
+	const int& get_id(const unsigned int i) const {
 		return info.id[i];
 	}
 
