@@ -224,9 +224,10 @@ void DestroyBoundary<T>::integrate(const double dt) {
 //				mols.delete_molecule(i);
 //			}
 			if (Boundary<T>::geometry.distance_to_boundary(mols.get_position(i))<0) {
-				mols.delete_particle(i);
+				mols.mark_for_deletion(i);
 			}
 		}
+		mols.delete_particles();
 	}
 
 }

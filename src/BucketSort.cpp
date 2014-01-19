@@ -89,47 +89,6 @@ void BucketSort::reset(const Vect3d& _low, const Vect3d& _high, double _max_inte
 	}
 }
 
-void BucketSort::embed_points(const std::vector<Vect3d>& positions) {
-	const unsigned int n = positions.size();
-	linked_list.assign(n, CELL_EMPTY);
-	const bool particle_based = dirty_cells.size() < cells.size();
-	if (particle_based) {
-		BOOST_FOREACH(int i, dirty_cells) {
-			cells[i] = CELL_EMPTY;
-		}
-	} else {
-		cells.assign(cells.size(), CELL_EMPTY);
-	}
-
-	dirty_cells.clear();
-	for (int i = 0; i < n; ++i) {
-		const int celli = find_cell_index(positions[i]);
-		const int cell_entry = cells[celli];
-
-		// Insert into own cell
-		cells[celli] = i;
-		dirty_cells.push_back(celli);
-		linked_list[i] = cell_entry;
-
-		// Insert into ghosted cells
-		if (particle_based) {
-			BOOST_FOREACH(int j, ghosting_indices_pb[celli]) {
-				const int cell_entry = cells[j];
-				cells[j] = i;
-				dirty_cells.push_back(j);
-				linked_list[i] = cell_entry;
-			}
-		}
-	}
-
-	if (!particle_based) {
-		for (std::vector<std::pair<int,int> >::iterator index_pair = ghosting_indices_cb.begin(); index_pair != ghosting_indices_cb.end(); ++index_pair) {
-			//BOOST_FOREACH(std::pair<int,int> index_pair, ghosting_indices) {
-			cells[index_pair->first] = cells[index_pair->second];
-		}
-	}
-}
-
 std::vector<int>& BucketSort::find_broadphase_neighbours(const Vect3d& r, const int my_index, const bool self) {
 	const int cell_i = find_cell_index(r);
 	neighbr_list.clear();

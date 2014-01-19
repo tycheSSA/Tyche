@@ -730,7 +730,7 @@ void BiMolecularReaction<T>::integrate(const double dt) {
 	//LOG(1,"starting bi integrate");
 
 	const double binding_radius2 = binding_radius*binding_radius;
-	neighbourhood_search.embed_points(mols1->get_position());
+	neighbourhood_search.embed_points(mols1->begin(),mols1->end(),[](Particles<1>::Value* i){return i->get_position();});
 	const int n = mols2->size();
 	for (int mols2_i = 0; mols2_i < n; ++mols2_i) {
 		if (!(mols2->is_alive(mols2_i))) continue;
@@ -1013,8 +1013,8 @@ void TriMolecularReaction::integrate(const double dt) {
 	Particles<1>* mols2 = &get_species()[1]->mols;
 	Particles<1>* mols3 = &get_species()[2]->mols;
 
-	neighbourhood_search2.embed_points(mols2->get_position());
-	neighbourhood_search3.embed_points(mols3->get_position());
+	neighbourhood_search2.embed_points(mols2->begin(),mols2->end(),[](Particles<1>::iterator i){return i->get_position();});
+	neighbourhood_search3.embed_points(mols3->begin(),mols3->end(),[](Particles<1>::iterator i){return i->get_position();});
 
 	const int n = mols1->size();
 	for (int mols1_i = 0; mols1_i < n; ++mols1_i) {

@@ -112,8 +112,9 @@ void GrowingInterface<T>::integrate(const double dt) {
 				 */
 				BOOST_FOREACH(int i, mol_indices) {
 					s.copy_numbers[s.grid->get_cell_index(s.mols.get_position(i))]++;
-					s.mols.delete_particle(i);
+					s.mols.mark_for_deletion(i);
 				}
+				s.mols.delete_particles();
 				nsm.unset_interface_reactions(grid_indices_shrink, grid_indices_current);
 				nsm.set_interface_reactions(grid_indices_current,grid_indices_grow,dt,true);
 				//				nsm.clear_reactions(grid_indices_grow);

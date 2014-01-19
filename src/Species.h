@@ -27,6 +27,7 @@
 
 #include <vector>
 #include <boost/foreach.hpp>
+#include <boost/iterator/iterator_facade.hpp>
 #include "MyRandom.h"
 #include "Vector.h"
 #include "StructuredGrid.h"
@@ -49,10 +50,84 @@ namespace Tyche {
 template<int DataSize = 1>
 class Particles {
 public:
+	class Value {
+	public:
+		Value(const Vect3d& r, const Vect3d& r0, const bool alive, const size_t id, const size_t saved_index):
+			r(r),
+			r0(r0),
+			alive(alive),
+			id(id),
+			saved_index(saved_index)
+		{}
+		Value& operator=(const Value &rhs) {
+			if (this != &rhs) {
+				r = rhs.r;
+				r0 = rhs.r0;
+				alive = rhs.alive;
+				id = rhs.id;
+				saved_index = rhs.saved_index;
+				data = rhs.data;
+			}
+			return *this;
+		}
+		const Vect3d& get_position() const {
+			return r;
+		}
+		Vect3d& get_position_nonconst() {
+			dirty = true;
+			return r;
+		}
+		const Vect3d& get_old_position() const {
+			return r0;
+		}
+		Vect3d& get_old_position_nonconst() {
+			return r0;
+		}
+		const double* get_data() const {
+			return data.data();
+		}
+		double* get_data(const size_t i) {
+			return data.data();
+		}
+		bool is_alive() const {
+			return alive;
+		}
+		const std::size_t& get_id() const {
+			return id;
+		}
+		const std::size_t& get_saved_index() const {
+			return saved_index;
+		}
+		void mark_for_deletion() {
+			alive = false;
+		}
+	private:
+		Vect3d r,r0;
+		bool alive;
+		std::size_t id;
+		std::size_t saved_index;
+		boost::array<double,DataSize> data;
+	};
+
+	typedef typename std::vector<Value>::iterator iterator;
 	const int SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE = -1;
+
 
 	Particles() {
 		next_id = 0;
+	}
+
+	Value& operator[](std::size_t idx) {
+		return data[idx];
+	};
+	const Value& operator[](std::size_t idx) const {
+		return const_cast<Value>(*this)[idx];
+	};
+	typename std::vector<Value>::iterator begin() {
+		return data.begin();
+	}
+	typename std::vector<Value>::iterator end() {
+		return data.end();
 	}
 	void fill_uniform(const Vect3d low, const Vect3d high, const unsigned int N) {
 		//TODO: assumes a 3d rectangular region
@@ -62,76 +137,59 @@ public:
 			add_particle(Vect3d(uni()*dist[0],uni()*dist[1],uni()*dist[2])+low);
 		}
 	}
-	void delete_particle(const unsigned int i) {
-		const int last_index = info.size()-1;
-		if (i != last_index) {
-			info[i] = info[last_index];
-			data[i] = data[last_index];
-		}
-		info.pop_back();
-		data.pop_back();
-	}
+
 	void delete_particles() {
-		int i = 0;
-		while (i < info.size()) {
-			if (!info.alive[i]) {
-				delete_particle(i);
-			} else {
-				i++;
-			}
-		}
+		data.erase (std::remove_if( std::begin(data), std::end(data),
+				[](Value& p) { return !p.is_alive(); }),
+				std::end(data)
+		);
+
 	}
 	void clear() {
-		info.clear();
 		data.clear();
 	}
 	size_t size() const {
-		return info.size();
+		return data.size();
 	}
 	void add_particle(const Vect3d& position) {
-		info.push_back(position, position, true, next_id++, SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE);
-		data.resize(info.size());
+		data.push_back(Value(position,position,true, next_id++, SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE));
 	}
 	void add_particle(const Vect3d& position, const Vect3d& old_position) {
-		info.push_back(position, old_position, true, next_id++, SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE);
-		data.resize(info.size());
+		data.push_back(Value(position,old_position,true, next_id++, SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE));
 	}
-	const std::vector<Vect3d>& get_position() const {
-		return info.r;
+	const Vect3d& get_position(const size_t i) const {
+		return data[i].get_position();
 	}
-	const Vect3d& get_position(const unsigned int i) const {
-		return info.r[i];
+	Vect3d& get_position_nonconst(const size_t i) {
+		return data[i].get_position_nonconst();
 	}
-	Vect3d& get_position_nonconst(const unsigned int i) {
-		return info.r[i];
+	const Vect3d& get_old_position(const size_t i) const {
+		return data[i].get_old_position();
 	}
-	const Vect3d& get_old_position(const unsigned int i) const {
-		return info.r0[i];
+	Vect3d& get_old_position_nonconst(const size_t i) {
+		return data[i].get_old_position_nonconst();
 	}
-	Vect3d& get_old_position_nonconst(const unsigned int i) {
-		return info.r0[i];
+	const double* get_data(const size_t i) const {
+		return data[i].get_data();
 	}
-	const double* get_data(const unsigned int i) const {
-		return data[i];
+	double* get_data(const size_t i) {
+		return data[i].get_data_nonconst();
 	}
-	double* get_data_noncost(const unsigned int i) {
-		return data[i];
+	bool is_alive(const size_t i) const {
+		return data[i].is_alive();
 	}
-	bool is_alive(const unsigned int i) const {
-		return info.alive[i];
-	}
-	const int& get_id(const unsigned int i) const {
-		return info.id[i];
+	const size_t& get_id(const size_t i) const {
+		return data[i].get_id();
 	}
 
-	void mark_for_deletion(const unsigned int i) {
-		info.alive[i] = false;
+	void mark_for_deletion(const size_t i) {
+		data[i].mark_for_deletion();
 	}
 
 	void save_indicies() {
-		const int n = info.size();
+		const int n = data.size();
 		for (int i = 0; i < n; ++i) {
-			info.saved_index[i] = i;
+			data[i].get_saved_index() = i;
 		}
 	}
 
@@ -146,7 +204,7 @@ public:
 		for (int i = 0; i < n; ++i) {
 			//std::cout << "adding mol to vtk at position "<<mols.r[i]<<std::endl;
 			newPts->SetPoint(i,get_position(i)[0],get_position(i)[1],get_position(i)[2]);
-			newInt->SetValue(n,info.id[i]);
+			newInt->SetValue(n,get_id(i));
 		}
 		newPts->ComputeBounds();
 
@@ -156,13 +214,10 @@ public:
 		return grid;
 	}
 private:
-	ParticleInfo info;
-	std::vector<boost::array<double, DataSize> > data;
+	std::vector<Value> data;
+	bool dirty;
 	int next_id;
 };
-
-
-
 
 
 static const StructuredGrid empty_grid;
