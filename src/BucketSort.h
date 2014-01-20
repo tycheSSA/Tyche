@@ -31,14 +31,76 @@
 #include <vector>
 #include <iostream>
 
+#include <boost/foreach.hpp>
+
 namespace Tyche {
 
 const int CELL_EMPTY = -1;
 
+template <class Value>
+class node_iter
+  : public boost::iterator_facade<
+        node_iter<Value>
+      , Value
+      , boost::forward_traversal_tag
+    >
+{
+ public:
+    node_iter()
+      : m_node(0) {}
+
+    explicit node_iter(Value* cell_i,
+    		Value* linked_list,
+    		const std::vector<int>& surrounding_cell_offsets,
+    		const int my_index = -1, const bool self = false)
+    : cell_i(cell_i),
+      linked_list(linked_list),
+      my_index(my_index),self(self) {
+    	surrounding_cell_offset_i = surrounding_cell_offsets.begin();
+    	if (self) {
+    		surrounding_cell_offset_end = surrounding_cell_offset_i
+    						+ (surrounding_cell_offsets.size()-1)/2;
+    	} else {
+    		surrounding_cell_offset_end = surrounding_cell_offsets.end();
+    	}
+    	m_node = cell_i + *surrounding_cell_offset_i;
+    }
+
+ private:
+    friend class boost::iterator_core_access;
+
+    bool equal(node_iter<Value> const& other) const {
+        return *m_node == *(other.m_node);
+    }
+
+    void increment() {
+    	m_node = linked_list[*m_node];
+    	if (*m_node == CELL_EMPTY) surrounding_cell_offset_i++;
+    	if (surrounding_cell_offset_i != surrounding_cell_offset_end) {
+    		m_node = cell_i + *surrounding_cell_offset_i;
+    	} else if (self) {
+    		m_node = linked_list[my_index];
+    	}
+    }
+
+    Value& dereference() const
+    { return *m_node; }
+
+    Value* m_node;
+    Value* cell_i;
+    Value* const linked_list;
+    const int my_index;
+    const bool self;
+    std::vector<int>::iterator surrounding_cell_offset_i,surrounding_cell_offset_end;
+};
+
 class BucketSort {
 public:
+	typedef node_iter<int const> const_iterator;
+
 	BucketSort(Vect3d low, Vect3d high, Vect3b periodic):
-		low(low),high(high),domain_size(high-low),periodic(periodic) {
+		low(low),high(high),domain_size(high-low),periodic(periodic),
+		empty_cell(CELL_EMPTY) {
 		LOG(2,"Creating bucketsort data structure with lower corner = "<<low<<" and upper corner = "<<high);
 		const double dx = (high-low).maxCoeff()/10.0;
 		reset(low, high, dx);
@@ -49,8 +111,9 @@ public:
 	inline const Vect3d& get_high() {return high;}
 
 	template<typename T, typename F>
-	void embed_points(const T& begin_iterator, const T& end_iterator, const F& return_vect3d);	std::vector<int>& find_broadphase_neighbours(const Vect3d& r, const int my_index, const bool self);
-
+	void embed_points(const T& begin_iterator, const T& end_iterator, const F& return_vect3d);
+	const_iterator find_broadphase_neighbours(const Vect3d& r, const int my_index, const bool self);
+    const_iterator end();
 	Vect3d correct_position_for_periodicity(const Vect3d& source_r, const Vect3d& to_correct_r);
 	Vect3d correct_position_for_periodicity(const Vect3d& to_correct_r);
 
@@ -80,6 +143,7 @@ private:
 	int num_cells_along_yz;
 	double max_interaction_radius;
 	std::vector<int> surrounding_cell_offsets;
+	const int empty_cell;
 };
 
 template<typename T, typename F>
@@ -124,6 +188,7 @@ void BucketSort::embed_points(const T& begin_iterator, const T& end_iterator, co
 		}
 	}
 }
+
 
 }
 

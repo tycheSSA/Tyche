@@ -6,7 +6,8 @@
  */
 
 #include "BucketSort.h"
-#include <boost/foreach.hpp>
+#include <boost/iterator/iterator_facade.hpp>
+
 
 namespace Tyche {
 
@@ -89,32 +90,13 @@ void BucketSort::reset(const Vect3d& _low, const Vect3d& _high, double _max_inte
 	}
 }
 
-std::vector<int>& BucketSort::find_broadphase_neighbours(const Vect3d& r, const int my_index, const bool self) {
-	const int cell_i = find_cell_index(r);
-	neighbr_list.clear();
-	int n = surrounding_cell_offsets.size();
-	if (self) n = (n-1)/2;
-	for (int i = 0; i < n; ++i) {
-		const int offset = surrounding_cell_offsets[i];
-		int entry = cells[cell_i + offset];
-		while (entry != CELL_EMPTY) {
-			neighbr_list.push_back(entry);
-			entry = linked_list[entry];
-		}
-	}
-	if (self) {
-		int entry = cells[cell_i];
-		bool found_self = false;
-		while (entry != CELL_EMPTY) {
-			if (found_self) {
-				neighbr_list.push_back(entry);
-			} else if (my_index==entry) {
-				found_self = true;
-			}
-			entry = linked_list[entry];
-		}
-	}
-	return neighbr_list;
+BucketSort::const_iterator BucketSort::find_broadphase_neighbours(const Vect3d& r, const int my_index, const bool self) {
+	return BucketSort::const_iterator(cells + find_cell_index(r), linked_list.begin(),
+			surrounding_cell_offsets, my_index, self);
+}
+BucketSort::const_iterator BucketSort::end() {
+	return BucketSort::const_iterator(&empty_cell, linked_list.begin(),
+			std::vector<int>(1,0));
 }
 
 

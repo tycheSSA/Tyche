@@ -31,6 +31,7 @@
 #include "MyRandom.h"
 #include "Vector.h"
 #include "StructuredGrid.h"
+#include "BucketSort.h"
 
 #include <vtkUnstructuredGrid.h>
 #include <vtkSmartPointer.h>
@@ -47,15 +48,18 @@ namespace Tyche {
 #define DATA_types   (Vect3d)(Vect3d)(bool)(int)(int)
 #include "Data.h"
 
-template<int DataSize = 1>
+template<int DataSize = 1, typename NeighbourSearch = BucketSort>
 class Particles {
 public:
+	class get_pos_and_clear_dirty;
 	class Value {
+		friend class Particles;
+		friend class get_pos_and_clear_dirty;
 	public:
 		Value(const Vect3d& r, const Vect3d& r0, const bool alive, const size_t id, const size_t saved_index):
 			r(r),
 			r0(r0),
-			alive(alive),
+			alive(alive),dirty(true),
 			id(id),
 			saved_index(saved_index)
 		{}
@@ -101,21 +105,37 @@ public:
 		void mark_for_deletion() {
 			alive = false;
 		}
+		template<typename T>
+		T::neighbour_iterator get_in_radius(const T& particles, const double radius) {
+			return particles.get_in_geometry(
+					particles.neighbour_search.find_broadphase_neighbours(get_position(), radius, index,false),
+					particles.neighbour_search.end(),
+					Sphere(get_position(),radius)
+			);
+		}
 	private:
 		Vect3d r,r0;
-		bool alive;
+		bool alive,dirty;
 		std::size_t id;
-		std::size_t saved_index;
+		std::size_t index,saved_index;
+		std::vector<size_t> neighbour_indicies;
 		boost::array<double,DataSize> data;
 	};
 
 	typedef typename std::vector<Value>::iterator iterator;
+	class get_pos_and_clear_dirty {
+		const Vect3d& operator()(iterator i) {
+			i->dirty = false;
+			return i->get_position();
+		}
+	};
 	const int SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE = -1;
 
 
-	Particles() {
-		next_id = 0;
-	}
+	Particles():
+		next_id(0),
+		neighbour_search(Vect3d(0,0,0),Vect3d(1,1,1),Vect3b(false,false,false))
+	{}
 
 	Value& operator[](std::size_t idx) {
 		return data[idx];
@@ -129,6 +149,10 @@ public:
 	typename std::vector<Value>::iterator end() {
 		return data.end();
 	}
+//	template <typename T>
+//	typename neighbour_search_iterator<T> begin_neighbour_search(const T* particles_to_search) {
+//		//return data.begin();
+//	}
 	void fill_uniform(const Vect3d low, const Vect3d high, const unsigned int N) {
 		//TODO: assumes a 3d rectangular region
 		boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni(generator, boost::uniform_real<>(0,1));
@@ -189,8 +213,16 @@ public:
 	void save_indicies() {
 		const int n = data.size();
 		for (int i = 0; i < n; ++i) {
-			data[i].get_saved_index() = i;
+			data[i].saved_index = i;
 		}
+	}
+
+	void init_neighbour_search(const Vect3d& low, const Vect3d& high, const double length_scale) {
+		neighbour_search.reset(low,high,length_scale);
+		neighbour_search.embed_points(begin(),end(),get_pos_and_clear_dirty());
+	}
+	void refresh_neighbour_search() {
+		neighbour_search.embed_points(begin(),end(),get_pos_and_clear_dirty());
 	}
 
 	vtkSmartPointer<vtkUnstructuredGrid> get_vtk_grid() {
@@ -215,6 +247,7 @@ public:
 	}
 private:
 	std::vector<Value> data;
+	NeighbourSearch neighbour_search;
 	bool dirty;
 	int next_id;
 };

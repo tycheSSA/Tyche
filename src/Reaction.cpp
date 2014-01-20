@@ -730,15 +730,16 @@ void BiMolecularReaction<T>::integrate(const double dt) {
 	//LOG(1,"starting bi integrate");
 
 	const double binding_radius2 = binding_radius*binding_radius;
-	neighbourhood_search.embed_points(mols1->begin(),mols1->end(),[](Particles<1>::Value* i){return i->get_position();});
+	neighbourhood_search.embed_points(mols1->begin(),mols1->end(),[](Particles<1>::iterator i){return i->get_position();});
 	const int n = mols2->size();
 	for (int mols2_i = 0; mols2_i < n; ++mols2_i) {
 		if (!(mols2->is_alive(mols2_i))) continue;
 		//if (mols2->saved_index[mols2_i] == SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE) continue;
 		const Vect3d& pos2 = mols2->get_position(mols2_i);
 		const int id2 = mols2->get_id(mols2_i);
-		std::vector<int>& neighbrs_list = neighbourhood_search.find_broadphase_neighbours(pos2, mols2_i,self_reaction);
-		for (auto mols1_i : neighbrs_list) {
+		for (T::const_iterator neighbrs_list = neighbourhood_search.find_broadphase_neighbours(pos2, mols2_i,self_reaction);
+				neighbrs_list != neighbourhood_search.end();neighbrs_list++) {
+			const int mols1_i = *neighbrs_list;
 			if (!(mols1->is_alive(mols1_i))) continue;
 			//if (mols1->saved_index[mols1_i] == SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE) continue;
 			const Vect3d& pos1 = mols1->get_position(mols1_i);
@@ -1022,9 +1023,10 @@ void TriMolecularReaction::integrate(const double dt) {
 		const Vect3d& pos1 = mols1->get_position(mols1_i);
 		const int& id1 = mols1->get_id(mols1_i);
 		bool reacted = false;
-		std::vector<int>& neighbrs_list2 = neighbourhood_search2.find_broadphase_neighbours(pos1, mols1_i,false);
-		for (auto mols2_i : neighbrs_list2) {
+		for (auto neighbrs_list2 = neighbourhood_search2.find_broadphase_neighbours(pos1, mols1_i,false);
+				neighbrs_list2 != neighbourhood_search2.end(); neighbrs_list2++) {
 			if (reacted) break;
+			const int mols2_i = *neighbrs_list2;
 			if (!(mols2->is_alive(mols2_i))) continue;
 			const Vect3d& pos2 = mols2->get_position(mols2_i);
 			const int& id2 = mols2->get_id(mols2_i);
@@ -1033,9 +1035,10 @@ void TriMolecularReaction::integrate(const double dt) {
 			if (r12check <= radius_check) {
 				const Vect3d x12 = (D2*pos1 + D1*pos2_corrected) * invDbar1;
 				const Vect3d x12_corrected = neighbourhood_search3.correct_position_for_periodicity(x12);
-				std::vector<int>& neighbrs_list3 = neighbourhood_search3.find_broadphase_neighbours(x12_corrected, mols1_i,false);
-				for (auto mols3_i : neighbrs_list3) {
+				for (auto neighbrs_list3 = neighbourhood_search3.find_broadphase_neighbours(x12_corrected, mols1_i,false);
+						neighbrs_list3 != neighbourhood_search3.end(); neighbrs_list3++) {
 					if (reacted) break;
+					const int mols3_i = *neighbrs_list3;
 					if (!(mols3->is_alive(mols3_i))) continue;
 					const Vect3d& pos3 = mols3->get_position(mols3_i);
 					const int& id3 = mols3->get_id(mols3_i);
