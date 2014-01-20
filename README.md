@@ -6,7 +6,9 @@ Point your browser to http://people.maths.ox.ac.uk/robinsonm/index.html for more
 Tyche is a multiscale stochastic reaction-diffusion modelling software library. It consists of:
 
 (a) an off-lattice (particle-based) model based on the Smoluchowski model, including diffusion, zeroth-order, unimolecular and bimolecular reactions. 
+
 (b) an on-lattice model based on the Next Subvolume Method (based in turn on the Gillespie algorithm). This models stochastic diffusion, and reactions of arbitrary order
+
 (c) a coupling between the off-lattice and on-lattice models, suitable for domain decomposition problems. This implements the Adaptive Two-Regime method, detailed in the following paper:
 
 Martin Robinson, Mark Flegg, Radek Erban, "Adaptive two-regime method: application to front propagation", submitted to Journal of Chemical Physics (http://arxiv.org/abs/1312.6338)
@@ -19,7 +21,7 @@ Tyche has both C++ and Python interfaces.
 
 Example of Python interface
 ===========================
-
+```python
 L = 0.5
 D = 1
 timesteps = 100000
@@ -82,6 +84,6 @@ for i in range(100):
    print A,B,C
    print 'time = ',time,' ',i,' percent done'
    time = algorithm.integrate_for_time(output_dt,mol_dt)
-
+```
 
 
