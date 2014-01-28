@@ -65,57 +65,54 @@ class BaseOperator {
 	};
 };
 
-
 class Operator {
+	struct OperatorConcept {
+		virtual ~OperatorConcept() {}
+
+		void execute();
+		void reset();
+		friend std::ostream& operator<<( std::ostream& out, const Operator& b ) {
+			b.print(out);
+			return out;
+		}
+		bool get_active() { return active;};
+		void set_active(bool a) { active = a; };
+
+
+	protected:
+		virtual void reset_impl();
+		virtual void execute_impl();
+		virtual void print_impl(std::ostream& out) const;
+
+	private:
+		void resume_timer();
+		void stop_timer();
+
+		boost::timer::cpu_timer timer;
+		double total_time;
+		bool active;
+	};
+
+	template<typename InputType, typename OutputType>
+	struct OperatorModel : OperatorConcept {
+		OperatorModel(InputType& input, OutputType& output):
+				input(input),output(output) {}
+		virtual ~ObjectModel() {}
+	private:
+		InputType& input;
+		OutputType& output;
+	};
+
+	boost::shared_ptr<OperatorConcept> op;
+
 public:
-	Operator();
-	virtual ~Operator() {};
-	bool add_species(Species &s);
-	double integrate_for_time(const double time, const double dt);
-	void operator()(const double dt);
-	std::string get_time_string() const;
-	//std::string get_global_time() const;
-	//std::string get_time_percentage() const;
-	void reset();
-	int get_species_index(Species& s);
-	double get_time() const {return time;}
-	const std::vector<Species*>& get_species() const {return all_species;}
-	friend std::ostream& operator<<( std::ostream& out, const Operator& b ) {
-		b.print(out);
-		return out;
-	}
-
-	bool get_active() { return active;};
-	void set_active(bool a) { active = a; };
-
-protected:
-	virtual void add_species_execute(Species &s);
-	virtual void reset_execute();
-	virtual void integrate(const double dt);
-	virtual void print(std::ostream& out) const;
-
-private:
-	void resume_timer();
-	void stop_timer();
-
-	boost::timer::cpu_timer timer;
-	double total_time;
-	double time;
-	//boost::timer global_timer;
-	std::vector<Species*> all_species;
-	bool active;
+	template<typename T>
+	Operator( const T& obj ) :
+		Operator( new OperatorModel<T>( obj ) ) {}
 };
 
-class CountMolsOnGrid: public Operator {
-public:
-	CountMolsOnGrid() {}
-	void operator()(const double dt);
-};
 
-std::ostream& operator<< (std::ostream& out, CountMolsOnGrid& b);
-
-
-class OperatorList: public Operator {
+class OperatorList {
 public:
 	OperatorList() {}
 	OperatorList(Operator& o) {
