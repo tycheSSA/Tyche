@@ -31,6 +31,40 @@
 #include <initializer_list>
 
 namespace Tyche {
+template<typename InputType, typename OutputType>
+class BaseOperator {
+	BaseOperator(InputType& input, OutputType& output):
+		input(input),output(output) {}
+	virtual ~BaseOperator() {};
+
+	void execute();
+	void reset();
+	friend std::ostream& operator<<( std::ostream& out, const Operator& b ) {
+		b.print(out);
+		return out;
+	}
+	bool get_active() { return active;};
+	void set_active(bool a) { active = a; };
+	const InputType& get_input() {return input;}
+	const OutputType& get_output() {return output;}
+
+	protected:
+		virtual void reset_impl();
+		virtual void execute_impl();
+		virtual void print_impl(std::ostream& out) const;
+
+	private:
+		void resume_timer();
+		void stop_timer();
+
+		boost::timer::cpu_timer timer;
+		double total_time;
+		bool active;
+		InputType& input;
+		OutputType& output;
+	};
+};
+
 
 class Operator {
 public:
