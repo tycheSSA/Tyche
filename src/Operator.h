@@ -71,6 +71,7 @@ class Operator {
 
 		void execute();
 		void reset();
+		void print(std::ostream& out);
 		friend std::ostream& operator<<( std::ostream& out, const Operator& b ) {
 			b.print(out);
 			return out;
@@ -80,9 +81,9 @@ class Operator {
 
 
 	protected:
-		virtual void reset_impl();
-		virtual void execute_impl();
-		virtual void print_impl(std::ostream& out) const;
+		virtual void reset_impl() = 0;
+		virtual void execute_impl() = 0;
+		virtual void print_impl(std::ostream& out) const = 0;
 
 	private:
 		void resume_timer();
@@ -93,14 +94,16 @@ class Operator {
 		bool active;
 	};
 
-	template<typename InputType, typename OutputType>
+	template<typename T>
 	struct OperatorModel : OperatorConcept {
-		OperatorModel(InputType& input, OutputType& output):
-				input(input),output(output) {}
+		OperatorModel( const T& t ) : object( t ) {}
 		virtual ~ObjectModel() {}
+	protected:
+		virtual void reset_impl() {object.reset();}
+		virtual void execute_impl() {object.execute();}
+		virtual void print_impl(std::ostream& out) {object.print();}
 	private:
-		InputType& input;
-		OutputType& output;
+		T object;
 	};
 
 	boost::shared_ptr<OperatorConcept> op;
