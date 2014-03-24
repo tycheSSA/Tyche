@@ -168,7 +168,8 @@ void BindingReaction::integrate(const double dt) {
 		  std::pair<int, double> state_pair = std::pair<int, double>(site_state, get_time());
 		  state_sequence.push_back(state_pair);
 		  
-		  state_changed_cb(site_state);
+		  if (have_state_changed_cb)
+		    state_changed_cb(site_state);
 		}
 	  }
 	  mols->delete_molecules();
@@ -181,7 +182,8 @@ void BindingReaction::integrate(const double dt) {
 	    std::pair<int, double> state_pair = std::pair<int, double>(site_state, get_time());
 	    state_sequence.push_back(state_pair);
 	    
-	    state_changed_cb(site_state);
+	    if (have_state_changed_cb)
+	      state_changed_cb(site_state);
 
 	    double phi = 2*PI*uni();
 	    double thet = PI/2.*uni();
@@ -923,7 +925,8 @@ BindingReaction::BindingReaction(const double rate,
 		binding_radius(binding),
 		unbinding_radius(unbinding),
 		binding_sites(binding_sites),
-		site_state(initial_state) {
+		site_state(initial_state),
+		have_state_changed_cb(false) {
 	this->add_species(species);
 
 	P_lambda = calculate_lambda(dt);

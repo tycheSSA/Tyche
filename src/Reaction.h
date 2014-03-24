@@ -141,6 +141,7 @@ public:
 
 	void set_state_changed_cb(const boost::function< void(int) > callback)
 	{
+	  have_state_changed_cb = true;
 	  state_changed_cb = callback;
 	}
 
@@ -163,6 +164,7 @@ protected:
 	double P_diss;
 	int binding_sites;
 	int site_state;
+	bool have_state_changed_cb;
 	std::list< std::pair< int, double > > state_sequence;
 	boost::function< void(int) > state_changed_cb;
 };
