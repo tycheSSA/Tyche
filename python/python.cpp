@@ -256,15 +256,15 @@ boost::python::object BindingReaction_get_state_sequence(BindingReaction& self) 
 struct BR_Python_Callback {
   boost::python::object py_callable;
   boost::python::tuple args;
-  void operator()(int state) {
-    py_callable(state, args);
+  void operator()(double time, int state) {
+    py_callable(time, state, args);
   }
 };
 
 void BindingReaction_set_state_changed_cb(BindingReaction& self, boost::python::object& callable, boost::python::tuple& args)
 {
   BR_Python_Callback cb {callable, args};
-  self.set_state_changed_cb(boost::function<void(int)>(cb));
+  self.set_state_changed_cb(boost::function<void(double, int)>(cb));
 }
 
 std::auto_ptr<Operator> group(const boost::python::list& ops) {
