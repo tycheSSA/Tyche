@@ -139,7 +139,7 @@ public:
 	}
 	void report_dt_suitability(const double dt);
 
-	void set_state_changed_cb(const boost::function< void(int) > callback)
+	void set_state_changed_cb(const boost::function< void(double, int) > callback)
 	{
 	  have_state_changed_cb = true;
 	  state_changed_cb = callback;
@@ -166,7 +166,7 @@ protected:
 	int site_state;
 	bool have_state_changed_cb;
 	std::list< std::pair< int, double > > state_sequence;
-	boost::function< void(int) > state_changed_cb;
+	boost::function< void(double, int) > state_changed_cb;
 };
 
 template<typename T>

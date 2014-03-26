@@ -169,7 +169,7 @@ void BindingReaction::integrate(const double dt) {
 		  state_sequence.push_back(state_pair);
 		  
 		  if (have_state_changed_cb)
-		    state_changed_cb(site_state);
+		    state_changed_cb(get_time()+dt, site_state);
 		}
 	  }
 	  mols->delete_molecules();
@@ -183,7 +183,7 @@ void BindingReaction::integrate(const double dt) {
 	    state_sequence.push_back(state_pair);
 	    
 	    if (have_state_changed_cb)
-	      state_changed_cb(site_state);
+	      state_changed_cb(get_time()+dt, site_state);
 
 	    double phi = 2*PI*uni();
 	    double thet = PI/2.*uni();
