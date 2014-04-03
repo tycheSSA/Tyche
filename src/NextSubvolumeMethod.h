@@ -150,6 +150,50 @@ public:
 		}
 		set_interface_reactions(from_indicies,to_indicies,dt,corrected);
 	}
+	template<typename T>
+	void set_ghost_cell_interface(const T& geometry) {
+	  std::vector<int> slice_indices, to_indices, from_indices;
+	  std::set<int> ghost_cell_indices;
+	  subvolumes.get_slice(geometry, slice_indices);
+	  const int n = slice_indices.size();
+	  for (int i = 0; i < n; ++i) {
+	    const std::vector<int>& neighbrs = subvolumes.get_neighbour_indicies(slice_indices[i]);
+	    const int nn = neighbrs.size();
+	    for (int j = 0; j < nn; ++j) {
+	      if (!subvolumes.is_in(geometry, neighbrs[j])) {
+		ghost_cell_indices.insert(neighbrs[j]);
+		to_indices.push_back(neighbrs[j]);
+		from_indices.push_back(slice_indices[i]);
+	      }
+	    }
+	    std::vector<int> gv(ghost_cell_indices.begin(), ghost_cell_indices.end());
+	    clear_reactions(gv);
+	  }
+	  const int fn = from_indices.size();
+	  const std::vector<Species*> diffusing_species = get_species();
+	  const int ns = diffusing_species.size();
+	  for (int is = 0; is < ns; ++is) {
+	    Species& s = *diffusing_species[is];
+	    for (unsigned int ii = 0; ii < fn; ++ii) {
+	      const int i = from_indices[ii];
+	      const int j = to_indices[ii];
+	      ReactionSide lhs;
+	      lhs.push_back(ReactionComponent(1.0,s,i));
+	      ReactionSide rhs;
+	      rhs.push_back(ReactionComponent(1.0,s,j));
+	      rhs[0].tmp = -subvolumes.get_distance_between(i,j);
+	      double rate = subvolume_reactions[i].delete_reaction(ReactionEquation(lhs,rhs));
+	      
+	      rhs[0].compartment_index = -j;
+	      subvolume_reactions[i].add_reaction(rate,ReactionEquation(lhs,rhs));
+	      rhs[0].compartment_index = i;
+	      lhs[0].compartment_index = -j;
+	      subvolume_reactions[j].add_reaction(rate,ReactionEquation(lhs,rhs));
+	      reset_priority(i);
+	      reset_priority(j);
+	    }
+	  }
+	}
 //	template<int Dim>
 //	void set_interface(const AxisAlignedPlane<DIM>& geometry, const double dt, const bool corrected) {
 //		std::vector<int> to_indicies,from_indicies;

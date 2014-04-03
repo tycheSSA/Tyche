@@ -8,6 +8,7 @@
 #include "NextSubvolumeMethod.h"
 #include "Log.h"
 #include "Constants.h"
+#include <sstream>
 #include <boost/foreach.hpp>
 
 namespace Tyche {
@@ -153,7 +154,9 @@ double ReactionList::recalculate_propensities() {
 		int beta = 0;
 		//for (auto& rc : rs.lhs) {
 		for (std::vector<ReactionComponent>::iterator rc=rs.lhs.begin();rc!=rs.lhs.end();rc++) {
-			int copy_number = rc->species->copy_numbers[rc->compartment_index];
+			int comp_ind = rc->compartment_index;
+			if (comp_ind < 0) comp_ind *= -1;
+			int copy_number = rc->species->copy_numbers[comp_ind];
 			beta += rc->multiplier;
 			ASSERT(copy_number >= 0, "copy number is less than zero!!");
 			if (copy_number < rc->multiplier) {
@@ -464,16 +467,46 @@ void NextSubvolumeMethod::unset_interface_reactions(
 
 
 void NextSubvolumeMethod::react(ReactionEquation& eq) {
+        int dirty_compartment_index = -1;
 	//for (auto& rc : eq.lhs) {
 	for (std::vector<ReactionComponent>::iterator rc=eq.lhs.begin();rc!=eq.lhs.end();rc++) {
+		const int i = rc->compartment_index;
+
+		// If compartment_index is less than zero, assume that
+		// it is a ghost cell
+		if (i<0) {
+		  Species &s = *(rc->species);
+		  const int p_n = s.mols.size();
+
+		  // Gather a list of molecule indices residing in the
+		  // ghost cell
+		  std::vector<int> ghost_indices;
+		  for (int p_i = 0; p_i < p_n; ++p_i) {
+		    const Vect3d r = s.mols.r[p_i];
+		    //if ((subvolumes.is_in(r)) &&
+		    //(subvolumes.get_cell_index(r)==-i))
+		    if (subvolumes.get_cell_index(r)==-i)
+		      ghost_indices.push_back(p_i);
+		  }
+
+		  // Pick one of them and delete it. Also decrease the
+		  // copy number of the ghost cell accordingly
+		  int d_i = (int)(uni()*ghost_indices.size());
+		  s.mols.delete_molecule(ghost_indices[d_i]);
+		  s.copy_numbers[-i]--;
+		  dirty_compartment_index = -i;
+		} else {
+		  rc->species->copy_numbers[i] -= rc->multiplier;
+		  dirty_compartment_index = i;
+		}
 		//rc.species->copy_numbers[rc.compartment_index] -= rc.multiplier;
-		rc->species->copy_numbers[rc->compartment_index] -= rc->multiplier;
 //		if ((rc.compartment_index==0)||(rc.compartment_index==560)) {
 //			print = true;
 //			std::cout<<" compartment "<<rc.compartment_index<<" changed to have "<<rc.species->copy_numbers[rc.compartment_index]<<" molecules"<<std::endl;
 //		}
 	}
-	if (eq.lhs.size() > 0) reset_priority(eq.lhs[0].compartment_index);
+	reset_priority(dirty_compartment_index);
+	dirty_compartment_index = -1;
 	//for (auto& rc : eq.rhs) {
 	for (std::vector<ReactionComponent>::iterator rc=eq.rhs.begin();rc!=eq.rhs.end();rc++) {
 		if (rc->compartment_index < 0) {
@@ -484,28 +517,38 @@ void NextSubvolumeMethod::react(ReactionEquation& eq) {
 //			const double P1 = kappa*h/rc.species->D;
 //			std::cout << "absorbing with P1 = "<<P1<<std::endl;
 //			if (uni() < P1) {
-				Rectangle r = subvolumes.get_face_between(eq.lhs[0].compartment_index,-rc->compartment_index);
-				Vect3d oldr,newn;
-				r.get_random_point_and_normal_triangle(oldr, newn);
-				const double P = uni();
-				const double P2 = pow(P,2);
-				const double step_length = rc->tmp;
-				const double dist_from_intersect = step_length*(0.729614*P - 0.70252*P2)/(1.0 - 1.47494*P + 0.484371*P2);
-				const Vect3d newr = oldr + newn*dist_from_intersect;
-				rc->species->mols.add_molecule(newr,oldr);
+		  Rectangle r = subvolumes.get_face_between(eq.lhs[0].compartment_index,-rc->compartment_index);
+		  Vect3d oldr,newn;
+		  r.get_random_point_and_normal_triangle(oldr, newn);
+		  double dist_from_intersect;
+		  
+		  // If rc->tmp is negative, assume that we want to jump into a ghost cell
+		  if (rc->tmp<0) {
+		    // -rc->tmp is the compartment size
+		    dist_from_intersect = -rc->tmp*uni();
+		    dirty_compartment_index = -rc->compartment_index;
+		    rc->species->copy_numbers[dirty_compartment_index]++;
+		  } else { // If rc->tmp is positive, assume that we use a TRM interface
+		    // rc->tmp is the step length.
+		    const double P = uni();
+		    const double P2 = pow(P,2);
+		    const double step_length = rc->tmp;
+		    dist_from_intersect = step_length*(0.729614*P - 0.70252*P2)/(1.0 - 1.47494*P + 0.484371*P2);
+		  }
+		  const Vect3d newr = oldr + newn*dist_from_intersect;
+		  rc->species->mols.add_molecule(newr,oldr);
 //			} else {
 //				rc.species->copy_numbers[rc.compartment_index] += rc.multiplier;
 //			}
 		} else {
 			rc->species->copy_numbers[rc->compartment_index] += rc->multiplier;
+			dirty_compartment_index = rc->compartment_index;
 		}
 //		if ((rc.compartment_index==0)||(rc.compartment_index==560)) {
 //			std::cout<<" compartment "<<rc.compartment_index<<" changed to have "<<rc.species->copy_numbers[rc.compartment_index]<<" molecules"<<std::endl;
 //		}
 	}
-	if ((eq.rhs.size() > 0) && (eq.rhs[0].compartment_index >= 0)) {
-		recalc_priority(eq.rhs[0].compartment_index);
-	}
+	if (dirty_compartment_index >= 0) recalc_priority(dirty_compartment_index);
 }
 
 

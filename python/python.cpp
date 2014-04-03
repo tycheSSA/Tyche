@@ -403,6 +403,12 @@ BOOST_PYTHON_MODULE(pyTyche) {
      * Diffusion
      */
     def("new_diffusion",Diffusion::New);
+    def("new_diffusion_with_tracking",DiffusionWithTracking<xplane>::New);
+    def("new_diffusion_with_tracking",DiffusionWithTracking<yplane>::New);
+    def("new_diffusion_with_tracking",DiffusionWithTracking<zplane>::New);
+    def("new_diffusion_with_tracking",DiffusionWithTracking<xrect>::New);
+    def("new_diffusion_with_tracking",DiffusionWithTracking<yrect>::New);
+    def("new_diffusion_with_tracking",DiffusionWithTracking<Box>::New);
 
     /*
      * Reactions
@@ -447,6 +453,14 @@ BOOST_PYTHON_MODULE(pyTyche) {
     	.def("unset_interface",&NextSubvolumeMethod::unset_interface<zrect>)
     	.def("unset_interface",&NextSubvolumeMethod::unset_interface<Box>)
     	.def("unset_interface",&NextSubvolumeMethod::unset_interface<MultipleBoxes>)
+    	.def("set_ghost_cell_interface",&NextSubvolumeMethod::set_ghost_cell_interface<xplane>)
+    	.def("set_ghost_cell_interface",&NextSubvolumeMethod::set_ghost_cell_interface<yplane>)
+    	.def("set_ghost_cell_interface",&NextSubvolumeMethod::set_ghost_cell_interface<zplane>)
+    	.def("set_ghost_cell_interface",&NextSubvolumeMethod::set_ghost_cell_interface<xrect>)
+    	.def("set_ghost_cell_interface",&NextSubvolumeMethod::set_ghost_cell_interface<yrect>)
+    	.def("set_ghost_cell_interface",&NextSubvolumeMethod::set_ghost_cell_interface<zrect>)
+    	.def("set_ghost_cell_interface",&NextSubvolumeMethod::set_ghost_cell_interface<Box>)
+    	.def("set_ghost_cell_interface",&NextSubvolumeMethod::set_ghost_cell_interface<MultipleBoxes>)
     	.def("add_diffusion",&NextSubvolumeMethod::add_diffusion)
     	.def("add_diffusion_between",&NextSubvolumeMethod::add_diffusion_between<xplane>)
     	.def("add_diffusion_between",&NextSubvolumeMethod::add_diffusion_between<yplane>)

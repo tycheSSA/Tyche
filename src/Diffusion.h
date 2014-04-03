@@ -29,7 +29,9 @@
 #include "Species.h"
 #include "Operator.h"
 #include <vector>
+#include <set>
 #include "MyRandom.h"
+#include "NextSubvolumeMethod.h"
 
 namespace Tyche {
 
@@ -69,6 +71,39 @@ protected:
 		out << "\t1D Diffusion along axis "<<dim;
 	}
 };
+
+template<typename T>
+class DiffusionWithTracking : public Diffusion {
+public:
+  DiffusionWithTracking(const T& geometry, NextSubvolumeMethod *nsm) : nsm(nsm) {
+    std::vector<int> slice_indices;
+    std::set<int> indices;
+    const StructuredGrid &subvolumes = nsm->get_grid();
+    subvolumes.get_slice(geometry, slice_indices);
+    const int n = slice_indices.size();
+    for (int i = 0; i < n; ++i) {
+      const std::vector<int>& neighbrs = subvolumes.get_neighbour_indicies(slice_indices[i]);
+      const int nn = neighbrs.size();
+      for (int j = 0; j < nn; ++j)
+	if (!subvolumes.is_in(geometry, neighbrs[j]))
+	  indices.insert(neighbrs[j]);
+    }
+    indices_to_consider = std::vector<int>(indices.begin(), indices.end());
+  };
+  static std::auto_ptr<Operator> New(const T& geometry, NextSubvolumeMethod *_nsm) {
+    return std::auto_ptr<Operator>(new DiffusionWithTracking(geometry,_nsm));
+  }
+
+protected:
+  virtual void integrate(const double dt);
+
+private:
+  NextSubvolumeMethod *nsm;
+
+  std::vector<int> indices_to_consider;
+};
+
+#include "Diffusion.impl.h"
 
 }
 
