@@ -199,8 +199,9 @@ void Species::get_concentration(const Vect3d low, const Vect3d high, const Vect3
 }
 
 std::string Species::get_status_string() const {
+	const int ncomp = std::accumulate(copy_numbers.begin(),copy_numbers.end(),0);
 	std::ostringstream ss;
-	ss << "Species "<<id<<":\t" << mols.size() << " particles.";
+	ss << "Species "<<id<<":\t" << mols.size() + ncomp << " particles.";
 	return ss.str();
 }
 
