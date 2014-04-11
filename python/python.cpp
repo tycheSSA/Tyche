@@ -239,6 +239,14 @@ boost::python::object Species_get_concentration1(Species& self, const Vect3d& mi
 //	return extract<numeric::array>(obj);
 }
 
+void Species_fill_uniform(Species &self, const Vect3d &low, const Vect3d &high, unsigned int N) {
+  self.fill_uniform(low, high, N);
+}
+
+void Species_fill_uniform_interface(Species &self, const Vect3d &low, const Vect3d &high, const Box interface, unsigned int N) {
+  self.fill_uniform(low, high, interface, N);
+}
+
 boost::python::object BindingReaction_get_state_sequence(BindingReaction& self) {
 	boost::python::list retlist = boost::python::list();
 	std::list<std::pair<int, double > > slist = self.get_state_sequence(true);
@@ -317,7 +325,8 @@ BOOST_PYTHON_MODULE(pyTyche) {
 	 */
 
 	class_<Species,typename std::auto_ptr<Species> >("Species",boost::python::init<double>())
-			.def("fill_uniform",&Species::fill_uniform)
+			.def("fill_uniform",Species_fill_uniform)
+			.def("fill_uniform",Species_fill_uniform_interface)
 			.def("get_concentration",Species_get_concentration1)
 			.def("get_vtk",&Species::get_vtk)
 			.def("get_compartments",Species_get_compartments)

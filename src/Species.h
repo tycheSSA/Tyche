@@ -91,6 +91,7 @@ public:
 		if (grid!=NULL) copy_numbers.assign(grid->size(),0);
 	}
 	void fill_uniform(const Vect3d low, const Vect3d high, const unsigned int N);
+	void fill_uniform(const Vect3d low, const Vect3d high, const Box &interface, const unsigned int N);
 	void get_concentrations(const StructuredGrid& calc_grid, std::vector<double>& mol_concentrations, std::vector<double>& compartment_concentrations) const;
 	void get_concentration(const StructuredGrid& calc_grid, std::vector<double>& concentration) const;
 	void get_concentration(const Vect3d low, const Vect3d high, const Vect3i n, std::vector<double>& concentration) const;
