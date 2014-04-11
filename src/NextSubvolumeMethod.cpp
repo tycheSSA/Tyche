@@ -504,8 +504,9 @@ void NextSubvolumeMethod::react(ReactionEquation& eq) {
 //			print = true;
 //			std::cout<<" compartment "<<rc.compartment_index<<" changed to have "<<rc.species->copy_numbers[rc.compartment_index]<<" molecules"<<std::endl;
 //		}
+		ASSERT(dirty_compartment_index>=0,"dirty_compartment_index is smaller than zero!!");
+		reset_priority(dirty_compartment_index);
 	}
-	reset_priority(dirty_compartment_index);
 	dirty_compartment_index = -1;
 	//for (auto& rc : eq.rhs) {
 	for (std::vector<ReactionComponent>::iterator rc=eq.rhs.begin();rc!=eq.rhs.end();rc++) {
