@@ -13,8 +13,11 @@ find_package(VTK REQUIRED)
 
 set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-Wno-deprecated -std=c++0x")
 
-set(CMAKE_SHARED_LINKER_FLAGS "-Wl,--no-undefined")
-
+IF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+  set(CMAKE_SHARED_LINKER_FLAGS "-Wl,-undefined,error")
+ELSE ()
+  set(CMAKE_SHARED_LINKER_FLAGS "-Wl,--no-undefined")
+ENDIF()
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${Tyche_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${Tyche_BINARY_DIR}/lib)
