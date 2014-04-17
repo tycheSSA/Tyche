@@ -461,6 +461,84 @@ private:
 };
 
 std::ostream& operator<< (std::ostream& out, const MultipleBoxes& p);
+  
+template<unsigned int DIM>
+class AxisAlignedCylinder {
+public:
+  AxisAlignedCylinder(const Vect3d& base,
+		      const double radius,
+		      const bool in) : 
+    base(base),radius(radius),radius_sq(radius*radius),in(in) {
+  }
+  static std::auto_ptr<AxisAlignedCylinder> New(const Vect3d& base,
+				     const double radius,
+				     const bool in) {
+    return std::auto_ptr<AxisAlignedCylinder>(new AxisAlignedCylinder(base,radius,in));
+  }
+
+  bool is_in(const Vect3d& point) const {
+    bool inside;
+    const double radial_dist_sq = radial_distance_to_boundary_sq(point);
+    if (in) {
+      inside = (radial_dist_sq < pow(radius-GEOMETRY_TOLERANCE,2));
+    } else {
+      inside = (radial_dist_sq < pow(radius+GEOMETRY_TOLERANCE,2));
+    }
+    return inside == in;
+  }
+  bool lineXsurface(const Vect3d& p1, const Vect3d& p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
+    ASSERT(intersect_point==NULL, "intersect point not supported for Cylinder geometry");
+    ASSERT(intersect_normal==NULL, "intersect normal not supported for Cylinder geometry");
+    const bool is_in1 = is_in(p1);
+    const bool is_in2 = is_in(p2);
+    return is_in1 != is_in2;
+  }
+  
+  const Vect3d shortest_vector_to_boundary(const Vect3d& point) const {
+    const double radial_dist = sqrt(radial_distance_to_boundary_sq(point));
+
+    Vect3d cyl_point = point;
+    cyl_point *= radius/radial_dist;
+    cyl_point[DIM] = point[DIM];
+    return cyl_point-point;
+  }
+  
+  double distance_to_boundary(const Vect3d& point) const {
+    double dist = shortest_vector_to_boundary(point).norm();
+    // Boundaries expect the distance to be negative if outside of
+    // geometry
+    if (is_in(point)) {
+      return dist;
+    } else {
+      return -dist;
+    }
+  }
+private:
+  Vect3d base;
+  double radius,radius_sq;
+  bool in;
+
+  inline double radial_distance_to_boundary_sq(const Vect3d& point) const {
+    double radial_dist_sq = 0;
+    for (int i=0; i<3; i++) {
+      if (i!=DIM) {
+	double d = point[i]-base[i];
+	radial_dist_sq += d*d;
+      }
+    }
+    return radial_dist_sq;
+  }
+};
+
+template<unsigned int DIM>
+std::ostream& operator<< (std::ostream& out, const AxisAlignedCylinder<DIM>& p) {
+	return out << "Cylinder aligned with dimension " << DIM;
+}
+ 
+typedef AxisAlignedCylinder<0> xcylinder;
+typedef AxisAlignedCylinder<1> ycylinder;
+typedef AxisAlignedCylinder<2> zcylinder;
+
 
 }
 

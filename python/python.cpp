@@ -363,6 +363,9 @@ BOOST_PYTHON_MODULE(pyTyche) {
 	def("new_xrect",xrect::New);
 	def("new_yrect",xrect::New);
 	def("new_zrect",xrect::New);
+	def("new_xcylinder",xcylinder::New);
+	def("new_ycylinder",ycylinder::New);
+	def("new_zcylinder",zcylinder::New);
 
 	class_<xplane,typename std::auto_ptr<xplane> >("Xplane",boost::python::no_init);
 	class_<yplane,typename std::auto_ptr<yplane> >("Yplane",boost::python::no_init);
@@ -371,6 +374,10 @@ BOOST_PYTHON_MODULE(pyTyche) {
 	class_<xrect,typename std::auto_ptr<xrect> >("Xrect",boost::python::no_init);
 	class_<yrect,typename std::auto_ptr<yrect> >("Yrect",boost::python::no_init);
 	class_<zrect,typename std::auto_ptr<zrect> >("Zrect",boost::python::no_init);
+
+	class_<xcylinder,typename std::auto_ptr<xcylinder> >("Xcylinder",boost::python::no_init);
+	class_<ycylinder,typename std::auto_ptr<ycylinder> >("Ycylinder",boost::python::no_init);
+	class_<zcylinder,typename std::auto_ptr<zcylinder> >("Zcylinder",boost::python::no_init);
 
 	def("new_box", Box::New);
 	def("new_multiple_boxes", MultipleBoxes::New);
@@ -398,7 +405,9 @@ BOOST_PYTHON_MODULE(pyTyche) {
     def("new_reflective_boundary",ReflectiveBoundary<xrect>::New);
     def("new_reflective_boundary",ReflectiveBoundary<yrect>::New);
     def("new_reflective_boundary",ReflectiveBoundary<zrect>::New);
-
+    def("new_reflective_boundary",ReflectiveBoundary<xcylinder>::New);
+    def("new_reflective_boundary",ReflectiveBoundary<ycylinder>::New);
+    def("new_reflective_boundary",ReflectiveBoundary<zcylinder>::New);
 
     def("new_jump_boundary",JumpBoundary<xplane>::New);
     def("new_jump_boundary",JumpBoundary<yplane>::New);
