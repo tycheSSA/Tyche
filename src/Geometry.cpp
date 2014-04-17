@@ -38,4 +38,9 @@ std::ostream& operator<< (std::ostream& out, const Box& p) {
 std::ostream& operator<< (std::ostream& out, const MultipleBoxes& p) {
 	return out << "Multiple Boxes";
 }
+
+std::ostream& operator<< (std::ostream& out, const Sphere& p) {
+  return out << "Sphere with radius " << p.radius << " at position " << p.position;
+}
+
 }
