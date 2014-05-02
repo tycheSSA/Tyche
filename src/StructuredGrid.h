@@ -122,7 +122,7 @@ public:
 		return neighbours[i];
 	}
 	const std::vector<double>& get_neighbour_distances(const int i) const {
-		return neighbour_distances;
+		return neighbour_distances[i];
 	}
 
 	inline bool is_in(const Vect3d& r) const {
@@ -179,7 +179,7 @@ private:
 	int num_cells_along_yz;
 	double tolerance;
 	std::vector<std::vector<int> > neighbours;
-	std::vector<double> neighbour_distances;
+	std::vector<std::vector<double> > neighbour_distances;
 };
 }
 #include "StructuredGrid.impl.h"

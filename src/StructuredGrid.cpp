@@ -124,9 +124,10 @@ void StructuredGrid::calculate_neighbours() {
 
 				const int cell_i = vect_to_index(Vect3i(i,j,k));
 				std::vector<int>& neigh = neighbours[cell_i];
+				std::vector<double>& neigh_distances = neighbour_distances[cell_i];
 
 				neigh.clear();
-				neighbour_distances.clear();
+				neigh_distances.clear();
 
 
 				if (i != 0) neigh.push_back(vect_to_index(Vect3i(i-1,j,k)));
@@ -137,12 +138,12 @@ void StructuredGrid::calculate_neighbours() {
 				if (k != num_cells_along_axes[2]-1) neigh.push_back(vect_to_index(Vect3i(i,j,k+1)));
 
 
-				if (i != 0) neighbour_distances.push_back(cell_size[0]);
-				if (i != num_cells_along_axes[0]-1) neighbour_distances.push_back(cell_size[0]);
-				if (j != 0) neighbour_distances.push_back(cell_size[1]);
-				if (j != num_cells_along_axes[1]-1) neighbour_distances.push_back(cell_size[1]);
-				if (k != 0) neighbour_distances.push_back(cell_size[2]);
-				if (k != num_cells_along_axes[2]-1) neighbour_distances.push_back(cell_size[2]);
+				if (i != 0) neigh_distances.push_back(cell_size[0]);
+				if (i != num_cells_along_axes[0]-1) neigh_distances.push_back(cell_size[0]);
+				if (j != 0) neigh_distances.push_back(cell_size[1]);
+				if (j != num_cells_along_axes[1]-1) neigh_distances.push_back(cell_size[1]);
+				if (k != 0) neigh_distances.push_back(cell_size[2]);
+				if (k != num_cells_along_axes[2]-1) neigh_distances.push_back(cell_size[2]);
 			}
 		}
 	}
