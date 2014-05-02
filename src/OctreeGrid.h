@@ -29,7 +29,20 @@ public:
       subtrees[i] = NULL;
     }
   }
-  Octree(Vect3d center, double edge_length) : Octree(center, edge_length, 0, NULL) {}
+  Octree(Vect3d center, double edge_length) : 
+    center(center),
+    level(0),
+    edge_length(edge_length),
+    parent(NULL)
+  {
+    low = center.array()-edge_length/2.;
+    high = center.array()+edge_length/2.;
+    cell_index = -1;
+
+    for (int i = 0; i < 8; i++) {
+      subtrees[i] = NULL;
+    }
+  }
 
   ~Octree() {
     for (int i = 0; i < 8; i++) {

@@ -27,6 +27,7 @@
 
 #include <boost/heap/fibonacci_heap.hpp>
 #include <vector>
+#include <set>
 #include "MyRandom.h"
 #include "Species.h"
 #include "Operator.h"
