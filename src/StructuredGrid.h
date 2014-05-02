@@ -25,6 +25,7 @@
 #ifndef STRUCTUREDGRID_H_
 #define STRUCTUREDGRID_H_
 
+#include "Grid.h"
 #include "Vector.h"
 #include "Geometry.h"
 #include "Union.h"
@@ -35,7 +36,7 @@
 #include <vtkSmartPointer.h>
 
 namespace Tyche {
-class StructuredGrid {
+class StructuredGrid : public Grid {
 public:
 	StructuredGrid():
 		num_cells(0),
@@ -68,14 +69,11 @@ public:
 	template<unsigned int DIM>
 	void get_slice(const AxisAlignedPlane<DIM>& surface, std::vector<int>& indices) const;
 
-	template<typename T>
-	void get_slice(const T geometry, std::vector<int>& indices) const;
+	void get_slice(const Geometry& geometry, std::vector<int>& indices) const;
 
-	template<typename T>
-	void get_region(const T geometry, std::vector<int>& indices) const;
+	void get_region(const Geometry& geometry, std::vector<int>& indices) const;
 
-	template<typename T>
-	bool is_in(const T geometry, const int index) const;
+	bool is_in(const Geometry& Geometry, const int index) const;
 
 	void get_overlap(const Vect3d& low, const Vect3d& high, std::vector<int>& indicies, std::vector<double>& volume) const;
 
@@ -118,10 +116,10 @@ public:
 	Vect3i get_cells_along_axes() const {
 		return num_cells_along_axes;
 	}
-	const std::vector<int>& get_neighbour_indicies(const int i) const {
+	const std::vector<int> get_neighbour_indicies(const int i) const {
 		return neighbours[i];
 	}
-	const std::vector<double>& get_neighbour_distances(const int i) const {
+	const std::vector<double> get_neighbour_distances(const int i) const {
 		return neighbour_distances;
 	}
 

@@ -33,9 +33,32 @@ namespace Tyche {
 
 const double GEOMETRY_TOLERANCE = 1.0/1000000.0;
 
-class NullGeometry {
+class Geometry {
 public:
-	NullGeometry() {}
+  virtual bool is_in(const Vect3d &point) const = 0;
+  virtual bool lineXsurface(const Vect3d &p1, const Vect3d &p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const = 0;
+  virtual const Vect3d shortest_vector_to_boundary(const Vect3d &point) const = 0;
+  virtual double distance_to_boundary(const Vect3d &point) const {
+    return shortest_vector_to_boundary(point).norm();
+  }
+};
+
+class NullGeometry : Geometry {
+        bool is_in(const Vect3d &point) const {
+	  return false;
+	}
+
+	bool lineXsurface(const Vect3d &p1, const Vect3d &p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
+	  if ((intersect_point!=NULL) || (intersect_normal != NULL)) {
+	    ASSERT(intersect_point==NULL, "intersect point not supported for NullGeometry");
+	    ASSERT(intersect_normal==NULL, "intersect normal not supported for NullGeometry");
+	  }
+	  return false;
+	}
+	
+	virtual const Vect3d shortest_vector_to_boundary(const Vect3d &point) const {
+	  return std::nan("")*Vect3d::Ones();
+	}
 };
 
 
@@ -45,7 +68,7 @@ class AxisAlignedRectangle;
 static const int dim_map[][2] = {{1,2}, {0,2}, {0,1}};
 
 template<unsigned int DIM>
-class AxisAlignedPlane: public NullGeometry {
+class AxisAlignedPlane: public Geometry {
 public:
 	typedef AxisAlignedRectangle<DIM> SurfaceElementType;
 	static const int dim = DIM;
@@ -353,7 +376,7 @@ private:
 
 std::ostream& operator<< (std::ostream& out, const Rectangle& p);
 
-class Box {
+class Box : public Geometry {
 public:
 	Box(const Vect3d& lower_corner,
 			const Vect3d& upper_corner,
@@ -429,7 +452,7 @@ private:
 
 std::ostream& operator<< (std::ostream& out, const Box& p);
 
-class MultipleBoxes {
+class MultipleBoxes : public Geometry {
 public:
 	MultipleBoxes(const bool in):in(in) {
 	}
@@ -455,6 +478,11 @@ public:
 		const bool is_in2 = is_in(p2);
 		return is_in1 != is_in2;
 	}
+
+	const Vect3d shortest_vector_to_boundary(const Vect3d& point) const {
+	  ERROR("NOT IMPLEMENTED!");
+	  return Vect3d::Zero();
+	}
 private:
 	std::vector<Box> boxes;
     bool in;
@@ -463,7 +491,7 @@ private:
 std::ostream& operator<< (std::ostream& out, const MultipleBoxes& p);
   
 template<unsigned int DIM>
-class AxisAlignedCylinder {
+class AxisAlignedCylinder : Geometry {
 public:
   AxisAlignedCylinder(const Vect3d& base,
 		      const double radius,
@@ -539,7 +567,7 @@ typedef AxisAlignedCylinder<0> xcylinder;
 typedef AxisAlignedCylinder<1> ycylinder;
 typedef AxisAlignedCylinder<2> zcylinder;
 
-class Sphere {
+class Sphere : public Geometry {
 public:
   Sphere(const Vect3d& position,
 	 const double radius,
@@ -597,6 +625,7 @@ private:
 };
 
 std::ostream& operator<< (std::ostream& out, const Sphere& p);
+
 
 }
 

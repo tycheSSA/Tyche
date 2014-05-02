@@ -86,7 +86,7 @@ public:
 		mols.clear();
 		if (grid!=NULL) copy_numbers.assign(grid->size(),0);
 	}
-	void set_grid(const StructuredGrid* new_grid) {
+	void set_grid(const Grid* new_grid) {
 		grid = new_grid;
 		if (grid!=NULL) copy_numbers.assign(grid->size(),0);
 	}
@@ -105,7 +105,7 @@ public:
 	Molecules mols;
 	std::vector<int> copy_numbers;
 	std::vector<int> mol_copy_numbers;
-	const StructuredGrid* grid;
+	const Grid* grid;
 	int id;
 	std::vector<double> tmpx,tmpy,tmpz;
 private:

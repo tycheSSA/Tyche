@@ -182,7 +182,7 @@ double ReactionList::recalculate_propensities() {
 
 
 
-NextSubvolumeMethod::NextSubvolumeMethod(StructuredGrid& subvolumes):
+NextSubvolumeMethod::NextSubvolumeMethod(Grid& subvolumes):
 		subvolumes(subvolumes),
 		uni(generator,boost::uniform_real<>(0,1)),
 		time(0) {
@@ -555,9 +555,8 @@ void NextSubvolumeMethod::react(ReactionEquation& eq) {
 
 void NextSubvolumeMethod::print(std::ostream& out) const {
 	out << "\tNext Subvolume Method:"<<std::endl;
-	out << "\t\tStructured Grid:"<<std::endl;
+	out << "\t\tGrid:"<<std::endl;
 	out << "\t\t\tlow = "<<get_grid().get_low() << " high = "<<get_grid().get_high()<<std::endl;
-	out << "\t\t\tcompartment sizes = "<<get_grid().get_cell_size() << std::endl;
 	out << "\t\tDiffusing Species:"<<std::endl;
 	for (unsigned int i = 0; i < get_species().size(); ++i) {
 		Species *s = get_species()[i];

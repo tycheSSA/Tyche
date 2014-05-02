@@ -32,6 +32,9 @@
 #include <vtkUnstructuredGrid.h>
 #include <vtkSmartPointer.h>
 
+#include "StructuredGrid.h"
+#include "OctreeGrid.h"
+
 
 using namespace boost::python;
 
@@ -182,20 +185,38 @@ BOOST_PYTHON_FUNCTION_OVERLOADS(new_bi_reaction_overloads2, new_bi_reaction2, 6,
 
 
 boost::python::object Species_get_compartments(Species& self) {
-	Vect3i grid_size = self.grid->get_cells_along_axes();
-	npy_intp size[3] = {grid_size[0],grid_size[1],grid_size[2]};
-	PyObject *out = PyArray_SimpleNew(3, size, NPY_INT);
-	for (int i = 0; i < grid_size[0]; ++i) {
-		for (int j = 0; j < grid_size[1]; ++j) {
-			for (int k = 0; k < grid_size[2]; ++k) {
-				*((int *)PyArray_GETPTR3(out, i, j, k)) = self.copy_numbers[self.grid->vect_to_index(i,j,k)];
-			}
-		}
+  if (self.grid!=NULL) {
+    Vect3i grid_size = self.grid->get_cells_along_axes();
+    npy_intp size[3] = {grid_size[0],grid_size[1],grid_size[2]};
+    PyObject *out = PyArray_SimpleNew(3, size, NPY_INT);
+    const StructuredGrid *sgrid = dynamic_cast<const StructuredGrid*>(self.grid);
+    if (sgrid!=NULL) {
+      for (int i = 0; i < grid_size[0]; ++i) {
+	for (int j = 0; j < grid_size[1]; ++j) {
+	  for (int k = 0; k < grid_size[2]; ++k) {
+	    *((int *)PyArray_GETPTR3(out, i, j, k)) = self.copy_numbers[sgrid->vect_to_index(i,j,k)];
+	  }
 	}
-	boost::python::handle<> handle(out);
-	boost::python::numeric::array arr(handle);
-	return arr;
-
+      }
+    } else {
+      const OctreeGrid *ogrid = dynamic_cast<const OctreeGrid*>(self.grid);
+      for (int i = 0; i < grid_size[0]; ++i) {
+	for (int j = 0; j < grid_size[1]; ++j) {
+	  for (int k = 0; k < grid_size[2]; ++k) {
+	    int num = 0;
+	    for (auto ind : ogrid->get_leaf_indices(Vect3i(i,j,k)))
+	      num += self.copy_numbers[ind];
+	    *((int *)PyArray_GETPTR3(out, i, j, k)) = num;
+	  }
+	}
+      }
+    }
+      
+    boost::python::handle<> handle(out);
+    boost::python::numeric::array arr(handle);
+    return arr;
+  }
+  return boost::python::object();
 }
 
 boost::python::tuple Species_get_particles(Species& self) {
@@ -300,6 +321,8 @@ struct vtkSmartPointer_to_python {
 };
 
 
+void (NextSubvolumeMethod::*NSM_add_diffusion_between)(Species&, const double, Geometry&, Geometry&) = &NextSubvolumeMethod::add_diffusion_between;
+
 
 BOOST_PYTHON_MODULE(pyTyche) {
 	import_array();
@@ -367,13 +390,15 @@ BOOST_PYTHON_MODULE(pyTyche) {
 	def("new_ycylinder",ycylinder::New);
 	def("new_zcylinder",zcylinder::New);
 
-	class_<xplane,typename std::auto_ptr<xplane> >("Xplane",boost::python::no_init);
-	class_<yplane,typename std::auto_ptr<yplane> >("Yplane",boost::python::no_init);
-	class_<zplane,typename std::auto_ptr<zplane> >("Zplane",boost::python::no_init);
+	class_<Geometry, boost::noncopyable, typename std::auto_ptr<Geometry> >("Geometry", boost::python::no_init);
 
-	class_<xrect,typename std::auto_ptr<xrect> >("Xrect",boost::python::no_init);
-	class_<yrect,typename std::auto_ptr<yrect> >("Yrect",boost::python::no_init);
-	class_<zrect,typename std::auto_ptr<zrect> >("Zrect",boost::python::no_init);
+	class_<xplane, bases<Geometry>,typename std::auto_ptr<xplane> >("Xplane",boost::python::no_init);
+	class_<yplane, bases<Geometry>,typename std::auto_ptr<yplane> >("Yplane",boost::python::no_init);
+	class_<zplane, bases<Geometry>,typename std::auto_ptr<zplane> >("Zplane",boost::python::no_init);
+
+	class_<xrect, bases<Geometry>,typename std::auto_ptr<xrect> >("Xrect",boost::python::no_init);
+	class_<yrect, bases<Geometry>,typename std::auto_ptr<yrect> >("Yrect",boost::python::no_init);
+	class_<zrect, bases<Geometry>,typename std::auto_ptr<zrect> >("Zrect",boost::python::no_init);
 
 	class_<xcylinder,typename std::auto_ptr<xcylinder> >("Xcylinder",boost::python::no_init);
 	class_<ycylinder,typename std::auto_ptr<ycylinder> >("Ycylinder",boost::python::no_init);
@@ -382,9 +407,9 @@ BOOST_PYTHON_MODULE(pyTyche) {
 	def("new_box", Box::New);
 	def("new_multiple_boxes", MultipleBoxes::New);
 
-	class_<Box,typename std::auto_ptr<Box> >("Box",boost::python::no_init)
+	class_<Box, bases<Geometry>, typename std::auto_ptr<Box> >("Box",boost::python::no_init)
 						;
-	class_<MultipleBoxes,typename std::auto_ptr<MultipleBoxes> >("MultipleBoxes",boost::python::no_init)
+	class_<MultipleBoxes, bases<Geometry>, typename std::auto_ptr<MultipleBoxes> >("MultipleBoxes",boost::python::no_init)
 				.def("add_hole",&MultipleBoxes::add_box)
 				;
 
@@ -456,44 +481,13 @@ BOOST_PYTHON_MODULE(pyTyche) {
      */
     class_<NextSubvolumeMethod, bases<Operator>, std::auto_ptr<NextSubvolumeMethod> >("NextSubvolumeMethod",boost::python::no_init)
       .def("list_reactions",&NextSubvolumeMethod::list_reactions)
-    	.def("set_interface",&NextSubvolumeMethod::set_interface<xplane>)
-    	.def("set_interface",&NextSubvolumeMethod::set_interface<yplane>)
-    	.def("set_interface",&NextSubvolumeMethod::set_interface<zplane>)
-    	.def("set_interface",&NextSubvolumeMethod::set_interface<xrect>)
-    	.def("set_interface",&NextSubvolumeMethod::set_interface<yrect>)
-    	.def("set_interface",&NextSubvolumeMethod::set_interface<zrect>)
-    	.def("set_interface",&NextSubvolumeMethod::set_interface<Box>)
-    	.def("set_interface",&NextSubvolumeMethod::set_interface<MultipleBoxes>)
-    	.def("unset_interface",&NextSubvolumeMethod::unset_interface<xplane>)
-    	.def("unset_interface",&NextSubvolumeMethod::unset_interface<yplane>)
-    	.def("unset_interface",&NextSubvolumeMethod::unset_interface<zplane>)
-    	.def("unset_interface",&NextSubvolumeMethod::unset_interface<xrect>)
-    	.def("unset_interface",&NextSubvolumeMethod::unset_interface<yrect>)
-    	.def("unset_interface",&NextSubvolumeMethod::unset_interface<zrect>)
-    	.def("unset_interface",&NextSubvolumeMethod::unset_interface<Box>)
-    	.def("unset_interface",&NextSubvolumeMethod::unset_interface<MultipleBoxes>)
-    	.def("set_ghost_cell_interface",&NextSubvolumeMethod::set_ghost_cell_interface<xplane>)
-    	.def("set_ghost_cell_interface",&NextSubvolumeMethod::set_ghost_cell_interface<yplane>)
-    	.def("set_ghost_cell_interface",&NextSubvolumeMethod::set_ghost_cell_interface<zplane>)
-    	.def("set_ghost_cell_interface",&NextSubvolumeMethod::set_ghost_cell_interface<xrect>)
-    	.def("set_ghost_cell_interface",&NextSubvolumeMethod::set_ghost_cell_interface<yrect>)
-    	.def("set_ghost_cell_interface",&NextSubvolumeMethod::set_ghost_cell_interface<zrect>)
-    	.def("set_ghost_cell_interface",&NextSubvolumeMethod::set_ghost_cell_interface<Box>)
-    	.def("set_ghost_cell_interface",&NextSubvolumeMethod::set_ghost_cell_interface<MultipleBoxes>)
+    	.def("set_interface",&NextSubvolumeMethod::set_interface)
+    	.def("unset_interface",&NextSubvolumeMethod::unset_interface)
+    	.def("set_ghost_cell_interface",&NextSubvolumeMethod::set_ghost_cell_interface)
     	.def("add_diffusion",&NextSubvolumeMethod::add_diffusion)
-    	.def("add_diffusion_between",&NextSubvolumeMethod::add_diffusion_between<xplane>)
-    	.def("add_diffusion_between",&NextSubvolumeMethod::add_diffusion_between<yplane>)
-    	.def("add_diffusion_between",&NextSubvolumeMethod::add_diffusion_between<zplane>)
-    	.def("add_diffusion_between",&NextSubvolumeMethod::add_diffusion_between<xrect>)
-    	.def("add_diffusion_between",&NextSubvolumeMethod::add_diffusion_between<yrect>)
-    	.def("add_diffusion_between",&NextSubvolumeMethod::add_diffusion_between<zrect>)
+    	.def("add_diffusion_between",NSM_add_diffusion_between)
     	.def("add_reaction",&NextSubvolumeMethod::add_reaction)
-    	.def("add_reaction_on",&NextSubvolumeMethod::add_reaction_on<xplane>)
-    	.def("add_reaction_on",&NextSubvolumeMethod::add_reaction_on<yplane>)
-    	.def("add_reaction_on",&NextSubvolumeMethod::add_reaction_on<zplane>)
-    	.def("add_reaction_on",&NextSubvolumeMethod::add_reaction_on<xrect>)
-    	.def("add_reaction_on",&NextSubvolumeMethod::add_reaction_on<yrect>)
-    	.def("add_reaction_on",&NextSubvolumeMethod::add_reaction_on<zrect>)
+    	.def("add_reaction_on",&NextSubvolumeMethod::add_reaction_on)
     	.def("fill_uniform",&NextSubvolumeMethod::fill_uniform)
     	;
 
