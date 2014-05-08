@@ -66,7 +66,7 @@ public:
     if ((low.array() > ohigh.array()).any())
       return false;
     int cond_sum = (high.array() == olow.array()).cast<int>().sum() + (low.array() == ohigh.array()).cast<int>().sum();
-    if (cond_sum == 2)
+    if (cond_sum >= 2)
       return false;
     return true;
   }
@@ -83,6 +83,7 @@ public:
 	return subtrees[i]->get_cell_index(point);
       }
     }
+    ERROR("Found no matching cell for point " << point << "!");
     return -1;
   }
 

@@ -137,20 +137,20 @@ Rectangle OctreeGrid::get_face_between(const int i, const int j) const {
   
   Vect3d normal = Vect3d::Zero();
   for (int d=0; d<3; d++) {
-    if (p1[d]+h1/2==p2[d]-h2/2) {
+    if (fabs(high1[d]-low2[d])<tolerance) {
       low1[d] += h1;
       high2[d] -= h2;
-      normal[d] = 1.;
-    } else if (p1[d]-h1/2==p2[d]+h2/2) {
+      normal[d] = -1.;
+    } else if (fabs(low1[d]-high2[d])<tolerance) {
       low2[d] += h2;
       high1[d] -= h1;
-      normal[d] = -1.;
+      normal[d] = 1.;
     } else {
       continue;
     }
     break;
   }
-  
+
   Vect3d low,high;
   if ((low1.array() < low2.array()).any()) {
     low = low2;
@@ -162,7 +162,7 @@ Rectangle OctreeGrid::get_face_between(const int i, const int j) const {
   } else {
     high = high2;
   }
-  
+
   const Vect3d mid = (low+high)/2.;
   const Vect3d in_plane = (low-mid).cross(normal);
   const Vect3d low_right = mid+in_plane;

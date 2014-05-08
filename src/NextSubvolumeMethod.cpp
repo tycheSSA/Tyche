@@ -257,17 +257,13 @@ void NextSubvolumeMethod::add_diffusion(Species &s) {
 	const int n = subvolumes.size();
 	for (int i = 0; i < n; ++i) {
 		const std::vector<int>& neighbrs = subvolumes.get_neighbour_indicies(i);
-		const std::vector<double>& neighbrs_distances = subvolumes.get_neighbour_distances(i);
 		const int nn = neighbrs.size();
 		for (int j = 0; j < nn; ++j) {
-			const double rate = s.D/pow(neighbrs_distances[j],2);
+		        const double rate = s.D*subvolumes.get_laplace_coefficient(i,neighbrs[j]);
 			ReactionSide lhs;
 			lhs.push_back(ReactionComponent(1.0,s,i));
 			ReactionSide rhs;
 			rhs.push_back(ReactionComponent(1.0,s,neighbrs[j]));
-			//				if (i==0) {
-			//					std::cout <<"adding reaction with rate = "<<rate<<" and lhs[0].compartment_index = "<<lhs[0].compartment_index<<" and rhs[0].compartment_index"<<rhs[0].compartment_index<<" to the 0th compartment"<<std::endl;
-			//				}
 			subvolume_reactions[i].add_reaction(rate,ReactionEquation(lhs,rhs));
 		}
 	}
@@ -399,12 +395,13 @@ void NextSubvolumeMethod::set_interface_reactions(
 			rhs[0].tmp = std::sqrt(2.0*s.D*dt);
 			double rate = subvolume_reactions[i].delete_reaction(ReactionEquation(lhs,rhs));
 			if (rate != 0) {
-				//rate *= 2.0*subvolumes.get_distance_between(i,j)/sqrt(PI*s.D*dt);
-				const double h = subvolumes.get_distance_between(i,j);
+			  const Vect3d centre = subvolumes.get_cell_centre(i);
+			  const Rectangle face = subvolumes.get_face_between(i,j);
+			  const double h = 2.0*(face.get_low()-centre).dot(face.get_normal());
 				if (corrected) {
-					rate *= 2.0*h/sqrt(PI*s.D*dt);
+				  rate = 2.0*sqrt(s.D/(PI*dt))/h;
 				} else {
-					rate *= h/sqrt(PI*s.D*dt);
+				  rate = sqrt(s.D/(PI*dt))/h;
 				}
 				//std::cout << "new interface rate = rate * 2*"<<subvolumes.get_distance_between(i,j)<<" div sqrt(pi*d*dt)"<<std::endl;
 				//rate *= 0.5;
@@ -423,13 +420,18 @@ void NextSubvolumeMethod::fill_uniform(Species& s, const Vect3d low, const Vect3
 	LOG(2,"Adding "<<N<<" molecules of Species ("<<s.id<<") within the rectangle defined by "<<low<<" and "<<high);
 
 	boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni(generator, boost::uniform_real<>(0,1));
+	std::set<int> dirty_indices;
 	const Vect3d dist = high-low;
 	for(int i=0;i<N;i++) {
 		const Vect3d pos = Vect3d(uni()*dist[0],uni()*dist[1],uni()*dist[2])+low;
 		if (subvolumes.is_in(pos)) {
-			s.copy_numbers[subvolumes.get_cell_index(pos)]++;
+		  int comp_ind = subvolumes.get_cell_index(pos);
+		  s.copy_numbers[comp_ind]++;
+		  dirty_indices.insert(comp_ind);
 		}
 	}
+	for(auto ind : dirty_indices)
+	  recalc_priority(ind);
 }
 
 void NextSubvolumeMethod::unset_interface_reactions(
