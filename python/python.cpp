@@ -306,6 +306,48 @@ std::auto_ptr<Operator> group(const boost::python::list& ops) {
 	return std::auto_ptr<Operator>(result);
 }
 
+boost::python::list OctreeGrid_get_visualisation_boxes(OctreeGrid& self)
+{
+  std::vector<Octree*> cells = self.get_cells();
+  boost::python::list ret;
+  for (auto c : cells) {
+    const Vect3d center = c->get_center();
+    auto pcenter = boost::python::make_tuple(center[0],center[1],center[2]);
+    boost::python::list neighbours;
+    for (int n : c->get_neighbour_indices())
+      neighbours.append(n);
+    ret.append(boost::python::make_tuple(c->get_cell_index(), pcenter, c->get_edge_length(), neighbours));
+  }
+  return ret;
+}
+
+boost::python::list OctreeGrid_get_concentration(OctreeGrid& self, Species& s)
+{
+  std::vector<Octree*> cells = self.get_cells();
+  boost::python::list ret;
+  for (int i = 0; i < cells.size(); i++)
+    ret.append(s.copy_numbers[i]/self.get_cell_volume(i));
+  return ret;
+}
+
+boost::python::list Grid_get_slice(Grid &self, const Geometry& geometry)
+{
+  std::vector<int> slice_indices;
+  boost::python::list ret;
+  self.get_slice(geometry, slice_indices);
+  for (auto i : slice_indices)
+    ret.append(i);
+  return ret;
+}
+
+boost::python::list Grid_get_neighbour_indicies(Grid &self, const unsigned int i)
+{
+  std::vector<int> neighbours = self.get_neighbour_indicies(i);
+  boost::python::list ret;
+  for (auto i : neighbours)
+    ret.append(i);
+  return ret;
+}
 
 template<class T>
 struct vtkSmartPointer_to_python {
@@ -320,9 +362,10 @@ struct vtkSmartPointer_to_python {
 	}
 };
 
-
+std::auto_ptr<NextSubvolumeMethod> (*NSM_New1)(const Vect3d&, const Vect3d&, const Vect3d&) = &NextSubvolumeMethod::New;
+std::auto_ptr<NextSubvolumeMethod> (*NSM_New2)(Grid&) = &NextSubvolumeMethod::New;
 void (NextSubvolumeMethod::*NSM_add_diffusion_between)(Species&, const double, Geometry&, Geometry&) = &NextSubvolumeMethod::add_diffusion_between;
-
+bool (Grid::*Grid_is_in)(const Geometry&, const int) const = &Grid::is_in;
 
 BOOST_PYTHON_MODULE(pyTyche) {
 	import_array();
@@ -474,7 +517,22 @@ BOOST_PYTHON_MODULE(pyTyche) {
     /*
      * Compartments
      */
-    def("new_compartments",NextSubvolumeMethod::New);
+	class_<Grid, boost::noncopyable, typename std::auto_ptr<Grid> >("Grid", boost::python::no_init)
+	  .def("is_in", Grid_is_in)
+	  .def("get_neighbour_indicies", Grid_get_neighbour_indicies)
+	  .def("get_slice", Grid_get_slice);
+	class_<StructuredGrid, bases<Grid>, std::auto_ptr<StructuredGrid> >("StructuredGrid", boost::python::no_init);
+	def("new_structured_grid", &StructuredGrid::New);
+
+	class_<OctreeGrid, bases<Grid>, std::auto_ptr<OctreeGrid> >("OctreeGrid", boost::python::no_init)
+	  .def("refine", &OctreeGrid::refine)
+	  .def("finalise", &OctreeGrid::finalise)
+	  .def("get_concentration", &OctreeGrid_get_concentration)
+	  .def("get_visualisation_boxes", OctreeGrid_get_visualisation_boxes);
+	def("new_octree_grid", &OctreeGrid::New);
+	
+    def("new_compartments",NSM_New1);
+    def("new_compartments",NSM_New2);
 
     /*
      * NextSubvolume

@@ -60,6 +60,9 @@ public:
 		domain_size(high-low) {
 		reset_domain(low, high, max_grid_size);
 	}
+        static std::auto_ptr<StructuredGrid> New(const Vect3d& low, const Vect3d& high, const Vect3d& max_grid_size) {
+	  return std::auto_ptr<StructuredGrid>(new StructuredGrid(low, high, max_grid_size));
+	}
 
 	Vect3d get_random_point(const int i) const;
 

@@ -165,6 +165,9 @@ public:
       }
     }
   }
+  static std::auto_ptr<OctreeGrid> New(const Vect3d& center, const double domain_size, const unsigned int num_trees_along_axes) {
+    return std::auto_ptr<OctreeGrid>(new OctreeGrid(center, domain_size, num_trees_along_axes));
+  }
 
   ~OctreeGrid() {
     for (auto o : octrees) {

@@ -132,6 +132,9 @@ public:
 		Grid* grid = new StructuredGrid(min,max,h);
 		return std::auto_ptr<NextSubvolumeMethod>(new NextSubvolumeMethod(*grid));
 	}
+	static std::auto_ptr<NextSubvolumeMethod> New(Grid& grid) {
+		return std::auto_ptr<NextSubvolumeMethod>(new NextSubvolumeMethod(grid));
+	}
 
 	void list_reactions();
 	void set_interface(const Geometry& geometry, const double dt, const bool corrected) {
