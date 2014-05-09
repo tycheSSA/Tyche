@@ -375,11 +375,6 @@ void NextSubvolumeMethod::set_interface_reactions(
 		std::vector<int>& to_indicies,
 		const double dt,
 		const bool corrected) {
-
-	std::cout << "setting interface from x["<<from_indicies.size()<<"] to y["<<to_indicies.size()<<"] with dt = "<<dt<<std::endl;
-	for (unsigned int i = 0; i < from_indicies.size(); ++i) {
-		std::cout << "\tfrom "<<from_indicies[i] << " to "<<to_indicies[i]<<std::endl;
-	}
 	const unsigned int n = from_indicies.size();
 	ASSERT(n==to_indicies.size(),"from and to indicies vectors have different size");
 	/*
