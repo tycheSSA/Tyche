@@ -145,6 +145,10 @@ public:
 	  state_changed_cb = callback;
 	}
 
+	void set_position(const Vect3d& pos) {
+	  position = pos;
+	}
+
 protected:
 
 	virtual void integrate(const double dt);
