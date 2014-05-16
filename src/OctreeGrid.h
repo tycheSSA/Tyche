@@ -238,7 +238,7 @@ public:
   }
   
   virtual inline int get_cell_index(const Vect3d &point) const {
-    ASSERT(is_in(point), "point "<<r<<" outside OctreeGrid range!!!");
+    ASSERT(is_in(point), "point "<<point<<" outside OctreeGrid range!!!");
     return octrees[get_tree_index(point)]->get_cell_index(point);
   }
 
