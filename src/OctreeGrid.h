@@ -55,7 +55,7 @@ public:
   }
 
   inline bool is_in(const Vect3d& point) const {
-    return ((point.array() > low.array()).all() && (point.array() < high.array()).all());
+    return ((point.array() >= low.array()).all() && (point.array() < high.array()).all());
   }
 
   inline bool is_adjacent(const Octree& other) const {
@@ -74,8 +74,7 @@ public:
   void refine(const Vect3d& point, const double target_edge);
   
   int get_cell_index(const Vect3d& point) const {
-    if (!is_in(point))
-      return -1;
+    ASSERT(is_in(point), "Point " << point << " is outside this Octree cell!");
     if (is_leaf())
       return cell_index;
     for (int i = 0; i < 8; i++) {
@@ -83,7 +82,7 @@ public:
 	return subtrees[i]->get_cell_index(point);
       }
     }
-    ERROR("Found no matching cell for point " << point << "!");
+    ERROR("Found no matching sub-cell for point " << point << "! We seem to have a corrupted Octree!");
     return -1;
   }
 
@@ -239,8 +238,7 @@ public:
   }
   
   virtual inline int get_cell_index(const Vect3d &point) const {
-    if (!is_in(point))
-      return -1;
+    ASSERT(is_in(point), "point "<<r<<" outside OctreeGrid range!!!");
     return octrees[get_tree_index(point)]->get_cell_index(point);
   }
 
