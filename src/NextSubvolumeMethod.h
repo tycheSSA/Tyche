@@ -27,6 +27,7 @@
 
 #include <boost/heap/fibonacci_heap.hpp>
 #include <vector>
+#include <set>
 #include "MyRandom.h"
 #include "Species.h"
 #include "Operator.h"
@@ -126,15 +127,17 @@ private:
 
 class NextSubvolumeMethod: public Operator {
 public:
-	NextSubvolumeMethod(StructuredGrid& subvolumes);
+	NextSubvolumeMethod(Grid& subvolumes);
 	static std::auto_ptr<NextSubvolumeMethod> New(const Vect3d& min, const Vect3d& max, const Vect3d& h) {
-		StructuredGrid* grid = new StructuredGrid(min,max,h);
+		Grid* grid = new StructuredGrid(min,max,h);
 		return std::auto_ptr<NextSubvolumeMethod>(new NextSubvolumeMethod(*grid));
+	}
+	static std::auto_ptr<NextSubvolumeMethod> New(Grid& grid) {
+		return std::auto_ptr<NextSubvolumeMethod>(new NextSubvolumeMethod(grid));
 	}
 
 	void list_reactions();
-	template<typename T>
-	void set_interface(const T& geometry, const double dt, const bool corrected) {
+	void set_interface(const Geometry& geometry, const double dt, const bool corrected) {
 		std::vector<int> to_indicies,from_indicies,slice_indicies;
 		subvolumes.get_slice(geometry,slice_indicies);
 		const int n = slice_indicies.size();
@@ -150,8 +153,7 @@ public:
 		}
 		set_interface_reactions(from_indicies,to_indicies,dt,corrected);
 	}
-	template<typename T>
-	void set_ghost_cell_interface(const T& geometry) {
+	void set_ghost_cell_interface(const Geometry& geometry) {
 	  std::vector<int> slice_indices, to_indices, from_indices;
 	  std::set<int> ghost_cell_indices;
 	  subvolumes.get_slice(geometry, slice_indices);
@@ -206,8 +208,7 @@ public:
 //		subvolumes.get_slice(to_geometry,to_indicies);
 //		set_interface_reactions(from_indicies,to_indicies,dt,corrected);
 //	}
-	template<typename T>
-	void unset_interface(const T& geometry) {
+	void unset_interface(const Geometry& geometry) {
 		std::vector<int> to_indicies,from_indicies,slice_indicies;
 		subvolumes.get_slice(geometry,slice_indicies);
 		const int n = slice_indicies.size();
@@ -237,8 +238,7 @@ public:
 	void unset_interface_reactions(std::vector<int>& from_indicies, std::vector<int>& to_indicies);
 	void add_diffusion(Species &s);
 	void add_reaction(const double rate, ReactionEquation eq);
-	template<typename T>
-	void add_reaction_on(const double rate, ReactionEquation eq, const T& geometry) {
+	void add_reaction_on(const double rate, ReactionEquation eq, const Geometry& geometry) {
 		std::vector<int> indicies;
 		subvolumes.get_slice(geometry,indicies);
 		for (unsigned int i = 0; i < indicies.size(); ++i) {
@@ -246,8 +246,7 @@ public:
 		}
 	}
 
-	template<typename T>
-	void add_reaction_in(const double rate, ReactionEquation eq, const T& geometry) {
+	void add_reaction_in(const double rate, ReactionEquation eq, const Geometry& geometry) {
 		std::vector<int> indicies;
 		subvolumes.get_region(geometry,indicies);
 		for (unsigned int i = 0; i < indicies.size(); ++i) {
@@ -255,8 +254,7 @@ public:
 		}
 	}
 
-	template<typename T>
-	void add_diffusion_between(Species &s, const double rate, T& geometry_from, T& geometry_to) {
+	void add_diffusion_between(Species &s, const double rate, Geometry& geometry_from, Geometry& geometry_to) {
 		std::vector<int> from,to;
 		subvolumes.get_slice(geometry_from,from);
 		subvolumes.get_slice(geometry_to,to);
@@ -284,7 +282,7 @@ public:
 		}
 	}
 	double get_time() {return time;}
-	const StructuredGrid& get_grid() const { return subvolumes; }
+	const Grid& get_grid() const { return subvolumes; }
 	void add_reaction_to_compartment(const double rate, ReactionEquation eq, int i);
 
 protected:
@@ -295,7 +293,7 @@ protected:
 	virtual void print(std::ostream& out) const;
 private:
 	void react(ReactionEquation& r);
-	StructuredGrid& subvolumes;
+	Grid& subvolumes;
 	PriorityHeap heap;
 	boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni;
 	double time;

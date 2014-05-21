@@ -281,6 +281,7 @@ void CouplingBoundary<T>::integrate(const double dt) {
 			const Vect3d rold = s.mols.r0[p_i];
 			if (this->geometry.is_in(r)) {
 				const int i = s.grid->get_cell_index(r);
+				ASSERT(i>=0, "Invalid negative compartment index!");
 				dirty_indicies.insert(i);
 				s.copy_numbers[i]++;
 				s.mols.mark_for_deletion(p_i);
@@ -294,6 +295,7 @@ void CouplingBoundary<T>::integrate(const double dt) {
 				const double P = exp(-dist_to_wall*old_dist_to_wall/(s.D*dt));
 				if (uni() < P) {
 					const int i = s.grid->get_cell_index(r + 1.000001*vect_to_wall);
+					ASSERT(i>=0, "Invalid negative compartment index!");
 					dirty_indicies.insert(i);
 					s.copy_numbers[i]++;
 					s.mols.mark_for_deletion(p_i);

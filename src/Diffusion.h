@@ -78,7 +78,7 @@ public:
   DiffusionWithTracking(const T& geometry, NextSubvolumeMethod *nsm) : nsm(nsm) {
     std::vector<int> slice_indices;
     std::set<int> indices;
-    const StructuredGrid &subvolumes = nsm->get_grid();
+    const Grid &subvolumes = nsm->get_grid();
     subvolumes.get_slice(geometry, slice_indices);
     const int n = slice_indices.size();
     for (int i = 0; i < n; ++i) {
