@@ -30,6 +30,7 @@
 #include "MyRandom.h"
 #include "Species.h"
 #include "Operator.h"
+#include <set>
 #include "StructuredGrid.h"
 #include "ReactionEquation.h"
 
