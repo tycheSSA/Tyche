@@ -263,6 +263,38 @@ public:
 	}
 	void add_diffusion_between(Species &s, const double rate, std::vector<int>& from, std::vector<int>& to);
 
+	template<typename T>
+	void remove_diffusion_across(Species &s, T& geometry) {
+		std::vector<int> slice;
+		subvolumes.get_slice(geometry,slice);
+		const int n = slice.size();
+		for (int i = 0; i < n; ++i) {
+			const std::vector<int>& neighbrs = subvolumes.get_neighbour_indicies(slice[i]);
+			const int nn = neighbrs.size();
+			for (int j = 0; j < nn; ++j) {
+				if (geometry.lineXsurface(subvolumes.get_cell_centre(slice[i]),
+						subvolumes.get_cell_centre(neighbrs[j]))) {
+					ReactionSide lhs;
+					lhs.push_back(ReactionComponent(1.0,s,slice[i]));
+					ReactionSide rhs;
+					rhs.push_back(ReactionComponent(1.0,s,neighbrs[j]));
+					subvolume_reactions[slice[i]].delete_reaction(ReactionEquation(lhs,rhs));
+				}
+				if (geometry.lineXsurface(subvolumes.get_cell_centre(neighbrs[j]),
+						subvolumes.get_cell_centre(slice[i]))) {
+					ReactionSide lhs;
+					lhs.push_back(ReactionComponent(1.0,s,neighbrs[j]));
+					ReactionSide rhs;
+					rhs.push_back(ReactionComponent(1.0,s,slice[i]));
+					subvolume_reactions[neighbrs[j]].delete_reaction(ReactionEquation(lhs,rhs));
+					reset_priority(neighbrs[j]);
+				}
+			}
+			reset_priority(slice[i]);
+		}
+	}
+
+
 	void clear_reactions(std::vector<int>& cell_indicies) {
 		//for (int i : cell_indicies) {
 		for (std::vector<int>::iterator i=cell_indicies.begin();i!=cell_indicies.end();i++) {
