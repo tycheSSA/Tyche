@@ -28,6 +28,7 @@
 #include <numpy/ndarrayobject.h>
 #include "Tyche.h"
 #include <numpy/arrayobject.h>
+#include <boost/python/tuple.hpp>
 
 #include <vtkUnstructuredGrid.h>
 #include <vtkSmartPointer.h>
@@ -219,6 +220,27 @@ boost::python::object Species_get_compartments(Species& self) {
   return boost::python::object();
 }
 
+void Species_set_compartments(Species& self,boost::python::numeric::array array) {
+	if (self.grid!=NULL) {
+		Vect3i grid_size = self.grid->get_cells_along_axes();
+		npy_intp size[3] = {grid_size[0],grid_size[1],grid_size[2]};
+		CHECK(array.getrank()==3,"Python array dimensions does not match compartments");
+		CHECK((array.getshape()[0]==size[0])&&(array.getshape()[1]==size[1])&&(array.getshape()[2]==size[2]),"shape of Python array dimensions does not match compartments");
+		const StructuredGrid *sgrid = dynamic_cast<const StructuredGrid*>(self.grid);
+		if (sgrid!=NULL) {
+			for (int i = 0; i < grid_size[0]; ++i) {
+				for (int j = 0; j < grid_size[1]; ++j) {
+					for (int k = 0; k < grid_size[2]; ++k) {
+						self.copy_numbers[sgrid->vect_to_index(i,j,k)] = extract<int>(array[boost::python::make_tuple(i, j, k)]);
+					}
+				}
+			}
+		} else {
+			ERROR("set_compartments not implemented for oct-tree grids");
+		}
+	}
+}
+
 boost::python::tuple Species_get_particles(Species& self) {
 	const int n = self.mols.size();
 
@@ -396,6 +418,7 @@ BOOST_PYTHON_MODULE(pyTyche) {
 			.def("get_concentration",Species_get_concentration1)
 			.def("get_vtk",&Species::get_vtk)
 			.def("get_compartments",Species_get_compartments)
+			.def("set_compartments",Species_set_compartments)
 			.def("get_particles",Species_get_particles)
 			.def(self_ns::str(self_ns::self))
 			;
