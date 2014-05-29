@@ -185,7 +185,7 @@ std::auto_ptr<Operator> new_bi_reaction2(const double rate, const ReactionEquati
 BOOST_PYTHON_FUNCTION_OVERLOADS(new_bi_reaction_overloads2, new_bi_reaction2, 6, 7);
 
 
-boost::python::object Species_get_compartments(Species& self) {
+boost::python::numeric::array Species_get_compartments(Species& self) {
   if (self.grid!=NULL) {
     Vect3i grid_size = self.grid->get_cells_along_axes();
     npy_intp size[3] = {grid_size[0],grid_size[1],grid_size[2]};
@@ -212,26 +212,28 @@ boost::python::object Species_get_compartments(Species& self) {
 	}
       }
     }
-      
+
     boost::python::handle<> handle(out);
     boost::python::numeric::array arr(handle);
     return arr;
   }
-  return boost::python::object();
+  return boost::python::numeric::array(0);
 }
 
 void Species_set_compartments(Species& self,boost::python::numeric::array array) {
+	PyObject *in = array.ptr();
 	if (self.grid!=NULL) {
 		Vect3i grid_size = self.grid->get_cells_along_axes();
 		npy_intp size[3] = {grid_size[0],grid_size[1],grid_size[2]};
-		CHECK(array.getrank()==3,"Python array dimensions does not match compartments");
-		CHECK((array.getshape()[0]==size[0])&&(array.getshape()[1]==size[1])&&(array.getshape()[2]==size[2]),"shape of Python array dimensions does not match compartments");
+
+		CHECK(PyArray_NDIM(in)==3,"Python array dimensions does not match compartments");
+		CHECK((PyArray_DIMS(in)[0]==size[0])&&(PyArray_DIMS(in)[1]==size[1])&&(PyArray_DIMS(in)[2]==size[2]),"shape of Python array dimensions does not match compartments");
 		const StructuredGrid *sgrid = dynamic_cast<const StructuredGrid*>(self.grid);
 		if (sgrid!=NULL) {
 			for (int i = 0; i < grid_size[0]; ++i) {
 				for (int j = 0; j < grid_size[1]; ++j) {
 					for (int k = 0; k < grid_size[2]; ++k) {
-						self.copy_numbers[sgrid->vect_to_index(i,j,k)] = extract<int>(array[boost::python::make_tuple(i, j, k)]);
+						self.copy_numbers[sgrid->vect_to_index(i,j,k)] = *((int *)PyArray_GETPTR3(in,i,j,k));
 					}
 				}
 			}
