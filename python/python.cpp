@@ -419,8 +419,10 @@ BOOST_PYTHON_MODULE(pyTyche) {
 			.def("fill_uniform",Species_fill_uniform_interface)
 			.def("get_concentration",Species_get_concentration1)
 			.def("get_vtk",&Species::get_vtk)
-			.def("get_compartments",Species_get_compartments)
-			.def("set_compartments",Species_set_compartments)
+			.def("get_compartments",Species_get_compartments,
+					"Returns numpy (3-dimensional) array with a copy of the current copy numbers in each compartment")
+			.def("set_compartments",Species_set_compartments,args("input"),
+					"Sets the compartment copy numbers for this species equal to the input numpy array. Note: use NextSubvolumeMethod.reset_all_propensities() to recaculate propensities and next reaction times")
 			.def("get_particles",Species_get_particles)
 			.def(self_ns::str(self_ns::self))
 			;
@@ -572,6 +574,8 @@ BOOST_PYTHON_MODULE(pyTyche) {
     	.def("add_reaction",&NextSubvolumeMethod::add_reaction)
     	.def("add_reaction_on",&NextSubvolumeMethod::add_reaction_on)
     	.def("fill_uniform",&NextSubvolumeMethod::fill_uniform)
+    	.def("reset_all_propensities",&NextSubvolumeMethod::reset_all_priorities,
+    			"Recalculates the propensities and next reaction times for all compartments")
     	;
 
 }
