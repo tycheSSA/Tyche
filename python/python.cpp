@@ -389,6 +389,8 @@ struct vtkSmartPointer_to_python {
 std::auto_ptr<NextSubvolumeMethod> (*NSM_New1)(const Vect3d&, const Vect3d&, const Vect3d&) = &NextSubvolumeMethod::New;
 std::auto_ptr<NextSubvolumeMethod> (*NSM_New2)(Grid&) = &NextSubvolumeMethod::New;
 void (NextSubvolumeMethod::*NSM_add_diffusion_between)(Species&, const double, Geometry&, Geometry&) = &NextSubvolumeMethod::add_diffusion_between;
+void (NextSubvolumeMethod::*NSM_scale_diffusion_across)(Species&, Geometry&, const double) = &NextSubvolumeMethod::scale_diffusion_across;
+
 bool (Grid::*Grid_is_in)(const Geometry&, const int) const = &Grid::is_in;
 
 BOOST_PYTHON_MODULE(pyTyche) {
@@ -573,6 +575,7 @@ BOOST_PYTHON_MODULE(pyTyche) {
     	.def("add_diffusion_between",NSM_add_diffusion_between)
     	.def("add_reaction",&NextSubvolumeMethod::add_reaction)
     	.def("add_reaction_on",&NextSubvolumeMethod::add_reaction_on)
+    	.def("scale_diffusion_across",NSM_scale_diffusion_across)
     	.def("fill_uniform",&NextSubvolumeMethod::fill_uniform)
     	.def("reset_all_propensities",&NextSubvolumeMethod::reset_all_priorities,
     			"Recalculates the propensities and next reaction times for all compartments")
