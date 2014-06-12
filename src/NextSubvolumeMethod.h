@@ -264,7 +264,7 @@ public:
 	void add_diffusion_between(Species &s, const double rate, std::vector<int>& from, std::vector<int>& to);
 
 	template<typename T>
-	void remove_diffusion_across(Species &s, T& geometry) {
+	void scale_diffusion_across(Species &s, T& geometry, const double scaling_factor) {
 		std::vector<int> slice;
 		subvolumes.get_slice(geometry,slice);
 		const int n = slice.size();
@@ -278,7 +278,10 @@ public:
 					lhs.push_back(ReactionComponent(1.0,s,slice[i]));
 					ReactionSide rhs;
 					rhs.push_back(ReactionComponent(1.0,s,neighbrs[j]));
-					subvolume_reactions[slice[i]].delete_reaction(ReactionEquation(lhs,rhs));
+					const double rate = subvolume_reactions[slice[i]].delete_reaction(ReactionEquation(lhs,rhs));
+					if (scaling_factor > 0) {
+						subvolume_reactions[slice[i]].add_reaction(rate*scaling_factor,ReactionEquation(lhs,rhs));
+					}
 				}
 				if (geometry.lineXsurface(subvolumes.get_cell_centre(neighbrs[j]),
 						subvolumes.get_cell_centre(slice[i]))) {
@@ -286,7 +289,10 @@ public:
 					lhs.push_back(ReactionComponent(1.0,s,neighbrs[j]));
 					ReactionSide rhs;
 					rhs.push_back(ReactionComponent(1.0,s,slice[i]));
-					subvolume_reactions[neighbrs[j]].delete_reaction(ReactionEquation(lhs,rhs));
+					const double rate = subvolume_reactions[neighbrs[j]].delete_reaction(ReactionEquation(lhs,rhs));
+					if (scaling_factor > 0) {
+						subvolume_reactions[slice[i]].add_reaction(rate*scaling_factor,ReactionEquation(lhs,rhs));
+					}
 					reset_priority(neighbrs[j]);
 				}
 			}
