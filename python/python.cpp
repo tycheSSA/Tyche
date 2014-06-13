@@ -465,6 +465,7 @@ BOOST_PYTHON_MODULE(pyTyche) {
 	def("new_xcylinder",xcylinder::New);
 	def("new_ycylinder",ycylinder::New);
 	def("new_zcylinder",zcylinder::New);
+	def("new_vtkGeometry",vtkGeometry::New);
 
 	class_<Geometry, boost::noncopyable, typename std::auto_ptr<Geometry> >("Geometry", boost::python::no_init);
 
@@ -509,6 +510,8 @@ BOOST_PYTHON_MODULE(pyTyche) {
     def("new_reflective_boundary",ReflectiveBoundary<xcylinder>::New);
     def("new_reflective_boundary",ReflectiveBoundary<ycylinder>::New);
     def("new_reflective_boundary",ReflectiveBoundary<zcylinder>::New);
+    def("new_reflective_boundary",ReflectiveBoundary<vtkGeometry>::New);
+
 
     def("new_jump_boundary",JumpBoundary<xplane>::New);
     def("new_jump_boundary",JumpBoundary<yplane>::New);

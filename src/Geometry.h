@@ -28,6 +28,13 @@
 #include "Vector.h"
 #include "MyRandom.h"
 #include "Log.h"
+#include <vtkPolyData.h>
+#include <vtkSmartPointer.h>
+#include <vtkCellLocator.h>
+#include <vtkPolyDataNormals.h>
+#include <vtkCellData.h>
+#include <vtkDataArray.h>
+#include <vtkGenericCell.h>
 
 namespace Tyche {
 
@@ -59,6 +66,65 @@ class NullGeometry : Geometry {
 	virtual const Vect3d shortest_vector_to_boundary(const Vect3d &point) const {
 	  return std::nan("")*Vect3d::Ones();
 	}
+};
+
+class vtkGeometry: public Geometry {
+public:
+	vtkGeometry(vtkSmartPointer<vtkPolyData> polydata) {
+		normals = vtkSmartPointer<vtkPolyDataNormals>::New();
+		cellLocator = vtkSmartPointer<vtkCellLocator>::New();
+		polydata_wnormals = vtkSmartPointer<vtkPolyData>::New();
+#if VTK_MAJOR_VERSION <= 5
+		normals->SetInput(polydata);
+#else
+		normals->SetInputDataObject(polydata);
+#endif
+		polydata_wnormals = normals->GetOutput();
+		polydata_wnormals->Update();
+		cellLocator->SetDataSet(polydata_wnormals);
+		cellLocator->BuildLocator();
+	}
+	static std::auto_ptr<vtkGeometry> New(vtkSmartPointer<vtkPolyData> polydata) {
+		return std::auto_ptr<vtkGeometry>(new vtkGeometry(polydata));
+	}
+	bool is_in(const Vect3d &point) const {
+		//Vect3d point_copy = point;
+		return cellLocator->FindCell((double *)point.data()) != -1;
+	}
+	bool lineXsurface(const Vect3d &p1, const Vect3d &p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
+		double t = 0;
+		double pcoords[3];
+		int subId;
+		vtkIdType cellId;
+		vtkSmartPointer<vtkGenericCell> cell = vtkSmartPointer<vtkGenericCell>::New();
+		int found;
+		if (intersect_point==NULL) {
+			double x[3];
+			found = cellLocator->IntersectWithLine((double *)p1.data(),(double *)p2.data(), 0.001, t, x,pcoords,subId,cellId,cell);
+		} else {
+			found = cellLocator->IntersectWithLine((double *)p1.data(),(double *)p2.data(), 0.001, t, intersect_point->data(),pcoords,subId,cellId,cell);
+
+		}
+		if (found&&(intersect_normal!=NULL)) {
+			double *n = polydata_wnormals->GetCellData()->GetNormals()->GetTuple3(cellId);
+			for (int i = 0; i < 3; ++i) {
+				(*intersect_normal)[i] = n[i];
+			}
+		}
+		return found;
+	}
+	const Vect3d shortest_vector_to_boundary(const Vect3d &point) const {
+		Vect3d closestPoint;
+		vtkIdType cellId;
+		int subId;
+		double dist2;
+		cellLocator->FindClosestPoint((double *)point.data(),(double *)closestPoint.data(),cellId,subId,dist2);
+		return closestPoint;
+	}
+private:
+	vtkSmartPointer<vtkPolyData> polydata_wnormals;
+	vtkSmartPointer<vtkCellLocator> cellLocator;
+	vtkSmartPointer<vtkPolyDataNormals> normals;
 };
 
 
