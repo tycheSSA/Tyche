@@ -259,7 +259,7 @@ void NextSubvolumeMethod::add_diffusion(Species &s) {
 		const std::vector<int>& neighbrs = subvolumes.get_neighbour_indicies(i);
 		const int nn = neighbrs.size();
 		for (int j = 0; j < nn; ++j) {
-		        const double rate = s.D*subvolumes.get_laplace_coefficient(i,neighbrs[j]);
+			const double rate = s.D[0]*subvolumes.get_laplace_coefficient(i,neighbrs[j]);
 			ReactionSide lhs;
 			lhs.push_back(ReactionComponent(1.0,s,i));
 			ReactionSide rhs;
@@ -387,16 +387,16 @@ void NextSubvolumeMethod::set_interface_reactions(
 			lhs.push_back(ReactionComponent(1.0,s,i));
 			ReactionSide rhs;
 			rhs.push_back(ReactionComponent(1.0,s,j));
-			rhs[0].tmp = std::sqrt(2.0*s.D*dt);
+			rhs[0].tmp = std::sqrt(2.0*s.D[0]*dt);
 			double rate = subvolume_reactions[i].delete_reaction(ReactionEquation(lhs,rhs));
 			if (rate != 0) {
 			  const Vect3d centre = subvolumes.get_cell_centre(i);
 			  const Rectangle face = subvolumes.get_face_between(i,j);
 			  const double h = 2.0*(face.get_low()-centre).dot(face.get_normal());
 				if (corrected) {
-				  rate = 2.0*sqrt(s.D/(PI*dt))/h;
+				  rate = 2.0*sqrt(s.D[0]/(PI*dt))/h;
 				} else {
-				  rate = sqrt(s.D/(PI*dt))/h;
+				  rate = sqrt(s.D[0]/(PI*dt))/h;
 				}
 				//std::cout << "new interface rate = rate * 2*"<<subvolumes.get_distance_between(i,j)<<" div sqrt(pi*d*dt)"<<std::endl;
 				//rate *= 0.5;
@@ -451,7 +451,7 @@ void NextSubvolumeMethod::unset_interface_reactions(
 			rhs.push_back(ReactionComponent(1.0,s,-j));
 			double rate = subvolume_reactions[i].delete_reaction(ReactionEquation(lhs,rhs));
 			if (rate != 0) {
-				rate = s.D*subvolumes.get_laplace_coefficient(i,j);
+				rate = s.D[0]*subvolumes.get_laplace_coefficient(i,j);
 				if (rate != 0) {
 					rhs[0].compartment_index = j;
 					subvolume_reactions[i].add_reaction(rate,ReactionEquation(lhs,rhs));

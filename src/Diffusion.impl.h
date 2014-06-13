@@ -4,12 +4,12 @@ void DiffusionWithTracking<T>::integrate(const double dt) {
   const int n = get_species().size();
   for (int i = 0; i < n; ++i) {
     Species &s = *(get_species()[i]);
-    const double step_length = calc_step_length(s, dt);
+    const Vect3d step_length = calc_step_length(s, dt);
     const int n = s.mols.size();
     std::vector<int> copy_numbers(indices_to_consider.size(), 0);
     for (int j = 0; j < n; ++j) {
       const Vect3d r0 = s.mols.r[j];
-      const Vect3d r = r0+step_length * Vect3d(norm(),norm(),norm());
+      const Vect3d r = r0+step_length.cwiseProduct( Vect3d(norm(),norm(),norm()));
       //const int old_cidx = s.grid->get_cell_index(r0);
       const int cidx = s.grid->get_cell_index(r);
       for (int l = 0; l < indices_to_consider.size(); l++) {

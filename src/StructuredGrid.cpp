@@ -13,11 +13,24 @@ namespace Tyche {
 void StructuredGrid::reset_domain(const Vect3d& _low, const Vect3d& _high, const Vect3d& max_grid_size) {
 	high = _high;
 	low = _low;
-	num_cells_along_axes = ((high-low).cwiseQuotient(max_grid_size) + Vect3d(0.5,0.5,0.5)).cast<int>();
+	domain_size = _high-_low;
+	Vect3d new_max_grid_size = max_grid_size;
+	for (int i = 0; i < 3; ++i) {
+		if ((new_max_grid_size[i]<=0)||isnan(new_max_grid_size[i])) {
+			new_max_grid_size[i] = 1.0;
+		}
+	}
+	num_cells_along_axes = ((high-low).cwiseQuotient(new_max_grid_size) + Vect3d(0.5,0.5,0.5)).cast<int>();
+	for (int i = 0; i < 3; ++i) {
+		if (num_cells_along_axes[i]==0) {
+			num_cells_along_axes[i] = 1.0;
+			high[i] = low[i] + new_max_grid_size[i];
+			domain_size[i] = high[i]-low[i];
+		}
+	}
 	cell_size = (high-low).cwiseQuotient(num_cells_along_axes.cast<double>());
 	tolerance = cell_size.minCoeff()/100000.0;
 	cell_volume = cell_size.prod();
-	//std::cout << "cell volume = " << cell_volume << " cell_size = " << cell_size<<std::endl;
 	inv_cell_size = Vect3d(1,1,1).cwiseQuotient(cell_size);
 	num_cells_along_yz = num_cells_along_axes[2]*num_cells_along_axes[1];
 	num_cells = num_cells_along_axes.prod();

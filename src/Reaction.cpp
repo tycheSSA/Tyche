@@ -475,7 +475,7 @@ public:
 };
 
 void  BindingReaction::suggest_binding_unbinding(const double dt) {
-	double difc = get_species()[0]->D/2.0;
+	double difc = get_species()[0]->D.maxCoeff()/2.0;
 	const double lbr = binding_radius/10.0;
 	const double hbr = binding_radius*10.0;
 	const int N = 100;
@@ -513,9 +513,9 @@ template<typename T>
 void  BiMolecularReaction<T>::suggest_binding_unbinding(const double dt) {
 	double difc;
 	if (self_reaction) {
-		difc = 2.0*get_species()[0]->D;
+		difc = 2.0*get_species()[0]->D.maxCoeff();
 	} else {
-		difc = get_species()[0]->D + get_species()[1]->D;
+		difc = get_species()[0]->D.maxCoeff() + get_species()[1]->D.maxCoeff();
 	}
 	const double lbr = binding_radius/10.0;
 	const double hbr = binding_radius*10.0;
@@ -554,9 +554,9 @@ template<typename T>
 void  BiMolecularReaction<T>::suggest_binding(const double dt) {
 	double difc;
 	if (self_reaction) {
-		difc = 2.0*get_species()[0]->D;
+		difc = 2.0*get_species()[0]->D.maxCoeff();
 	} else {
-		difc = get_species()[0]->D + get_species()[1]->D;
+		difc = get_species()[0]->D.maxCoeff() + get_species()[1]->D.maxCoeff();
 	}
 	const double lbr = binding_radius/10.0;
 	const double hbr = binding_radius*10.0;
@@ -589,9 +589,9 @@ double BiMolecularReaction<T>::calculate_lambda_reversible(const double dt) {
 	const double goal_kappa = (1.0+1.0*self_reaction)*rate*dt/pow(binding_radius,3);
 	double difc;
 	if (self_reaction) {
-		difc = 2.0*get_species()[0]->D;
+		difc = 2.0*get_species()[0]->D.maxCoeff();
 	} else {
-		difc = get_species()[0]->D + get_species()[1]->D;
+		difc = get_species()[0]->D.maxCoeff() + get_species()[1]->D.maxCoeff();
 	}
 	const double gamma = sqrt(2.0*difc*dt)/binding_radius;
 	std::cout << "gamma = "<<gamma<<std::endl;
@@ -630,7 +630,7 @@ double BindingReaction::calculate_lambda(const double dt) {
 
 	const double alpha = unbinding_radius/binding_radius;
 	const double goal_kappa = 2.0*rate*dt/pow(binding_radius,3);
-	const double gamma = sqrt(get_species()[0]->D*dt)/binding_radius;
+	const double gamma = sqrt(get_species()[0]->D.maxCoeff()*dt)/binding_radius;
 
 	std::tuple<double, double, double> cache_key = std::make_tuple(gamma, alpha, goal_kappa);
 	std::map<std::tuple<double, double, double >, double >::const_iterator kv_pair = P_lambda_cache.find(cache_key);
@@ -676,9 +676,9 @@ double BiMolecularReaction<T>::calculate_lambda_irreversible(const double dt) {
 	const double goal_kappa = (1.0+1.0*self_reaction)*rate*dt/pow(binding_radius,3);
 	double difc;
 	if (self_reaction) {
-		difc = 2*get_species()[0]->D;
+		difc = 2*get_species()[0]->D.maxCoeff();
 	} else {
-		difc = get_species()[0]->D + get_species()[1]->D;
+		difc = get_species()[0]->D.maxCoeff() + get_species()[1]->D.maxCoeff();
 	}
 	const double gamma = sqrt(2.0*difc*dt)/binding_radius;
 	calculate_kappa_irreversible f(gamma,goal_kappa,self_reaction);
@@ -775,11 +775,11 @@ void BiMolecularReaction<T>::report_dt_suitability(const double dt) {
 	if (self_reaction) {
 		LOG(1,"probability of reaction (per timestep) = "<<
 				P_lambda<<". ratio of diffusion step to binding radius = "<<
-				std::sqrt(4.0*(get_species()[0]->D)*dt)/binding_radius);
+				std::sqrt(4.0*(get_species()[0]->D.maxCoeff())*dt)/binding_radius);
 	} else {
 		LOG(1,"probability of reaction (per timestep) = "<<
 				P_lambda<<". ratio of diffusion step to binding radius = "<<
-				std::sqrt(2.0*(get_species()[0]->D + get_species()[1]->D)*dt)/binding_radius);
+				std::sqrt(2.0*(get_species()[0]->D.maxCoeff() + get_species()[1]->D.maxCoeff())*dt)/binding_radius);
 	}
 }
 
@@ -820,9 +820,9 @@ BiMolecularReaction<T>::BiMolecularReaction(const double rate, const ReactionEqu
 
 	double difc;
 	if (self_reaction) {
-		difc = 2.0*get_species()[0]->D;
+		difc = 2.0*get_species()[0]->D.maxCoeff();
 	} else {
-		difc = get_species()[0]->D + get_species()[1]->D;
+		difc = get_species()[0]->D.maxCoeff() + get_species()[1]->D.maxCoeff();
 	}
 	if (reversible) {
 		binding_radius = bindingradius((1.0+1.0*self_reaction)*rate,dt,difc,0.9,1);
@@ -990,9 +990,9 @@ TriMolecularReaction::TriMolecularReaction(const double rate, const ReactionEqua
 	this->add_species(*(eq.lhs[1].species));
 	this->add_species(*(eq.lhs[2].species));
 
-	D1 = eq.lhs[0].species->D;
-	D2 = eq.lhs[1].species->D;
-	D3 = eq.lhs[2].species->D;
+	D1 = eq.lhs[0].species->D.maxCoeff();
+	D2 = eq.lhs[1].species->D.maxCoeff();
+	D3 = eq.lhs[2].species->D.maxCoeff();
 	Dbar1 = D1 + D2;
 	Dbar2 = D3 + D1*D2/Dbar1;
 	invDbar1 = 1.0/Dbar1;

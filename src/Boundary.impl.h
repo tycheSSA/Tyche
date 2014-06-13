@@ -291,8 +291,8 @@ void CouplingBoundary<T>::integrate(const double dt) {
 				const Vect3d vect_to_wall = this->geometry.shortest_vector_to_boundary(r);
 				const double dist_to_wall = vect_to_wall.norm();
 				//std::cout << "rold = "<<rold<<" old_dist_to_wall = "<<old_dist_to_wall<<" r = "<<r<<" dist_to_wall = "<<dist_to_wall<<std::endl;
-
-				const double P = exp(-dist_to_wall*old_dist_to_wall/(s.D*dt));
+				//TODO: assumes isotropic diffusion
+				const double P = exp(-dist_to_wall*old_dist_to_wall/(s.D.maxCoeff()*dt));
 				if (uni() < P) {
 					const int i = s.grid->get_cell_index(r + 1.000001*vect_to_wall);
 					ASSERT(i>=0, "Invalid negative compartment index!");

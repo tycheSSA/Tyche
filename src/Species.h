@@ -71,15 +71,26 @@ static const StructuredGrid empty_grid;
 
 class Species {
 public:
-	Species(double D):D(D),grid(NULL) {
+	Species(double D):D(D,D,D),grid(NULL) {
 		id = species_count++;
 		clear();
 	}
-	Species(double D, const StructuredGrid* grid):D(D),grid(grid)  {
+	Species(double D, const StructuredGrid* grid):D(D,D,D),grid(grid)  {
+		id = species_count++;
+		clear();
+	}
+	Species(Vect3d D):D(D),grid(NULL) {
+		id = species_count++;
+		clear();
+	}
+	Species(Vect3d D, const StructuredGrid* grid):D(D),grid(grid)  {
 		id = species_count++;
 		clear();
 	}
 	static std::auto_ptr<Species> New(double D) {
+		return std::auto_ptr<Species>(new Species(D));
+	}
+	static std::auto_ptr<Species> New(Vect3d D) {
 		return std::auto_ptr<Species>(new Species(D));
 	}
 	void clear() {
@@ -101,7 +112,7 @@ public:
 		return out << b.get_status_string();
 	}
 
-	double D;
+	Vect3d D;
 	Molecules mols;
 	std::vector<int> copy_numbers;
 	std::vector<int> mol_copy_numbers;

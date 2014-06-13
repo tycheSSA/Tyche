@@ -49,8 +49,8 @@ protected:
 	virtual void print(std::ostream& out) const {
 		out << "\tDiffusion";
 	}
-	double calc_step_length(Species &s, const double dt) {
-		return sqrt(2.0*s.D*dt);
+	Vect3d calc_step_length(Species &s, const double dt) {
+		return (2.0*s.D*dt).cwiseSqrt();
 	}
 	boost::variate_generator<base_generator_type&, boost::normal_distribution<> > norm;
 	std::vector<int> compartment_rate_indicies;
@@ -60,17 +60,6 @@ protected:
 Diffusion create_diffusion(Species &s);
 Diffusion create_diffusion();
 
-class Diffusion1D: public Diffusion {
-public:
-	Diffusion1D(const int dim):Diffusion(),dim(dim) {}
-	const int dim;
-
-protected:
-	virtual void integrate(const double dt);
-	virtual void print(std::ostream& out) {
-		out << "\t1D Diffusion along axis "<<dim;
-	}
-};
 
 template<typename T>
 class DiffusionWithTracking : public Diffusion {

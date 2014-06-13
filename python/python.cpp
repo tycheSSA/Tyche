@@ -393,6 +393,9 @@ void (NextSubvolumeMethod::*NSM_scale_diffusion_across)(Species&, Geometry&, con
 
 bool (Grid::*Grid_is_in)(const Geometry&, const int) const = &Grid::is_in;
 
+std::auto_ptr<Species> (*Species_New_double)(double) = Species::New;
+std::auto_ptr<Species> (*Species_New_Vect3d)(Vect3d) = Species::New;
+
 BOOST_PYTHON_MODULE(pyTyche) {
 	import_array();
 	numeric::array::set_module_and_type("numpy", "ndarray");
@@ -428,7 +431,8 @@ BOOST_PYTHON_MODULE(pyTyche) {
 			.def("get_particles",Species_get_particles)
 			.def(self_ns::str(self_ns::self))
 			;
-	def("new_species",Species::New);
+	def("new_species",Species_New_double);
+	def("new_species",Species_New_Vect3d);
 
 
    /*
