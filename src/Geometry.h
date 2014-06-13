@@ -35,7 +35,7 @@
 #include <vtkCellData.h>
 #include <vtkDataArray.h>
 #include <vtkGenericCell.h>
-
+#include <vtkAlgorithm.h>
 namespace Tyche {
 
 const double GEOMETRY_TOLERANCE = 1.0/1000000.0;
@@ -70,21 +70,24 @@ class NullGeometry : Geometry {
 
 class vtkGeometry: public Geometry {
 public:
-	vtkGeometry(vtkSmartPointer<vtkPolyData> polydata) {
-		normals = vtkSmartPointer<vtkPolyDataNormals>::New();
+	vtkGeometry(vtkPolyData *polydata) {
+		//normals = vtkSmartPointer<vtkPolyDataNormals>::New();
 		cellLocator = vtkSmartPointer<vtkCellLocator>::New();
-		polydata_wnormals = vtkSmartPointer<vtkPolyData>::New();
-#if VTK_MAJOR_VERSION <= 5
-		normals->SetInput(polydata);
-#else
-		normals->SetInputDataObject(polydata);
-#endif
-		polydata_wnormals = normals->GetOutput();
-		polydata_wnormals->Update();
+		//polydata_wnormals = vtkSmartPointer<vtkPolyData>::New();
+//#if VTK_MAJOR_VERSION <= 5
+//		normals->SetInput(polydata);
+//#else
+//		normals->SetInputDataObject(polydata);
+//#endif
+		//polydata_wnormals = normals->GetOutput();
+		polydata_wnormals = polydata;
+
+		//polydata_wnormals->Update();
 		cellLocator->SetDataSet(polydata_wnormals);
 		cellLocator->BuildLocator();
 	}
-	static std::auto_ptr<vtkGeometry> New(vtkSmartPointer<vtkPolyData> polydata) {
+	static std::auto_ptr<vtkGeometry> New(vtkPolyData *polydata) {
+		CHECK(polydata != NULL,"vtk Object pointer is NULL");
 		return std::auto_ptr<vtkGeometry>(new vtkGeometry(polydata));
 	}
 	bool is_in(const Vect3d &point) const {
@@ -126,6 +129,8 @@ private:
 	vtkSmartPointer<vtkCellLocator> cellLocator;
 	vtkSmartPointer<vtkPolyDataNormals> normals;
 };
+
+std::ostream& operator<< (std::ostream& out, const vtkGeometry& p);
 
 
 template<unsigned int DIM>

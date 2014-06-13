@@ -33,6 +33,7 @@
 #include <vtkUnstructuredGrid.h>
 #include <vtkSmartPointer.h>
 
+
 #include "StructuredGrid.h"
 #include "OctreeGrid.h"
 
@@ -386,6 +387,57 @@ struct vtkSmartPointer_to_python {
 	}
 };
 
+//
+// This python to C++ converter uses the fact that VTK Python objects have an
+// attribute called __this__, which is a string containing the memory address
+// of the VTK C++ object and its class name.
+// E.g. for a vtkPoints object __this__ might be "_0000000105a64420_p_vtkPoints"
+//
+void* extract_vtk_wrapped_pointer(PyObject* obj)
+{
+    char thisStr[] = "__this__";
+    //first we need to get the __this__ attribute from the Python Object
+    if (!PyObject_HasAttrString(obj, thisStr))
+        return NULL;
+
+    PyObject* thisAttr = PyObject_GetAttrString(obj, thisStr);
+    if (thisAttr == NULL)
+        return NULL;
+
+    char* str = PyString_AsString(thisAttr);
+    if(str == 0 || strlen(str) < 1)
+        return NULL;
+
+    char hex_address[32], *pEnd;
+    char *_p_ = strstr(str, "_p_vtk");
+    if(_p_ == NULL) return NULL;
+    char *class_name = strstr(_p_, "vtk");
+    if(class_name == NULL) return NULL;
+    strcpy(hex_address, str+1);
+    hex_address[_p_-str-1] = '\0';
+
+    long address = strtol(hex_address, &pEnd, 16);
+
+    vtkObjectBase* vtk_object = (vtkObjectBase*)((void*)address);
+    std::cout <<"check if vtk_object is a "<<class_name<<std::endl;
+    if(vtk_object->IsA(class_name))
+    {
+        std::cout <<"yup, it is"<<std::endl;
+
+        return vtk_object;
+    }
+
+    return NULL;
+}
+
+
+#define VTK_PYTHON_CONVERSION(type) \
+    /* register the to-python converter */ \
+    to_python_converter<vtkSmartPointer<type>,vtkSmartPointer_to_python<type> >(); \
+    /* register the from-python converter */ \
+    converter::registry::insert(&extract_vtk_wrapped_pointer, type_id<type>());
+
+
 std::auto_ptr<NextSubvolumeMethod> (*NSM_New1)(const Vect3d&, const Vect3d&, const Vect3d&) = &NextSubvolumeMethod::New;
 std::auto_ptr<NextSubvolumeMethod> (*NSM_New2)(Grid&) = &NextSubvolumeMethod::New;
 void (NextSubvolumeMethod::*NSM_add_diffusion_between)(Species&, const double, Geometry&, Geometry&) = &NextSubvolumeMethod::add_diffusion_between;
@@ -402,6 +454,7 @@ BOOST_PYTHON_MODULE(pyTyche) {
 	def("init", python_init);
 	def("random_seed", random_seed);
 
+
 	/*
 	 * vector
 	 */
@@ -409,7 +462,10 @@ BOOST_PYTHON_MODULE(pyTyche) {
 	        .def(boost::python::vector_indexing_suite<std::vector<double> >())
 	    ;
 
-	to_python_converter<vtkSmartPointer<vtkUnstructuredGrid>,vtkSmartPointer_to_python<vtkUnstructuredGrid> >();
+	VTK_PYTHON_CONVERSION(vtkUnstructuredGrid);
+	VTK_PYTHON_CONVERSION(vtkPolyData);
+
+
 	Vect3_from_python_list<double>();
 	Vect3_from_python_list<int>();
 	Vect3_from_python_list<bool>();
@@ -480,6 +536,9 @@ BOOST_PYTHON_MODULE(pyTyche) {
 	class_<xcylinder,typename std::auto_ptr<xcylinder> >("Xcylinder",boost::python::no_init);
 	class_<ycylinder,typename std::auto_ptr<ycylinder> >("Ycylinder",boost::python::no_init);
 	class_<zcylinder,typename std::auto_ptr<zcylinder> >("Zcylinder",boost::python::no_init);
+
+	class_<vtkGeometry,typename std::auto_ptr<vtkGeometry> >("vtkGeometry",boost::python::no_init);
+
 
 	def("new_box", Box::New);
 	def("new_multiple_boxes", MultipleBoxes::New);

@@ -43,4 +43,8 @@ std::ostream& operator<< (std::ostream& out, const Sphere& p) {
   return out << "Sphere with radius " << p.radius << " at position " << p.position;
 }
 
+std::ostream& operator<< (std::ostream& out, const vtkGeometry& p) {
+	return out << "vtkGeometry";
+}
+
 }
