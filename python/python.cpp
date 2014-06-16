@@ -419,11 +419,8 @@ void* extract_vtk_wrapped_pointer(PyObject* obj)
     long address = strtol(hex_address, &pEnd, 16);
 
     vtkObjectBase* vtk_object = (vtkObjectBase*)((void*)address);
-    std::cout <<"check if vtk_object is a "<<class_name<<std::endl;
     if(vtk_object->IsA(class_name))
     {
-        std::cout <<"yup, it is"<<std::endl;
-
         return vtk_object;
     }
 

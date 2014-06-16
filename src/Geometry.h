@@ -35,10 +35,11 @@
 #include <vtkCellData.h>
 #include <vtkDataArray.h>
 #include <vtkGenericCell.h>
+#include <vtkFloatArray.h>
 #include <vtkAlgorithm.h>
 namespace Tyche {
 
-const double GEOMETRY_TOLERANCE = 1.0/1000000.0;
+const double GEOMETRY_TOLERANCE = 1.0/1000.0;
 
 class Geometry {
 public:
@@ -71,18 +72,20 @@ class NullGeometry : Geometry {
 class vtkGeometry: public Geometry {
 public:
 	vtkGeometry(vtkPolyData *polydata) {
-		//normals = vtkSmartPointer<vtkPolyDataNormals>::New();
+		polydata->Update();
+		normals = vtkSmartPointer<vtkPolyDataNormals>::New();
 		cellLocator = vtkSmartPointer<vtkCellLocator>::New();
-		//polydata_wnormals = vtkSmartPointer<vtkPolyData>::New();
-//#if VTK_MAJOR_VERSION <= 5
-//		normals->SetInput(polydata);
-//#else
-//		normals->SetInputDataObject(polydata);
-//#endif
-		//polydata_wnormals = normals->GetOutput();
-		polydata_wnormals = polydata;
-
-		//polydata_wnormals->Update();
+		polydata_wnormals = vtkSmartPointer<vtkPolyData>::New();
+		polydata_wnormals->DeepCopy(polydata);
+#if VTK_MAJOR_VERSION <= 5
+		normals->SetInput(polydata_wnormals);
+#else
+		normals->SetInputDataObject(polydata);
+#endif
+		normals->ComputePointNormalsOff();
+		normals->ComputeCellNormalsOn();
+		normals->Update();
+		polydata_wnormals = normals->GetOutput();
 		cellLocator->SetDataSet(polydata_wnormals);
 		cellLocator->BuildLocator();
 	}
@@ -103,16 +106,26 @@ public:
 		int found;
 		if (intersect_point==NULL) {
 			double x[3];
-			found = cellLocator->IntersectWithLine((double *)p1.data(),(double *)p2.data(), 0.001, t, x,pcoords,subId,cellId,cell);
+			found = cellLocator->IntersectWithLine((double *)p1.data(),(double *)p2.data(), GEOMETRY_TOLERANCE, t, x,pcoords,subId,cellId,cell);
 		} else {
-			found = cellLocator->IntersectWithLine((double *)p1.data(),(double *)p2.data(), 0.001, t, intersect_point->data(),pcoords,subId,cellId,cell);
+			found = cellLocator->IntersectWithLine((double *)p1.data(),(double *)p2.data(), GEOMETRY_TOLERANCE, t, intersect_point->data(),pcoords,subId,cellId,cell);
 
 		}
+//		if (found) {
+//			auto n = vtkFloatArray::SafeDownCast(polydata_wnormals->GetCellData()->GetNormals());
+//
+//			std::cout <<"found intersection from "<<p1<<" to "<<p2<<" normals are at "<<n<<" cellId = "<<cellId<<std::endl;
+//		} else {
+//			std::cout <<"no intersection from "<<p1<<" to "<<p2<<std::endl;
+//		}
 		if (found&&(intersect_normal!=NULL)) {
-			double *n = polydata_wnormals->GetCellData()->GetNormals()->GetTuple3(cellId);
+
+			double *n =  vtkFloatArray::SafeDownCast(polydata_wnormals->GetCellData()->GetNormals())->GetTuple3(cellId);
 			for (int i = 0; i < 3; ++i) {
 				(*intersect_normal)[i] = n[i];
 			}
+			//std::cout <<"normal is "<<*intersect_normal<<std::endl;
+			if (intersect_normal->dot(p2-p1)>0) *intersect_normal = -(*intersect_normal);
 		}
 		return found;
 	}
