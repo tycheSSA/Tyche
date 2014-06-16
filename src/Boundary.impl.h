@@ -192,12 +192,14 @@ void ReflectiveBoundary<T>::integrate(const double dt) {
 		const int n = mols.size();
 		for (int i = 0; i < n; ++i) {
 			Vect3d nv,ip;
-			while (this->geometry.lineXsurface(mols.r0[i],mols.r[i],&ip,&nv)) {
+			int iteration = 0;
+			while (this->geometry.lineXsurface(mols.r0[i],mols.r[i],&ip,&nv)&&(iteration++<3)) {
 				Vect3d v = ip-mols.r0[i];
 				v = v-2.0*(v.dot(nv)*nv);
-				v *= (mols.r[i] - ip).norm()/v.norm();
-				mols.r0[i] = ip;
-				mols.r[i] = ip + v;
+				v /= v.norm();
+				//std::cout << "intersection from "<<mols.r0[i]<<" to "<<mols.r[i]<<" collision at "<<ip<<" reflecting to "<<ip+v<<std::endl;
+				mols.r0[i] = ip + GEOMETRY_TOLERANCE*v;
+				mols.r[i] = ip + (mols.r[i] - ip).norm()*v;
 				//mols.saved_index[i] = SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE;
 			}
 //			Vect3d nv;

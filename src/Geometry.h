@@ -39,7 +39,7 @@
 #include <vtkAlgorithm.h>
 namespace Tyche {
 
-const double GEOMETRY_TOLERANCE = 1.0/1000.0;
+const double GEOMETRY_TOLERANCE = 1.0/100000.0;
 
 class Geometry {
 public:
@@ -104,6 +104,8 @@ public:
 		vtkIdType cellId;
 		vtkSmartPointer<vtkGenericCell> cell = vtkSmartPointer<vtkGenericCell>::New();
 		int found;
+		const double norm = (p2-p1).norm();
+		if (norm==0) return false;
 		if (intersect_point==NULL) {
 			double x[3];
 			found = cellLocator->IntersectWithLine((double *)p1.data(),(double *)p2.data(), GEOMETRY_TOLERANCE, t, x,pcoords,subId,cellId,cell);
