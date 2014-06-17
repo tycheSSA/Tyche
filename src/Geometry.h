@@ -113,13 +113,13 @@ public:
 			found = cellLocator->IntersectWithLine((double *)p1.data(),(double *)p2.data(), GEOMETRY_TOLERANCE, t, intersect_point->data(),pcoords,subId,cellId,cell);
 
 		}
-//		if (found) {
-//			auto n = vtkFloatArray::SafeDownCast(polydata_wnormals->GetCellData()->GetNormals());
-//
-//			std::cout <<"found intersection from "<<p1<<" to "<<p2<<" normals are at "<<n<<" cellId = "<<cellId<<std::endl;
-//		} else {
-//			std::cout <<"no intersection from "<<p1<<" to "<<p2<<std::endl;
-//		}
+		/*if (found) {
+			auto n = vtkFloatArray::SafeDownCast(polydata_wnormals->GetCellData()->GetNormals());
+
+			std::cout <<"found intersection from "<<p1<<" to "<<p2<<" normals are at "<<n<<" cellId = "<<cellId<<std::endl;
+		} else {
+			std::cout <<"no intersection from "<<p1<<" to "<<p2<<std::endl;
+		}*/
 		if (found&&(intersect_normal!=NULL)) {
 
 			double *n =  vtkFloatArray::SafeDownCast(polydata_wnormals->GetCellData()->GetNormals())->GetTuple3(cellId);

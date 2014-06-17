@@ -198,7 +198,7 @@ void ReflectiveBoundary<T>::integrate(const double dt) {
 				v = v-2.0*(v.dot(nv)*nv);
 				v /= v.norm();
 				//std::cout << "intersection from "<<mols.r0[i]<<" to "<<mols.r[i]<<" collision at "<<ip<<" reflecting to "<<ip+v<<std::endl;
-				mols.r0[i] = ip + GEOMETRY_TOLERANCE*v;
+				//mols.r0[i] = ip + GEOMETRY_TOLERANCE*v;
 				mols.r[i] = ip + (mols.r[i] - ip).norm()*v;
 				//mols.saved_index[i] = SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE;
 			}
