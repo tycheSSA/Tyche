@@ -32,8 +32,38 @@
 #include "Union.h"
 #include "NextSubvolumeMethod.h"
 #include <iostream>
+#include <array>
+
 
 namespace Tyche {
+
+
+class BoundaryController: public Operator {
+public:
+	enum BOUNDARY_TYPE {REFLECT,JUMP,ABSORB};
+	BoundaryController() {
+		 bt_names[REFLECT] = "Reflection";
+		 bt_names[JUMP] = "Jumping";
+		 bt_names[ABSORB] = "Absorption";
+	}
+	void add_jump_boundary(Geometry &geometry);
+	void add_reflect_boundary(Geometry &geometry);
+	void add_absorb_boundary(Geometry &geometry);
+protected:
+	virtual void integrate(const double dt);
+	virtual void print(std::ostream& out) const  {
+		out << "\tBoundary Controller at";
+		for (auto i: geometries) {
+			out << " "<<bt_names[(int)i.second[0]]<< " "<< i.first;
+		}
+	}
+private:
+	typedef std::array<double,10> param_type;
+	typedef std::pair<Geometry*,param_type> data_type;
+	std::array<std::string,3> bt_names;
+	std::vector<data_type> geometries;
+
+};
 
 template<typename T>
 class Boundary: public Operator {

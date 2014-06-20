@@ -24,7 +24,7 @@ void JumpBoundary<T>::integrate(const double dt) {
 		for (int i = 0; i < n; ++i) {
 			if (this->geometry.lineXsurface(mols.r0[i],mols.r[i])) {
 				mols.r[i] += jump_by;
-				mols.r0[i] += jump_by;
+				//mols.r0[i] += jump_by;
 				//mols.saved_index[i] = SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE;
 			}
 //			while (this->geometry.distance_to_boundary(mols.r[i]) < 0) {

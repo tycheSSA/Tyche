@@ -44,7 +44,7 @@ const double GEOMETRY_TOLERANCE = 1.0/100000.0;
 class Geometry {
 public:
   virtual bool is_in(const Vect3d &point) const = 0;
-  virtual bool lineXsurface(const Vect3d &p1, const Vect3d &p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const = 0;
+  virtual bool lineXsurface(const Vect3d &p1, const Vect3d &p2, double *intersect_point=NULL, Vect3d *intersect_normal=NULL) const = 0;
   virtual const Vect3d shortest_vector_to_boundary(const Vect3d &point) const = 0;
   virtual double distance_to_boundary(const Vect3d &point) const {
     return shortest_vector_to_boundary(point).norm();
@@ -56,7 +56,7 @@ class NullGeometry : Geometry {
 	  return false;
 	}
 
-	bool lineXsurface(const Vect3d &p1, const Vect3d &p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
+	bool lineXsurface(const Vect3d &p1, const Vect3d &p2, double *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
 	  if ((intersect_point!=NULL) || (intersect_normal != NULL)) {
 	    ASSERT(intersect_point==NULL, "intersect point not supported for NullGeometry");
 	    ASSERT(intersect_normal==NULL, "intersect normal not supported for NullGeometry");
@@ -97,8 +97,8 @@ public:
 		//Vect3d point_copy = point;
 		return cellLocator->FindCell((double *)point.data()) != -1;
 	}
-	bool lineXsurface(const Vect3d &p1, const Vect3d &p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
-		double t = 0;
+	bool lineXsurface(const Vect3d &p1, const Vect3d &p2, double *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
+		double t;
 		double pcoords[3];
 		int subId;
 		vtkIdType cellId;
@@ -110,7 +110,7 @@ public:
 			double x[3];
 			found = cellLocator->IntersectWithLine((double *)p1.data(),(double *)p2.data(), GEOMETRY_TOLERANCE, t, x,pcoords,subId,cellId,cell);
 		} else {
-			found = cellLocator->IntersectWithLine((double *)p1.data(),(double *)p2.data(), GEOMETRY_TOLERANCE, t, intersect_point->data(),pcoords,subId,cellId,cell);
+			found = cellLocator->IntersectWithLine((double *)p1.data(),(double *)p2.data(), GEOMETRY_TOLERANCE, *intersect_point, pcoords,pcoords,subId,cellId,cell);
 
 		}
 		/*if (found) {
@@ -176,12 +176,12 @@ public:
 		return std::auto_ptr<AxisAlignedPlane<DIM> >(new AxisAlignedPlane<DIM>(coord,normal));
 	}
 
-	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
+	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, double *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
 		if (((p2[DIM]>=coord)&&(p1[coord]<coord))||((p2[DIM]<coord)&&(p1[coord]>=coord))) {
 			if (intersect_point != NULL) {
-				(*intersect_point)[DIM] = coord;
-				(*intersect_point)[dim_map[DIM][0]] = 0.5*(p1[dim_map[DIM][0]] + p2[dim_map[DIM][0]]);
-				(*intersect_point)[dim_map[DIM][1]] = 0.5*(p1[dim_map[DIM][1]] + p2[dim_map[DIM][1]]);
+				(*intersect_point) = coord-p1[DIM]/(p2[DIM]-p1[DIM]);
+//				(*intersect_point)[dim_map[DIM][0]] = 0.5*(p1[dim_map[DIM][0]] + p2[dim_map[DIM][0]]);
+//				(*intersect_point)[dim_map[DIM][1]] = 0.5*(p1[dim_map[DIM][1]] + p2[dim_map[DIM][1]]);
 			}
 			if (intersect_normal != NULL) {
 				(*intersect_normal)[DIM] = 1.0;
@@ -406,7 +406,7 @@ public:
 		normal.normalize();
 	}
 
-	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
+	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, double *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
 		for (int d = 0; d < 3; ++d) {
 			if (((p1[d]<low[d]) && (p2[d]<low[d])) || ((p1[d]>=high[d]) && (p2[d]>=high[d]))) {
 				return false;
@@ -415,14 +415,15 @@ public:
 		const double denominator = (p2-p1).dot(normal);
 		if (denominator==0) return false;
 		const double numerator = (low-p1).dot(normal);
-		if (intersect_point==NULL) {
-			intersect_point = new Vect3d();
-		}
-		*intersect_point = (numerator/denominator) * (p2-p1) + p1;
+
+		Vect3d vintersect_point = (numerator/denominator) * (p2-p1) + p1;
 		for (int d = 0; d < 3; ++d) {
-			if (((*intersect_point)[d]>=high[d]) && ((*intersect_point)[d]<low[d])) {
+			if (((vintersect_point)[d]>=high[d]) && ((vintersect_point)[d]<low[d])) {
 				return false;
 			}
+		}
+		if (intersect_point != NULL) {
+			*intersect_point = numerator/denominator;
 		}
 		if (intersect_normal != NULL) {
 			*intersect_normal = normal;
@@ -482,7 +483,7 @@ public:
 		//std::cout << "testing point "<<point<<". result = "<< (inside==in) << std::endl;
 		return inside == in;
 	}
-	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
+	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, double *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
 		ASSERT(intersect_point==NULL, "intersect point not supported for Box geometry");
 		ASSERT(intersect_normal==NULL, "intersect normal not supported for Box geometry");
 		const bool is_in1 = is_in(p1);
@@ -557,7 +558,7 @@ public:
 		}
 		return ret;
 	}
-	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
+	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, double *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
 		ASSERT(intersect_point==NULL, "intersect point not supported for BoxWithHoles geometry");
 		ASSERT(intersect_normal==NULL, "intersect normal not supported for BoxWithHoles geometry");
 		const bool is_in1 = is_in(p1);
@@ -600,7 +601,7 @@ public:
     }
     return inside == in;
   }
-  bool lineXsurface(const Vect3d& p1, const Vect3d& p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
+  bool lineXsurface(const Vect3d& p1, const Vect3d& p2, double *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
     ASSERT(intersect_point==NULL, "intersect point not supported for Cylinder geometry");
     ASSERT(intersect_normal==NULL, "intersect normal not supported for Cylinder geometry");
     const bool is_in1 = is_in(p1);
@@ -676,7 +677,7 @@ public:
     }
     return inside == in;
   }
-  bool lineXsurface(const Vect3d& p1, const Vect3d& p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
+  bool lineXsurface(const Vect3d& p1, const Vect3d& p2, double *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
     ASSERT(intersect_point==NULL, "intersect point not supported for Cylinder geometry");
     ASSERT(intersect_normal==NULL, "intersect normal not supported for Cylinder geometry");
     const bool is_in1 = is_in(p1);
