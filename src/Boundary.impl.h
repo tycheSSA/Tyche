@@ -191,7 +191,8 @@ void ReflectiveBoundary<T>::integrate(const double dt) {
 		Molecules& mols = s->mols;
 		const int n = mols.size();
 		for (int i = 0; i < n; ++i) {
-			Vect3d nv,ip;
+			Vect3d nv;
+			double ip;
 			int iteration = 0;
 			while (this->geometry.lineXsurface(mols.r0[i],mols.r[i],&ip,&nv)&&(iteration++<3)) {
 				Vect3d v = ip-mols.r0[i];
