@@ -179,7 +179,7 @@ public:
 	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, double *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
 		if (((p2[DIM]>=coord)&&(p1[coord]<coord))||((p2[DIM]<coord)&&(p1[coord]>=coord))) {
 			if (intersect_point != NULL) {
-				(*intersect_point) = coord-p1[DIM]/(p2[DIM]-p1[DIM]);
+				(*intersect_point) = (coord-p1[DIM])/(p2[DIM]-p1[DIM]);
 //				(*intersect_point)[dim_map[DIM][0]] = 0.5*(p1[dim_map[DIM][0]] + p2[dim_map[DIM][0]]);
 //				(*intersect_point)[dim_map[DIM][1]] = 0.5*(p1[dim_map[DIM][1]] + p2[dim_map[DIM][1]]);
 			}
@@ -319,16 +319,14 @@ public:
 		return *this;
 	}
 
-	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
+	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, double *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
 		if (((p2[DIM]>=low[DIM])&&(p1[DIM]<low[DIM]))||((p2[DIM]<low[DIM])&&(p1[DIM]>=low[DIM]))) {
 			const double intersect0 = 0.5*(p1[dim_map[DIM][0]] + p2[dim_map[DIM][0]]);
 			if ((intersect0 >= low[dim_map[DIM][0]]) && (intersect0 < high[dim_map[DIM][0]])) {
 				const double intersect1 = 0.5*(p1[dim_map[DIM][1]] + p2[dim_map[DIM][1]]);
 				if ((intersect1 >= low[dim_map[DIM][1]]) && (intersect1 < high[dim_map[DIM][1]])) {
 					if (intersect_point != NULL) {
-						(*intersect_point)[DIM] = low[DIM];
-						(*intersect_point)[dim_map[DIM][0]] = intersect0;
-						(*intersect_point)[dim_map[DIM][1]] = intersect1;
+						(*intersect_point) = (low[DIM]-p1[DIM])/(p2[DIM]-p1[DIM]);
 					}
 					if (intersect_normal != NULL) {
 						(*intersect_normal)[DIM] = 1.0;
