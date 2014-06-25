@@ -578,6 +578,22 @@ BOOST_PYTHON_MODULE(pyTyche) {
 
 
     /*
+     * Boundary Controller
+     */
+    class_<BoundaryController, bases<Operator>, std::auto_ptr<BoundaryController> >("BoundaryController",boost::python::no_init)
+        		  .def("add_jump_boundary",&BoundaryController::add_jump_boundary,
+        				  "Add new jump boundary")
+        		  .def("add_reflect_boundary",&BoundaryController::add_reflect_boundary,
+        				  "Add new reflection boundary")
+        		  .def("add_absorb_boundary",&BoundaryController::add_absorb_boundary,
+        				  "Add new absorption boundary")
+        		  ;
+
+    def("new_boundary_controller",BoundaryController::New);
+
+
+
+    /*
      * Diffusion
      */
     def("new_diffusion",Diffusion::New);

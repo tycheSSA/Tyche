@@ -46,7 +46,10 @@ public:
 		 bt_names[JUMP] = "Jumping";
 		 bt_names[ABSORB] = "Absorption";
 	}
-	void add_jump_boundary(Geometry &geometry);
+	static std::auto_ptr<BoundaryController> New() {
+		return std::auto_ptr<BoundaryController> (new BoundaryController());
+	}
+	void add_jump_boundary(Geometry &geometry, const Vect3d jump_by);
 	void add_reflect_boundary(Geometry &geometry);
 	void add_absorb_boundary(Geometry &geometry);
 protected:
@@ -54,7 +57,7 @@ protected:
 	virtual void print(std::ostream& out) const  {
 		out << "\tBoundary Controller at";
 		for (auto i: geometries) {
-			out << " "<<bt_names[(int)i.second[0]]<< " "<< i.first;
+			out << " "<<bt_names[(int)i.second[0]]<< " "<< *(i.first);
 		}
 	}
 private:

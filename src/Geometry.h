@@ -49,9 +49,15 @@ public:
   virtual double distance_to_boundary(const Vect3d &point) const {
     return shortest_vector_to_boundary(point).norm();
   }
+  friend std::ostream& operator<<( std::ostream& out, const Geometry& b ) {
+	  b.print(out);
+	  return out;
+  }
+  virtual void print(std::ostream& out) const = 0;
+
 };
 
-class NullGeometry : Geometry {
+class NullGeometry : public Geometry {
         bool is_in(const Vect3d &point) const {
 	  return false;
 	}
@@ -66,6 +72,10 @@ class NullGeometry : Geometry {
 	
 	virtual const Vect3d shortest_vector_to_boundary(const Vect3d &point) const {
 	  return std::nan("")*Vect3d::Ones();
+	}
+
+	virtual void print(std::ostream& out) const {
+		out << "Null Geometry";
 	}
 };
 
@@ -139,13 +149,14 @@ public:
 		cellLocator->FindClosestPoint((double *)point.data(),(double *)closestPoint.data(),cellId,subId,dist2);
 		return closestPoint;
 	}
+	virtual void print(std::ostream& out) const {
+		out << "vtkGeometry";
+	}
 private:
 	vtkSmartPointer<vtkPolyData> polydata_wnormals;
 	vtkSmartPointer<vtkCellLocator> cellLocator;
 	vtkSmartPointer<vtkPolyDataNormals> normals;
 };
-
-std::ostream& operator<< (std::ostream& out, const vtkGeometry& p);
 
 
 template<unsigned int DIM>
@@ -237,24 +248,17 @@ public:
 		normal = -normal;
 	}
 
+	virtual void print(std::ostream& out) const {
+		const std::string options[3] = {"x","y","z"};
+		out << options[DIM] << " = " << get_coord() << " with normal " << get_normal();
+	}
+
 protected:
 	double coord;
 	int normal;
 
 };
 
-
-template<unsigned int DIM>
-std::ostream& operator<< (std::ostream& out, const AxisAlignedPlane<DIM>& p) {
-	return out << "Plane aligned with dimension " << DIM;
-}
-
-
-
-std::ostream& operator<< (std::ostream& out, const NullGeometry& b);
-std::ostream& operator<< (std::ostream& out, const AxisAlignedPlane<0>& p);
-std::ostream& operator<< (std::ostream& out, const AxisAlignedPlane<1>& p);
-std::ostream& operator<< (std::ostream& out, const AxisAlignedPlane<2>& p);
 
 typedef AxisAlignedPlane<0> xplane;
 typedef AxisAlignedPlane<1> yplane;
@@ -376,6 +380,10 @@ public:
 	const Vect3d& get_low() const {return low;}
 	const Vect3d& get_high() const {return high;}
 
+	virtual void print(std::ostream& out) const {
+		out << "Rectangle aligned with dimension " << DIM << ". Lower point in other dimensions is "<<get_low()<<". Upper point in other dimensions is "<<get_high()<<".";
+	}
+
 private:
 	Vect3d low,high,normal_vector;
 
@@ -387,10 +395,6 @@ typedef AxisAlignedRectangle<0> xrect;
 typedef AxisAlignedRectangle<1> yrect;
 typedef AxisAlignedRectangle<2> zrect;
 
-template<unsigned int DIM>
-std::ostream& operator<< (std::ostream& out, const AxisAlignedRectangle<DIM>& p) {
-	return out << "Rectangle aligned with dimension " << DIM << ". Lower point in other dimensions is "<<p.get_low()<<". Upper point in other dimensions is "<<p.get_high()<<".";
-}
 
 class Rectangle {
 public:
@@ -453,13 +457,16 @@ public:
 	const Vect3d& get_l() const {return l;}
 	const Vect3d& get_r() const {return r;}
 	const Vect3d& get_normal() const {return normal;}
+
+	virtual void print(std::ostream& out) const {
+		 out << "Rectangle with equation x = "<<get_low()<<" + s*"<<get_l()<<" + t*"<<get_r()<<" and normal = "<<get_normal();
+	}
 private:
 	Vect3d low,high;
 	Vect3d l,r;
 	Vect3d normal;
 };
 
-std::ostream& operator<< (std::ostream& out, const Rectangle& p);
 
 class Box : public Geometry {
 public:
@@ -530,12 +537,15 @@ public:
 	double distance_to_boundary(const Vect3d& point) const {
 		return shortest_vector_to_boundary(point).norm();
 	}
+
+	virtual void print(std::ostream& out) const {
+		out << "Box";
+	}
 private:
 	Vect3d low,high;
     bool in;
 };
 
-std::ostream& operator<< (std::ostream& out, const Box& p);
 
 class MultipleBoxes : public Geometry {
 public:
@@ -568,15 +578,17 @@ public:
 	  ERROR("NOT IMPLEMENTED!");
 	  return Vect3d::Zero();
 	}
+	virtual void print(std::ostream& out) const {
+		out << "Multiple Boxes";
+	}
 private:
 	std::vector<Box> boxes;
     bool in;
 };
 
-std::ostream& operator<< (std::ostream& out, const MultipleBoxes& p);
   
 template<unsigned int DIM>
-class AxisAlignedCylinder : Geometry {
+class AxisAlignedCylinder : public Geometry {
 public:
   AxisAlignedCylinder(const Vect3d& base,
 		      const double radius,
@@ -626,6 +638,10 @@ public:
       return -dist;
     }
   }
+
+  virtual void print(std::ostream& out) const {
+	  out << "Cylinder aligned with dimension " << DIM;
+  }
 private:
   Vect3d base;
   double radius,radius_sq;
@@ -642,11 +658,6 @@ private:
     return radial_dist_sq;
   }
 };
-
-template<unsigned int DIM>
-std::ostream& operator<< (std::ostream& out, const AxisAlignedCylinder<DIM>& p) {
-	return out << "Cylinder aligned with dimension " << DIM;
-}
  
 typedef AxisAlignedCylinder<0> xcylinder;
 typedef AxisAlignedCylinder<1> ycylinder;
@@ -698,6 +709,10 @@ public:
       return -dist;
     }
   }
+
+  virtual void print(std::ostream& out) const {
+	  out << "Sphere with radius " << radius << " at position " << position;
+  }
 private:
   friend std::ostream& operator<< (std::ostream& out, const Sphere& p);
   Vect3d position;
@@ -708,8 +723,6 @@ private:
     return (position-point).squaredNorm();
   }
 };
-
-std::ostream& operator<< (std::ostream& out, const Sphere& p);
 
 
 }

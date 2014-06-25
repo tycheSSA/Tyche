@@ -24,9 +24,12 @@ void FluxBoundary::integrate(const double dt) {
 }
 
 
-void BoundaryController::add_jump_boundary(Geometry &geometry) {
+void BoundaryController::add_jump_boundary(Geometry &geometry,  const Vect3d jump_by) {
 	param_type params;
 	params[0] = JUMP;
+	params[1] = jump_by[0];
+	params[2] = jump_by[1];
+	params[3] = jump_by[2];
 	geometries.push_back(data_type(&geometry,params));
 }
 
