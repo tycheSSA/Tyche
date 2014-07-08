@@ -162,7 +162,7 @@ public:
 	}
 
 	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
-		if (((p2[DIM]>=coord)&&(p1[coord]<coord))||((p2[DIM]<coord)&&(p1[coord]>=coord))) {
+		if (((p2[DIM]>=coord)&&(p1[DIM]<coord))||((p2[DIM]<coord)&&(p1[DIM]>=coord))) {
 			if (intersect_point != NULL) {
 				(*intersect_point)[DIM] = coord;
 				(*intersect_point)[dim_map[DIM][0]] = 0.5*(p1[dim_map[DIM][0]] + p2[dim_map[DIM][0]]);
