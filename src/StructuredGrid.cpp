@@ -16,7 +16,7 @@ void StructuredGrid::reset_domain(const Vect3d& _low, const Vect3d& _high, const
 	domain_size = _high-_low;
 	Vect3d new_max_grid_size = max_grid_size;
 	for (int i = 0; i < 3; ++i) {
-		if ((new_max_grid_size[i]<=0)||isnan(new_max_grid_size[i])) {
+		if ((new_max_grid_size[i]<=0)||std::isnan(new_max_grid_size[i])) {
 			new_max_grid_size[i] = 1.0;
 		}
 	}
