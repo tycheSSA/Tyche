@@ -35,27 +35,34 @@
 #include <vtkCellData.h>
 #include <vtkDataArray.h>
 #include <vtkGenericCell.h>
+#include <vtkFloatArray.h>
 #include <vtkAlgorithm.h>
 namespace Tyche {
 
-const double GEOMETRY_TOLERANCE = 1.0/1000000.0;
+const double GEOMETRY_TOLERANCE = 1.0/100000.0;
 
 class Geometry {
 public:
   virtual bool is_in(const Vect3d &point) const = 0;
-  virtual bool lineXsurface(const Vect3d &p1, const Vect3d &p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const = 0;
+  virtual bool lineXsurface(const Vect3d &p1, const Vect3d &p2, double *intersect_point=NULL, Vect3d *intersect_normal=NULL) const = 0;
   virtual const Vect3d shortest_vector_to_boundary(const Vect3d &point) const = 0;
   virtual double distance_to_boundary(const Vect3d &point) const {
     return shortest_vector_to_boundary(point).norm();
   }
+  friend std::ostream& operator<<( std::ostream& out, const Geometry& b ) {
+	  b.print(out);
+	  return out;
+  }
+  virtual void print(std::ostream& out) const = 0;
+
 };
 
-class NullGeometry : Geometry {
+class NullGeometry : public Geometry {
         bool is_in(const Vect3d &point) const {
 	  return false;
 	}
 
-	bool lineXsurface(const Vect3d &p1, const Vect3d &p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
+	bool lineXsurface(const Vect3d &p1, const Vect3d &p2, double *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
 	  if ((intersect_point!=NULL) || (intersect_normal != NULL)) {
 	    ASSERT(intersect_point==NULL, "intersect point not supported for NullGeometry");
 	    ASSERT(intersect_normal==NULL, "intersect normal not supported for NullGeometry");
@@ -66,23 +73,29 @@ class NullGeometry : Geometry {
 	virtual const Vect3d shortest_vector_to_boundary(const Vect3d &point) const {
 	  return std::nan("")*Vect3d::Ones();
 	}
+
+	virtual void print(std::ostream& out) const {
+		out << "Null Geometry";
+	}
 };
 
 class vtkGeometry: public Geometry {
 public:
 	vtkGeometry(vtkPolyData *polydata) {
-		//normals = vtkSmartPointer<vtkPolyDataNormals>::New();
+		polydata->Update();
+		normals = vtkSmartPointer<vtkPolyDataNormals>::New();
 		cellLocator = vtkSmartPointer<vtkCellLocator>::New();
-		//polydata_wnormals = vtkSmartPointer<vtkPolyData>::New();
-//#if VTK_MAJOR_VERSION <= 5
-//		normals->SetInput(polydata);
-//#else
-//		normals->SetInputDataObject(polydata);
-//#endif
-		//polydata_wnormals = normals->GetOutput();
-		polydata_wnormals = polydata;
-
-		//polydata_wnormals->Update();
+		polydata_wnormals = vtkSmartPointer<vtkPolyData>::New();
+		polydata_wnormals->DeepCopy(polydata);
+#if VTK_MAJOR_VERSION <= 5
+		normals->SetInput(polydata_wnormals);
+#else
+		normals->SetInputDataObject(polydata);
+#endif
+		normals->ComputePointNormalsOff();
+		normals->ComputeCellNormalsOn();
+		normals->Update();
+		polydata_wnormals = normals->GetOutput();
 		cellLocator->SetDataSet(polydata_wnormals);
 		cellLocator->BuildLocator();
 	}
@@ -94,25 +107,37 @@ public:
 		//Vect3d point_copy = point;
 		return cellLocator->FindCell((double *)point.data()) != -1;
 	}
-	bool lineXsurface(const Vect3d &p1, const Vect3d &p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
-		double t = 0;
+	bool lineXsurface(const Vect3d &p1, const Vect3d &p2, double *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
+		double t;
 		double pcoords[3];
 		int subId;
 		vtkIdType cellId;
 		vtkSmartPointer<vtkGenericCell> cell = vtkSmartPointer<vtkGenericCell>::New();
 		int found;
+		const double norm = (p2-p1).norm();
+		if (norm==0) return false;
 		if (intersect_point==NULL) {
 			double x[3];
-			found = cellLocator->IntersectWithLine((double *)p1.data(),(double *)p2.data(), 0.001, t, x,pcoords,subId,cellId,cell);
+			found = cellLocator->IntersectWithLine((double *)p1.data(),(double *)p2.data(), GEOMETRY_TOLERANCE, t, x,pcoords,subId,cellId,cell);
 		} else {
-			found = cellLocator->IntersectWithLine((double *)p1.data(),(double *)p2.data(), 0.001, t, intersect_point->data(),pcoords,subId,cellId,cell);
+			found = cellLocator->IntersectWithLine((double *)p1.data(),(double *)p2.data(), GEOMETRY_TOLERANCE, *intersect_point, pcoords,pcoords,subId,cellId,cell);
 
 		}
+		/*if (found) {
+			auto n = vtkFloatArray::SafeDownCast(polydata_wnormals->GetCellData()->GetNormals());
+
+			std::cout <<"found intersection from "<<p1<<" to "<<p2<<" normals are at "<<n<<" cellId = "<<cellId<<std::endl;
+		} else {
+			std::cout <<"no intersection from "<<p1<<" to "<<p2<<std::endl;
+		}*/
 		if (found&&(intersect_normal!=NULL)) {
-			double *n = polydata_wnormals->GetCellData()->GetNormals()->GetTuple3(cellId);
+
+			double *n =  vtkFloatArray::SafeDownCast(polydata_wnormals->GetCellData()->GetNormals())->GetTuple3(cellId);
 			for (int i = 0; i < 3; ++i) {
 				(*intersect_normal)[i] = n[i];
 			}
+			//std::cout <<"normal is "<<*intersect_normal<<std::endl;
+			if (intersect_normal->dot(p2-p1)>0) *intersect_normal = -(*intersect_normal);
 		}
 		return found;
 	}
@@ -124,13 +149,14 @@ public:
 		cellLocator->FindClosestPoint((double *)point.data(),(double *)closestPoint.data(),cellId,subId,dist2);
 		return closestPoint;
 	}
+	virtual void print(std::ostream& out) const {
+		out << "vtkGeometry";
+	}
 private:
 	vtkSmartPointer<vtkPolyData> polydata_wnormals;
 	vtkSmartPointer<vtkCellLocator> cellLocator;
 	vtkSmartPointer<vtkPolyDataNormals> normals;
 };
-
-std::ostream& operator<< (std::ostream& out, const vtkGeometry& p);
 
 
 template<unsigned int DIM>
@@ -164,9 +190,9 @@ public:
 	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
 		if (((p2[DIM]>=coord)&&(p1[DIM]<coord))||((p2[DIM]<coord)&&(p1[DIM]>=coord))) {
 			if (intersect_point != NULL) {
-				(*intersect_point)[DIM] = coord;
-				(*intersect_point)[dim_map[DIM][0]] = 0.5*(p1[dim_map[DIM][0]] + p2[dim_map[DIM][0]]);
-				(*intersect_point)[dim_map[DIM][1]] = 0.5*(p1[dim_map[DIM][1]] + p2[dim_map[DIM][1]]);
+				(*intersect_point) = (coord-p1[DIM])/(p2[DIM]-p1[DIM]);
+//				(*intersect_point)[dim_map[DIM][0]] = 0.5*(p1[dim_map[DIM][0]] + p2[dim_map[DIM][0]]);
+//				(*intersect_point)[dim_map[DIM][1]] = 0.5*(p1[dim_map[DIM][1]] + p2[dim_map[DIM][1]]);
 			}
 			if (intersect_normal != NULL) {
 				(*intersect_normal)[DIM] = 1.0;
@@ -222,24 +248,17 @@ public:
 		normal = -normal;
 	}
 
+	virtual void print(std::ostream& out) const {
+		const std::string options[3] = {"x","y","z"};
+		out << options[DIM] << " = " << get_coord() << " with normal " << get_normal();
+	}
+
 protected:
 	double coord;
 	int normal;
 
 };
 
-
-template<unsigned int DIM>
-std::ostream& operator<< (std::ostream& out, const AxisAlignedPlane<DIM>& p) {
-	return out << "Plane aligned with dimension " << DIM;
-}
-
-
-
-std::ostream& operator<< (std::ostream& out, const NullGeometry& b);
-std::ostream& operator<< (std::ostream& out, const AxisAlignedPlane<0>& p);
-std::ostream& operator<< (std::ostream& out, const AxisAlignedPlane<1>& p);
-std::ostream& operator<< (std::ostream& out, const AxisAlignedPlane<2>& p);
 
 typedef AxisAlignedPlane<0> xplane;
 typedef AxisAlignedPlane<1> yplane;
@@ -304,16 +323,14 @@ public:
 		return *this;
 	}
 
-	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
+	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, double *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
 		if (((p2[DIM]>=low[DIM])&&(p1[DIM]<low[DIM]))||((p2[DIM]<low[DIM])&&(p1[DIM]>=low[DIM]))) {
 			const double intersect0 = 0.5*(p1[dim_map[DIM][0]] + p2[dim_map[DIM][0]]);
 			if ((intersect0 >= low[dim_map[DIM][0]]) && (intersect0 < high[dim_map[DIM][0]])) {
 				const double intersect1 = 0.5*(p1[dim_map[DIM][1]] + p2[dim_map[DIM][1]]);
 				if ((intersect1 >= low[dim_map[DIM][1]]) && (intersect1 < high[dim_map[DIM][1]])) {
 					if (intersect_point != NULL) {
-						(*intersect_point)[DIM] = low[DIM];
-						(*intersect_point)[dim_map[DIM][0]] = intersect0;
-						(*intersect_point)[dim_map[DIM][1]] = intersect1;
+						(*intersect_point) = (low[DIM]-p1[DIM])/(p2[DIM]-p1[DIM]);
 					}
 					if (intersect_normal != NULL) {
 						(*intersect_normal)[DIM] = 1.0;
@@ -363,6 +380,10 @@ public:
 	const Vect3d& get_low() const {return low;}
 	const Vect3d& get_high() const {return high;}
 
+	virtual void print(std::ostream& out) const {
+		out << "Rectangle aligned with dimension " << DIM << ". Lower point in other dimensions is "<<get_low()<<". Upper point in other dimensions is "<<get_high()<<".";
+	}
+
 private:
 	Vect3d low,high,normal_vector;
 
@@ -374,10 +395,6 @@ typedef AxisAlignedRectangle<0> xrect;
 typedef AxisAlignedRectangle<1> yrect;
 typedef AxisAlignedRectangle<2> zrect;
 
-template<unsigned int DIM>
-std::ostream& operator<< (std::ostream& out, const AxisAlignedRectangle<DIM>& p) {
-	return out << "Rectangle aligned with dimension " << DIM << ". Lower point in other dimensions is "<<p.get_low()<<". Upper point in other dimensions is "<<p.get_high()<<".";
-}
 
 class Rectangle {
 public:
@@ -391,7 +408,7 @@ public:
 		normal.normalize();
 	}
 
-	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
+	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, double *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
 		for (int d = 0; d < 3; ++d) {
 			if (((p1[d]<low[d]) && (p2[d]<low[d])) || ((p1[d]>=high[d]) && (p2[d]>=high[d]))) {
 				return false;
@@ -400,14 +417,15 @@ public:
 		const double denominator = (p2-p1).dot(normal);
 		if (denominator==0) return false;
 		const double numerator = (low-p1).dot(normal);
-		if (intersect_point==NULL) {
-			intersect_point = new Vect3d();
-		}
-		*intersect_point = (numerator/denominator) * (p2-p1) + p1;
+
+		Vect3d vintersect_point = (numerator/denominator) * (p2-p1) + p1;
 		for (int d = 0; d < 3; ++d) {
-			if (((*intersect_point)[d]>=high[d]) && ((*intersect_point)[d]<low[d])) {
+			if (((vintersect_point)[d]>=high[d]) && ((vintersect_point)[d]<low[d])) {
 				return false;
 			}
+		}
+		if (intersect_point != NULL) {
+			*intersect_point = numerator/denominator;
 		}
 		if (intersect_normal != NULL) {
 			*intersect_normal = normal;
@@ -439,13 +457,16 @@ public:
 	const Vect3d& get_l() const {return l;}
 	const Vect3d& get_r() const {return r;}
 	const Vect3d& get_normal() const {return normal;}
+
+	virtual void print(std::ostream& out) const {
+		 out << "Rectangle with equation x = "<<get_low()<<" + s*"<<get_l()<<" + t*"<<get_r()<<" and normal = "<<get_normal();
+	}
 private:
 	Vect3d low,high;
 	Vect3d l,r;
 	Vect3d normal;
 };
 
-std::ostream& operator<< (std::ostream& out, const Rectangle& p);
 
 class Box : public Geometry {
 public:
@@ -467,7 +488,7 @@ public:
 		//std::cout << "testing point "<<point<<". result = "<< (inside==in) << std::endl;
 		return inside == in;
 	}
-	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
+	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, double *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
 		ASSERT(intersect_point==NULL, "intersect point not supported for Box geometry");
 		ASSERT(intersect_normal==NULL, "intersect normal not supported for Box geometry");
 		const bool is_in1 = is_in(p1);
@@ -516,12 +537,15 @@ public:
 	double distance_to_boundary(const Vect3d& point) const {
 		return shortest_vector_to_boundary(point).norm();
 	}
+
+	virtual void print(std::ostream& out) const {
+		out << "Box";
+	}
 private:
 	Vect3d low,high;
     bool in;
 };
 
-std::ostream& operator<< (std::ostream& out, const Box& p);
 
 class MultipleBoxes : public Geometry {
 public:
@@ -542,7 +566,7 @@ public:
 		}
 		return ret;
 	}
-	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
+	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, double *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
 		ASSERT(intersect_point==NULL, "intersect point not supported for BoxWithHoles geometry");
 		ASSERT(intersect_normal==NULL, "intersect normal not supported for BoxWithHoles geometry");
 		const bool is_in1 = is_in(p1);
@@ -554,15 +578,17 @@ public:
 	  ERROR("NOT IMPLEMENTED!");
 	  return Vect3d::Zero();
 	}
+	virtual void print(std::ostream& out) const {
+		out << "Multiple Boxes";
+	}
 private:
 	std::vector<Box> boxes;
     bool in;
 };
 
-std::ostream& operator<< (std::ostream& out, const MultipleBoxes& p);
   
 template<unsigned int DIM>
-class AxisAlignedCylinder : Geometry {
+class AxisAlignedCylinder : public Geometry {
 public:
   AxisAlignedCylinder(const Vect3d& base,
 		      const double radius,
@@ -585,7 +611,7 @@ public:
     }
     return inside == in;
   }
-  bool lineXsurface(const Vect3d& p1, const Vect3d& p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
+  bool lineXsurface(const Vect3d& p1, const Vect3d& p2, double *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
     ASSERT(intersect_point==NULL, "intersect point not supported for Cylinder geometry");
     ASSERT(intersect_normal==NULL, "intersect normal not supported for Cylinder geometry");
     const bool is_in1 = is_in(p1);
@@ -612,6 +638,10 @@ public:
       return -dist;
     }
   }
+
+  virtual void print(std::ostream& out) const {
+	  out << "Cylinder aligned with dimension " << DIM;
+  }
 private:
   Vect3d base;
   double radius,radius_sq;
@@ -628,11 +658,6 @@ private:
     return radial_dist_sq;
   }
 };
-
-template<unsigned int DIM>
-std::ostream& operator<< (std::ostream& out, const AxisAlignedCylinder<DIM>& p) {
-	return out << "Cylinder aligned with dimension " << DIM;
-}
  
 typedef AxisAlignedCylinder<0> xcylinder;
 typedef AxisAlignedCylinder<1> ycylinder;
@@ -661,7 +686,7 @@ public:
     }
     return inside == in;
   }
-  bool lineXsurface(const Vect3d& p1, const Vect3d& p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
+  bool lineXsurface(const Vect3d& p1, const Vect3d& p2, double *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
     ASSERT(intersect_point==NULL, "intersect point not supported for Cylinder geometry");
     ASSERT(intersect_normal==NULL, "intersect normal not supported for Cylinder geometry");
     const bool is_in1 = is_in(p1);
@@ -684,6 +709,10 @@ public:
       return -dist;
     }
   }
+
+  virtual void print(std::ostream& out) const {
+	  out << "Sphere with radius " << radius << " at position " << position;
+  }
 private:
   friend std::ostream& operator<< (std::ostream& out, const Sphere& p);
   Vect3d position;
@@ -694,8 +723,6 @@ private:
     return (position-point).squaredNorm();
   }
 };
-
-std::ostream& operator<< (std::ostream& out, const Sphere& p);
 
 
 }

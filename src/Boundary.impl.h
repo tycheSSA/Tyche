@@ -22,16 +22,16 @@ void JumpBoundary<T>::integrate(const double dt) {
 		Molecules& mols = s->mols;
 		const int n = mols.size();
 		for (int i = 0; i < n; ++i) {
-//			if (this->geometry.lineXsurface(mols.r0[i],mols.r[i])) {
+			if (this->geometry.lineXsurface(mols.r0[i],mols.r[i])) {
+				mols.r[i] += jump_by;
+				//mols.r0[i] += jump_by;
+				//mols.saved_index[i] = SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE;
+			}
+//			while (this->geometry.distance_to_boundary(mols.r[i]) < 0) {
 //				mols.r[i] += jump_by;
 //				mols.r0[i] += jump_by;
 //				//mols.saved_index[i] = SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE;
 //			}
-			while (this->geometry.distance_to_boundary(mols.r[i]) < 0) {
-				mols.r[i] += jump_by;
-				mols.r0[i] += jump_by;
-				//mols.saved_index[i] = SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE;
-			}
 		}
 	}
 
@@ -69,12 +69,12 @@ void DiffusionCorrectedBoundary<T>::timestep_finalise() {
 
 template<typename T>
 bool DiffusionCorrectedBoundary<T>::particle_crossed_boundary(const int p_i, const int s_i) {
-
+	Molecules& mols = this->get_species()[s_i]->mols;
 	const double dist_to_wall = (*all_curr_distance[s_i])[p_i];
-	if (dist_to_wall <= 0) {
+	if (this->geometry.lineXsurface(mols.r0[p_i],mols.r[p_i])) {
 		return true;
 	} else if (dist_to_wall < test_this_distance_from_wall) {
-	   const int saved_index = this->get_species()[s_i]->mols.saved_index[p_i];
+	   const int saved_index = mols.saved_index[p_i];
 	   if (saved_index == SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE) return false;
 	   const double old_dist_to_wall = (*all_prev_distance[s_i])[saved_index];
 	   if (old_dist_to_wall <= 0) return false;
@@ -191,19 +191,27 @@ void ReflectiveBoundary<T>::integrate(const double dt) {
 		Molecules& mols = s->mols;
 		const int n = mols.size();
 		for (int i = 0; i < n; ++i) {
-//			Vect3d nv,ip;
-//			if (this->geometry.lineXsurface(mols.r0[i],mols.r[i],&ip,&nv)) {
-//				mols.r[i] += 2.0*(ip-mols.r[i]).dot(nv)*nv;
-//				//mols.saved_index[i] = SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE;
-//			}
 			Vect3d nv;
-			const double d = this->geometry.distance_to_boundary(mols.r[i]);
-			if (d<0) {
-				const Vect3d vect_to_wall = this->geometry.shortest_vector_to_boundary(mols.r[i]);
-				mols.r0[i] = mols.r[i] + vect_to_wall;
-				mols.r[i] += 2.0*vect_to_wall;
+			double ip;
+			int iteration = 0;
+			while (this->geometry.lineXsurface(mols.r0[i],mols.r[i],&ip,&nv)&&(iteration++<3)) {
+				Vect3d v = ip*(mols.r[i]-mols.r0[i]);
+				const Vect3d impact_point = mols.r0[i] + v;
+				v = v-2.0*(v.dot(nv)*nv);
+				v /= v.norm();
+				//std::cout << "intersection from "<<mols.r0[i]<<" to "<<mols.r[i]<<" collision at "<<ip<<" reflecting to "<<ip+v<<std::endl;
+				//mols.r0[i] = ip + GEOMETRY_TOLERANCE*v;
+				mols.r[i] = impact_point + (mols.r[i] - impact_point).norm()*v;
 				//mols.saved_index[i] = SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE;
 			}
+//			Vect3d nv;
+//			const double d = this->geometry.distance_to_boundary(mols.r[i]);
+//			if (d<0) {
+//				const Vect3d vect_to_wall = this->geometry.shortest_vector_to_boundary(mols.r[i]);
+//				mols.r0[i] = mols.r[i] + vect_to_wall;
+//				mols.r[i] += 2.0*vect_to_wall;
+//				//mols.saved_index[i] = SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE;
+//			}
 		}
 	}
 
@@ -216,12 +224,12 @@ void DestroyBoundary<T>::integrate(const double dt) {
 	BOOST_FOREACH(Species *s, this->get_species()) {
 		Molecules& mols = s->mols;
 		for (int i = 0; i < mols.size(); ++i) {
-//			if (this->geometry.lineXsurface(mols.r0[i],mols.r[i])) {
-//				mols.delete_molecule(i);
-//			}
-			if (Boundary<T>::geometry.distance_to_boundary(mols.r[i])<0) {
+			if (this->geometry.lineXsurface(mols.r0[i],mols.r[i])) {
 				mols.delete_molecule(i);
 			}
+//			if (Boundary<T>::geometry.distance_to_boundary(mols.r[i])<0) {
+//				mols.delete_molecule(i);
+//			}
 		}
 	}
 
