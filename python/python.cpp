@@ -438,6 +438,8 @@ void* extract_vtk_wrapped_pointer(PyObject* obj)
 std::auto_ptr<NextSubvolumeMethod> (*NSM_New1)(const Vect3d&, const Vect3d&, const Vect3d&) = &NextSubvolumeMethod::New;
 std::auto_ptr<NextSubvolumeMethod> (*NSM_New2)(Grid&) = &NextSubvolumeMethod::New;
 void (NextSubvolumeMethod::*NSM_add_diffusion_between)(Species&, const double, Geometry&, Geometry&) = &NextSubvolumeMethod::add_diffusion_between;
+void (NextSubvolumeMethod::*NSM_set_diffusion_between)(Species&, const double, Geometry&, Geometry&) = &NextSubvolumeMethod::set_diffusion_between;
+
 void (NextSubvolumeMethod::*NSM_scale_diffusion_across)(Species&, Geometry&, const double) = &NextSubvolumeMethod::scale_diffusion_across;
 
 bool (Grid::*Grid_is_in)(const Geometry&, const int) const = &Grid::is_in;
@@ -652,6 +654,7 @@ BOOST_PYTHON_MODULE(pyTyche) {
     	.def("set_ghost_cell_interface",&NextSubvolumeMethod::set_ghost_cell_interface)
     	.def("add_diffusion",&NextSubvolumeMethod::add_diffusion)
     	.def("add_diffusion_between",NSM_add_diffusion_between)
+    	.def("set_diffusion_between",NSM_set_diffusion_between)
     	.def("add_reaction",&NextSubvolumeMethod::add_reaction)
     	.def("add_reaction_on",&NextSubvolumeMethod::add_reaction_on)
     	.def("scale_diffusion_across",NSM_scale_diffusion_across)

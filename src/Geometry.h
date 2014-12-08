@@ -37,6 +37,7 @@
 #include <vtkGenericCell.h>
 #include <vtkFloatArray.h>
 #include <vtkAlgorithm.h>
+#include <memory>
 namespace Tyche {
 
 const double GEOMETRY_TOLERANCE = 1.0/100000.0;
@@ -387,8 +388,8 @@ public:
 private:
 	Vect3d low,high,normal_vector;
 
-	boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni1, uni2;
-	boost::variate_generator<base_generator_type&, boost::triangle_distribution<> > tri1, tri2;
+	boost::variate_generator<base_generator_type&, boost::uniform_real<double> > uni1, uni2;
+	boost::variate_generator<base_generator_type&, boost::triangle_distribution<double> > tri1, tri2;
 };
 
 typedef AxisAlignedRectangle<0> xrect;

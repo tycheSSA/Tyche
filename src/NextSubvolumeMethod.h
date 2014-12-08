@@ -263,6 +263,15 @@ public:
 	}
 	void add_diffusion_between(Species &s, const double rate, std::vector<int>& from, std::vector<int>& to);
 
+
+	void set_diffusion_between(Species &s, const double rate, Geometry& geometry_from, Geometry& geometry_to) {
+		std::vector<int> from,to;
+		subvolumes.get_slice(geometry_from,from);
+		subvolumes.get_slice(geometry_to,to);
+		set_diffusion_between(s,rate,from,to);
+	}
+	void set_diffusion_between(Species &s, const double rate, std::vector<int>& from, std::vector<int>& to);
+
 	template<typename T>
 	void absorption_across(Species &s, T& geometry, const double probability) {
 		std::vector<int> slice;
