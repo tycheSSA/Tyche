@@ -292,6 +292,7 @@ void NextSubvolumeMethod::reset_all_priorities() {
 	}
 }
 
+
 void NextSubvolumeMethod::reset_priority(const int i) {
 	const bool in_queue = subvolume_reactions[i].get_propensity()!=0;
 
@@ -463,6 +464,17 @@ void NextSubvolumeMethod::fill_uniform(Species& s, const Vect3d low, const Vect3
 	for(auto ind : dirty_indices)
 	  recalc_priority(ind);
 }
+
+void NextSubvolumeMethod::set_compartment(Species& s, const Vect3d pos, const unsigned int N) {
+	add_species(s);
+	LOG(2,"Setting "<<N<<" molecules of Species ("<<s.id<<") to the compartment at "<<pos);
+	if (subvolumes.is_in(pos)) {
+		int comp_ind = subvolumes.get_cell_index(pos);
+		s.copy_numbers[comp_ind] = N;
+		recalc_priority(comp_ind);
+	}
+}
+
 
 void NextSubvolumeMethod::unset_interface_reactions(
 		std::vector<int>& from_indicies,

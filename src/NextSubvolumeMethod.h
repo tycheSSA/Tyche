@@ -318,6 +318,16 @@ public:
 	}
 
 	template<typename T>
+	void scale_diffusion_across(T& geometry, const double scaling_factor) {
+		const std::vector<Species*> diffusing_species = get_species();
+		const int ns = diffusing_species.size();
+		for (int is = 0; is < ns; ++is) {
+			Species& s = *diffusing_species[is];
+			scale_diffusion_across(s, geometry, scaling_factor);
+		}
+	}
+
+	template<typename T>
 	void scale_diffusion_across(Species &s, T& geometry, const double scaling_factor) {
 		std::vector<int> slice;
 		subvolumes.get_slice(geometry,slice);
@@ -363,9 +373,10 @@ public:
 		}
 	}
 	void fill_uniform(Species& s, const Vect3d low, const Vect3d high, const unsigned int N);
-
+	void set_compartment(Species& s, const Vect3d pos, const unsigned int N);
 	void reset_all_priorities();
 	void reset_priority(const int i);
+	void reset_priority(const Vect3i& i);
 	void recalc_priority(const int i);
 	double get_next_event_time() {
 		if (!heap.empty()) {
