@@ -507,7 +507,7 @@ BOOST_PYTHON_MODULE(pyTyche) {
 
 	def("group",group);
 
-
+	NSM_scale_diffusion_across
 
 	/*
 	 * Geometry
@@ -552,7 +552,7 @@ BOOST_PYTHON_MODULE(pyTyche) {
 	/*
 	 * Boundaries
 	 */
-	def("new_coupling_boundary",CouplingBoundary<xplane>::New);
+	def("new_coupling_boundary",CouplingBoundNSM_scale_diffusion_acrossary<xplane>::New);
 	def("new_coupling_boundary",CouplingBoundary<yplane>::New);
 	def("new_coupling_boundary",CouplingBoundary<zplane>::New);
 	def("new_coupling_boundary",CouplingBoundary<xrect>::New);
