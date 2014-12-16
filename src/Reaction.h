@@ -72,16 +72,28 @@ private:
 
 class UniMolecularReaction: public Reaction {
 public:
-	UniMolecularReaction(const double rate,const ReactionEquation& eq, const double init_radius=0.0);
+	UniMolecularReaction(const double rate,const ReactionEquation& eq);
 //	UniMolecularReaction(const double rate, const std::vector<Species*>& reactants,const std::vector<Species*>& products, const double init_radius=0.0):Reaction(rate) {
 //		UniMolecularReaction(rate,ReactionSide(reactants)>>ReactionSide(products),init_radius);
 //	}
 
-	static std::auto_ptr<Operator> New(const double rate, const ReactionEquation& eq, const double init_radius=0.0) {
-		return std::auto_ptr<Operator>(new UniMolecularReaction(rate,eq,init_radius));
+	static std::auto_ptr<Operator> New(const double rate, const ReactionEquation& eq) {
+		return std::auto_ptr<Operator>(new UniMolecularReaction(rate,eq));
 	}
-	void add_reaction(const double rate, const ReactionEquation& eq, const double init_radius=0.0);
-	void report_dt_suitability(const double dt);
+	size_t add_reaction(const double rate, const ReactionEquation& eq);
+	void report_dt_suitability(const Vect3d pos, const double dt);
+	void set_geometry(size_t index, Geometry *g) {
+		geometries[index] = g;
+	}
+	std::auto_ptr<Geometry> get_geometry(size_t index) {
+		return std::auto_ptr<Geometry>(geometries[index]);
+	}
+	void set_init_radius(size_t index, double r) {
+		init_radii[index] = r;
+	}
+	double get_init_radius(size_t index) {
+		return init_radii[index];
+	}
 protected:
 	virtual void integrate(const double dt);
 	virtual void print(std::ostream& out) const {
@@ -91,44 +103,48 @@ protected:
 		}
 	}
 private:
-	void calculate_probabilities(const double dt);
+	void calculate_probabilities(const Vect3d pos, const double dt);
 	ReactionSide& get_random_reaction(const double rand);
 	std::vector<ReactionSide> product_list;
 	std::vector<double> probabilities;
 	std::vector<double> rates;
 	std::vector<double> init_radii;
+	std::vector<Geometry *> geometries;
 	double total_probability;
 	double total_rate;
 };
 
-class ReactionLattice: public Reaction {
+class ZeroOrderMolecularReactionLattice: public Reaction {
 public:
-	ReactionLattice(const double rate,const ReactionEquation& eq,Geometry *geometry=NULL);
-	static std::auto_ptr<Operator> New(const double rate, const ReactionEquation& eq, Geometry *geometry=NULL) {
-		return std::auto_ptr<Operator>(new ReactionLattice(rate,eq,geometry));
+	ZeroOrderMolecularReactionLattice(const double rate,const ReactionEquation& eq);
+	static std::auto_ptr<Operator> New(const double rate, const ReactionEquation& eq) {
+		return std::auto_ptr<Operator>(new ZeroOrderMolecularReactionLattice(rate,eq));
+	}
+	void set_geometry(Geometry *g) {
+		geometry = g;
+	}
+	std::auto_ptr<Geometry> get_geometry() {
+		return std::auto_ptr<Geometry>(geometry);
 	}
 protected:
 	virtual void integrate(const double dt);
-	double calc_propensity(int i) {
-		double propensity = 1.0;
+	double calc_mass_action(int i) {
+		double action = 1.0;
 		int beta = 0;
 		//for (auto& rc : rs.lhs) {
 		for (std::vector<ReactionComponent>::iterator rc=eq.lhs.begin();rc!=eq.lhs.end();rc++) {
-			int copy_number = rc->species->copy_numbers[i];
-			beta += rc->multiplier;
-			ASSERT(copy_number >= 0, "copy number is less than zero!!");
-			if (copy_number < rc->multiplier) {
-				propensity = 0.0;
-				break;
+			double concentration;
+			if (rc->compartment_index == SpeciesType::LATTICE) {
+				concentration = rc->species->copy_numbers[i]/rc->species->grid->get_cell_volume(i);
+			} else {
+				ASSERT(rc->compartment_index == SpeciesType::PDE,"SpeciesType cannot be OFF_LATTICE");
+				concentration = rc->species->concentrations[i];
+
 			}
-			for (int k = 1; k < rc->multiplier; ++k) {
-				copy_number *= copy_number-k;
-			}
-			propensity *= copy_number;
+			action *= pow(concentration,rc->multiplier);
 		}
-		propensity *= rate;
-		ASSERT(propensity >= 0, "calculated propensity is less than zero!!");
-		return propensity;
+		ASSERT(action >= 0, "calculated action is less than zero!!");
+		return action;
 	}
 	virtual void print(std::ostream& out) const {
 		out << "\tReaction Lattice with reaction:";

@@ -178,8 +178,6 @@ void python_init(boost::python::list& py_argv) {
 }
 
 
-BOOST_PYTHON_FUNCTION_OVERLOADS(new_uni_reaction_overloads, UniMolecularReaction::New, 2, 3);
-
 
 std::auto_ptr<Operator> new_bi_reaction(const double rate, const ReactionEquation& eq,
 					const double binding,
@@ -499,6 +497,8 @@ BOOST_PYTHON_MODULE(pyTyche) {
 			.def("get_concentration",Species_get_concentration1)
 			.def("get_vtk",&Species::get_vtk)
 			.def("lattice",&Species::lattice)
+			.def("off_lattice",&Species::off_lattice)
+			.def("pde",&Species::pde)
 			.def("get_compartments",Species_get_compartments,
 					"Returns numpy (3-dimensional) array with a copy of the current copy numbers in each compartment")
 			.def("set_compartments",Species_set_compartments,args("input"),
@@ -630,9 +630,20 @@ BOOST_PYTHON_MODULE(pyTyche) {
      */
     def("new_zero_reaction",ZeroOrderMolecularReaction::New);
 
-    def("new_lattice_reaction",ReactionLattice::New);
+    def("new_zero_reaction_lattice",ZeroOrderMolecularReactionLattice::New);
 
-    def("new_uni_reaction",UniMolecularReaction::New, new_uni_reaction_overloads());
+    class_<ZeroOrderMolecularReactionLattice, bases<Operator>, std::auto_ptr<ZeroOrderMolecularReactionLattice> >("ZeroOrderMolecularReactionLattice", boost::python::no_init)
+        			.def("set_geometry", &ZeroOrderMolecularReactionLattice::set_geometry)
+        			.def("get_geometry", &ZeroOrderMolecularReactionLattice::get_geometry);
+
+    def("new_uni_reaction",UniMolecularReaction::New);
+    
+    class_<UniMolecularReaction, bases<Operator>, std::auto_ptr<UniMolecularReaction> >("UniMolecularReaction", boost::python::no_init)
+    				.def("set_geometry", &UniMolecularReaction::set_geometry)
+    				.def("get_geometry", &UniMolecularReaction::get_geometry)
+    				.def("set_init_radius", &UniMolecularReaction::set_init_radius)
+    				.def("get_init_radius", &UniMolecularReaction::get_init_radius);
+  
 
     def("new_bi_reaction",new_bi_reaction, new_bi_reaction_overloads());
     def("new_bi_reaction",new_bi_reaction2, new_bi_reaction_overloads2());
