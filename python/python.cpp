@@ -72,13 +72,31 @@ struct ReactionEquation_from_python_list
 
 		ReactionSide lhs;
 		for (int i = 0; i < num_reactants; ++i) {
-			Species* s = extract<Species*>(PyList_GetItem(reactants,i));
-			lhs = lhs + *s;
+			extract<Species*> get_species(PyList_GetItem(reactants,i));
+			if (get_species.check()) {
+				lhs = lhs + *(get_species());
+			} else {
+				extract<SpeciesType*> get_species_type(PyList_GetItem(reactants,i));
+				if (get_species_type.check()) {
+					lhs = lhs + *(get_species_type());
+				} else {
+					ERROR("cannot convert from python list to reaction equation (for reactant "<<i<<")");
+				}
+			}
 		}
 		ReactionSide rhs;
 		for (int i = 0; i < num_products; ++i) {
-			Species* s = extract<Species*>(PyList_GetItem(products,i));
-			rhs = rhs + *s;
+			extract<Species*> get_species(PyList_GetItem(products,i));
+			if (get_species.check()) {
+				rhs = rhs + *(get_species());
+			} else {
+				extract<SpeciesType*> get_species_type(PyList_GetItem(reactants,i));
+				if (get_species_type.check()) {
+					rhs = rhs + *(get_species_type());
+				} else {
+					ERROR("cannot convert from python list to reaction equation (for product "<<i<<")");
+				}
+			}
 		}
 		// Grab pointer to memory into which to construct the new QString
 		void* storage = (
@@ -480,6 +498,7 @@ BOOST_PYTHON_MODULE(pyTyche) {
 			.def("fill_uniform",Species_fill_uniform_interface)
 			.def("get_concentration",Species_get_concentration1)
 			.def("get_vtk",&Species::get_vtk)
+			.def("lattice",&Species::lattice)
 			.def("get_compartments",Species_get_compartments,
 					"Returns numpy (3-dimensional) array with a copy of the current copy numbers in each compartment")
 			.def("set_compartments",Species_set_compartments,args("input"),
@@ -507,11 +526,10 @@ BOOST_PYTHON_MODULE(pyTyche) {
 
 	def("group",group);
 
-	NSM_scale_diffusion_across
-
 	/*
 	 * Geometry
 	 */
+
 	def("new_xplane",xplane::New);
 	def("new_yplane",yplane::New);
 	def("new_zplane",zplane::New);
@@ -552,7 +570,7 @@ BOOST_PYTHON_MODULE(pyTyche) {
 	/*
 	 * Boundaries
 	 */
-	def("new_coupling_boundary",CouplingBoundNSM_scale_diffusion_acrossary<xplane>::New);
+	def("new_coupling_boundary",CouplingBoundary<xplane>::New);
 	def("new_coupling_boundary",CouplingBoundary<yplane>::New);
 	def("new_coupling_boundary",CouplingBoundary<zplane>::New);
 	def("new_coupling_boundary",CouplingBoundary<xrect>::New);
@@ -612,6 +630,7 @@ BOOST_PYTHON_MODULE(pyTyche) {
      */
     def("new_zero_reaction",ZeroOrderMolecularReaction::New);
 
+    def("new_lattice_reaction",ReactionLattice::New);
 
     def("new_uni_reaction",UniMolecularReaction::New, new_uni_reaction_overloads());
 

@@ -8,24 +8,24 @@
 #include "ReactionEquation.h"
 
 namespace Tyche {
-ReactionComponent operator*(const int mult, Species& s) {
-	return ReactionComponent(mult,s,0);
+ReactionComponent operator*(const int mult, SpeciesType s) {
+	return ReactionComponent(mult,s.s,s.type);
 }
 
 ReactionSide operator+(const ReactionComponent& arg1, const ReactionComponent& arg2) {
 	return ReactionSide(arg1,arg2);
 }
 
-ReactionSide operator+(Species& arg1, const ReactionComponent& arg2) {
-	return ReactionSide(ReactionComponent(1,arg1,0),arg2);
+ReactionSide operator+(SpeciesType arg1, const ReactionComponent& arg2) {
+	return ReactionSide(ReactionComponent(1,arg1.s,arg1.type),arg2);
 }
 
-ReactionSide operator+(const ReactionComponent& arg1, Species& arg2) {
-	return ReactionSide(arg1,ReactionComponent(1,arg2,0));
+ReactionSide operator+(const ReactionComponent& arg1, SpeciesType arg2) {
+	return ReactionSide(arg1,ReactionComponent(1,arg2.s,arg2.type));
 }
 
-ReactionSide operator+(Species& arg1, Species& arg2) {
-	return ReactionSide(ReactionComponent(1,arg1,0),ReactionComponent(1,arg2,0));
+ReactionSide operator+(SpeciesType arg1, SpeciesType arg2) {
+	return ReactionSide(ReactionComponent(1,arg1.s,arg1.type),ReactionComponent(1,arg2.s,arg2.type));
 }
 
 //ReactionSide& operator+(ReactionSide& side, const ReactionComponent& comp) {
@@ -39,13 +39,13 @@ ReactionSide operator+(const ReactionSide side, const ReactionComponent& comp) {
 	return result;
 }
 
-ReactionSide operator+(const ReactionSide side, Species& s) {
+ReactionSide operator+(const ReactionSide side, SpeciesType s) {
 	ReactionSide result(side);
-	result.push_back(ReactionComponent(1,s,0));
+	result.push_back(ReactionComponent(1,s.s,s.type));
 	return result;
 }
 
-//ReactionSide& operator+(ReactionSide& side, Species& s) {
+//ReactionSide& operator+(ReactionSide& side, SpeciesType s) {
 //	side.push_back(ReactionComponent(1,s,0));
 //	return side;
 //}
@@ -62,9 +62,9 @@ ReactionEquation operator>>(const ReactionSide& lhs, const ReactionComponent& rh
 	return ReactionEquation(*newlhs,*newrhs);
 }
 
-ReactionEquation operator>>(const ReactionSide& lhs, Species& rhs) {
+ReactionEquation operator>>(const ReactionSide& lhs, SpeciesType rhs) {
 	ReactionSide* newlhs = new ReactionSide(lhs);
-	ReactionSide* newrhs = new ReactionSide(ReactionComponent(1,rhs,0));
+	ReactionSide* newrhs = new ReactionSide(ReactionComponent(1,rhs.s,rhs.type));
 	return ReactionEquation(*newlhs,*newrhs);
 }
 
@@ -86,9 +86,9 @@ ReactionEquation operator>>(const ReactionComponent& lhs, const ReactionComponen
 	ReactionSide* newrhs = new ReactionSide(rhs);
 	return ReactionEquation(*newlhs,*newrhs);
 }
-ReactionEquation operator>>(const ReactionComponent& lhs, Species& rhs) {
+ReactionEquation operator>>(const ReactionComponent& lhs, SpeciesType rhs) {
 	ReactionSide* newlhs = new ReactionSide(lhs);
-	ReactionSide* newrhs = new ReactionSide(ReactionComponent(1,rhs,0));
+	ReactionSide* newrhs = new ReactionSide(ReactionComponent(1,rhs.s,rhs.type));
 	return ReactionEquation(*newlhs,*newrhs);
 }
 ReactionEquation operator>>(const ReactionComponent& lhs, const int rhs) {
@@ -98,25 +98,25 @@ ReactionEquation operator>>(const ReactionComponent& lhs, const int rhs) {
 	return ReactionEquation(*newlhs,*newrhs);
 }
 
-ReactionEquation operator>>(Species& lhs, const ReactionSide& rhs) {
-	ReactionSide* newlhs = new ReactionSide(ReactionComponent(1,lhs,0));
+ReactionEquation operator>>(SpeciesType lhs, const ReactionSide& rhs) {
+	ReactionSide* newlhs = new ReactionSide(ReactionComponent(1,lhs.s,lhs.type));
 	ReactionSide* newrhs = new ReactionSide(rhs);
 	return ReactionEquation(*newlhs,*newrhs);
 }
 
-ReactionEquation operator>>(Species& lhs, const ReactionComponent& rhs) {
-	ReactionSide* newlhs = new ReactionSide(ReactionComponent(1,lhs,0));
+ReactionEquation operator>>(SpeciesType lhs, const ReactionComponent& rhs) {
+	ReactionSide* newlhs = new ReactionSide(ReactionComponent(1,lhs.s,lhs.type));
 	ReactionSide* newrhs = new ReactionSide(rhs);
 	return ReactionEquation(*newlhs,*newrhs);
 }
-ReactionEquation operator>>(Species& lhs, Species& rhs) {
-	ReactionSide* newlhs = new ReactionSide(ReactionComponent(1,lhs,0));
-	ReactionSide* newrhs = new ReactionSide(ReactionComponent(1,rhs,0));
+ReactionEquation operator>>(SpeciesType lhs, SpeciesType rhs) {
+	ReactionSide* newlhs = new ReactionSide(ReactionComponent(1,lhs.s,lhs.type));
+	ReactionSide* newrhs = new ReactionSide(ReactionComponent(1,rhs.s,rhs.type));
 	return ReactionEquation(*newlhs,*newrhs);
 }
-ReactionEquation operator>>(Species& lhs, const int rhs) {
+ReactionEquation operator>>(SpeciesType lhs, const int rhs) {
 	ASSERT(rhs==0,"null species is always 0");
-	ReactionSide* newlhs = new ReactionSide(ReactionComponent(1,lhs,0));
+	ReactionSide* newlhs = new ReactionSide(ReactionComponent(1,lhs.s,lhs.type));
 	ReactionSide* newrhs = new ReactionSide();
 	return ReactionEquation(*newlhs,*newrhs);
 }
@@ -134,37 +134,37 @@ ReactionEquation operator>>(const int lhs, const ReactionComponent& rhs) {
 	ReactionSide* newrhs = new ReactionSide(rhs);
 	return ReactionEquation(*newlhs,*newrhs);
 }
-ReactionEquation operator>>(const int lhs, Species& rhs) {
+ReactionEquation operator>>(const int lhs, SpeciesType rhs) {
 	ASSERT(lhs==0,"null species is always 0");
 	ReactionSide* newlhs = new ReactionSide();
-	ReactionSide* newrhs = new ReactionSide(ReactionComponent(1,rhs,0));
+	ReactionSide* newrhs = new ReactionSide(ReactionComponent(1,rhs.s,rhs.type));
 	return ReactionEquation(*newlhs,*newrhs);
 }
 
 
-ReactionEquation unimolecular_reaction(const int i1, Species& s1, const int i2, Species& s2) {
+ReactionEquation unimolecular_reaction(const int i1, SpeciesType s1, const int i2, SpeciesType s2) {
 	ReactionSide* lhs = new ReactionSide();
 	ReactionSide* rhs = new ReactionSide();
-	if (s1.id != null_species.id) {
-		lhs->push_back(ReactionComponent(i1,s1,0.0));
+	if (s1.s->id != null_species.id) {
+		lhs->push_back(ReactionComponent(i1,s1.s,s1.type));
 	}
-	if (s2.id != null_species.id) {
-		rhs->push_back(ReactionComponent(i2,s2,0.0));
+	if (s2.s->id != null_species.id) {
+		rhs->push_back(ReactionComponent(i2,s2.s,s2.type));
 	}
 	return ReactionEquation(*lhs,*rhs);
 }
 
-ReactionEquation bimolecular_reaction(const int i1, Species& s1, const int i2, Species& s2, const int i3, Species& s3) {
+ReactionEquation bimolecular_reaction(const int i1, SpeciesType s1, const int i2, SpeciesType s2, const int i3, SpeciesType s3) {
 	ReactionSide* lhs = new ReactionSide();
 	ReactionSide* rhs = new ReactionSide();
-	if (s1.id == s2.id) {
-		lhs->push_back(ReactionComponent(i1+i2,s1,0.0));
+	if (s1.s->id == s2.s->id) {
+		lhs->push_back(ReactionComponent(i1+i2,s1.s,s1.type));
 	} else {
-		lhs->push_back(ReactionComponent(i1,s1,0.0));
-		lhs->push_back(ReactionComponent(i2,s2,0.0));
+		lhs->push_back(ReactionComponent(i1,s1.s,s1.type));
+		lhs->push_back(ReactionComponent(i2,s2.s,s2.type));
 	}
-	if (s3.id != null_species.id) {
-		rhs->push_back(ReactionComponent(i3,s3,0.0));
+	if (s3.s->id != null_species.id) {
+		rhs->push_back(ReactionComponent(i3,s3.s,s3.type));
 	}
 	return ReactionEquation(*lhs,*rhs);
 }

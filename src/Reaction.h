@@ -101,6 +101,45 @@ private:
 	double total_rate;
 };
 
+class ReactionLattice: public Reaction {
+public:
+	ReactionLattice(const double rate,const ReactionEquation& eq,Geometry *geometry=NULL);
+	static std::auto_ptr<Operator> New(const double rate, const ReactionEquation& eq, Geometry *geometry=NULL) {
+		return std::auto_ptr<Operator>(new ReactionLattice(rate,eq,geometry));
+	}
+protected:
+	virtual void integrate(const double dt);
+	double calc_propensity(int i) {
+		double propensity = 1.0;
+		int beta = 0;
+		//for (auto& rc : rs.lhs) {
+		for (std::vector<ReactionComponent>::iterator rc=eq.lhs.begin();rc!=eq.lhs.end();rc++) {
+			int copy_number = rc->species->copy_numbers[i];
+			beta += rc->multiplier;
+			ASSERT(copy_number >= 0, "copy number is less than zero!!");
+			if (copy_number < rc->multiplier) {
+				propensity = 0.0;
+				break;
+			}
+			for (int k = 1; k < rc->multiplier; ++k) {
+				copy_number *= copy_number-k;
+			}
+			propensity *= copy_number;
+		}
+		propensity *= rate;
+		ASSERT(propensity >= 0, "calculated propensity is less than zero!!");
+		return propensity;
+	}
+	virtual void print(std::ostream& out) const {
+		out << "\tReaction Lattice with reaction:";
+		out << "\t1"<<eq<<" (rate = "<<rate<<")";
+	}
+private:
+	ReactionEquation eq;
+	double rate;
+	Geometry *geometry;
+};
+
 
 
 class BindingReaction: public Reaction {

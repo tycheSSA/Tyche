@@ -26,6 +26,7 @@ void UniMolecularReaction::calculate_probabilities(const double dt) {
 			<<probabilities[n-1]<<")");
 }
 
+
 ReactionSide& UniMolecularReaction::get_random_reaction(const double rand) {
 	const int n_minus_one = probabilities.size()-1;
 	ASSERT((rand < total_probability) && (rand < probabilities[n_minus_one]),"rand is outside allowed range");
@@ -65,6 +66,7 @@ void UniMolecularReaction::integrate(const double dt) {
 	calculate_probabilities(dt);
 	boost::uniform_real<> uni_dist(0.0,1.0);
 	boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni(generator, uni_dist);
+
 	Molecules &mols = get_species()[0]->mols;
 	const int n = mols.size();
 	for (int i = 0; i < n; ++i) {
@@ -78,19 +80,22 @@ void UniMolecularReaction::integrate(const double dt) {
 					0.5*init_radii[0]*sin(angle)*sin(angle2),
 					0.5*init_radii[0]*cos(angle));
 			BOOST_FOREACH(ReactionComponent component, products) {
-				for (int j = 0; j < component.multiplier; ++j) {
-					component.species->mols.add_molecule(mols.r[i] + new_pos,mols.r[i]);
-					new_pos = -new_pos;
-
 #ifdef DEBUG
-					//LOG(2,"adding molecule of species "<<component.species->id);
-					it = count.find(component.species->id);
-					if (it==count.end()) {
-						count.insert(std::pair<int,int>(component.species->id,1));
-					} else {
-						it->second++;
-					}
+				//LOG(2,"adding molecule of species "<<component.species->id);
+				it = count.find(component.species->id);
+				if (it==count.end()) {
+					count.insert(std::pair<int,int>(component.species->id,component.multiplier));
+				} else {
+					it->second += component.multiplier;
+				}
 #endif
+				if (component.compartment_index == SpeciesType::OFF_LATTICE) {
+					for (int j = 0; j < component.multiplier; ++j) {
+						component.species->mols.add_molecule(mols.r[i] + new_pos,mols.r[i]);
+						new_pos = -new_pos;
+					}
+				} else {
+					component.species->copy_numbers[i] += component.multiplier;
 				}
 			}
 			mols.mark_for_deletion(i);
@@ -106,6 +111,74 @@ void UniMolecularReaction::integrate(const double dt) {
 	}
 #endif
 
+}
+
+ReactionLattice::ReactionLattice(const double rate,const ReactionEquation& eq,Geometry *geometry=NULL):
+	geometry(geometry),eq(eq),Reaction(rate) {
+	BOOST_FOREACH(ReactionComponent i, eq.rhs) {
+		CHECK(i.compartment_index == SpeciesType::LATTICE, "Reaction equation lhs is not completely lattice!");
+		this->add_species(*(i.species));
+		CHECK(i.species->grid==get_species()[0]->grid, "LHS species have different grids!");
+	}
+
+
+}
+
+void ReactionLattice::integrate(const double dt) {
+
+#ifdef DEBUG
+	std::map<int,int> count;
+	count[all_species[0]->id] = 0;
+	std::map<int,int>::iterator it;
+#endif
+	boost::uniform_real<> uni_dist(0.0,1.0);
+	boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni(generator, uni_dist);
+	const int n = eq.lhs[0].species->copy_numbers.size();
+	for (int i = 0; i < n; ++i) {
+		if ((geometry != NULL) &&
+				(!geometry.is_in(eq.lhs[0].species->grid->get_cell_centre(i))))
+			continue;
+
+		double propensity = calc_propensity(i);
+
+		boost::poisson_distribution<int> poisson_dist(propensity*dt);
+		boost::variate_generator<base_generator_type&, boost::poisson_distribution<int> > poisson(generator, poisson_dist);
+
+		int nfire = poisson();
+		if (nfire > 0) {
+			BOOST_FOREACH(ReactionComponent component, eq.rhs) {
+				const int nmols = nfire*component.multiplier;
+#ifdef DEBUG
+				//LOG(2,"adding molecule of species "<<component.species->id);
+				it = count.find(component.species->id);
+				if (it==count.end()) {
+					count.insert(std::pair<int,int>(component.species->id,nmols));
+				} else {
+					it->second += nmols;
+				}
+#endif
+				if (component.compartment_index == SpeciesType::OFF_LATTICE) {
+					for (int j = 0; j < nmols; ++j) {
+						component.species->mols.add_molecule(component.species->grid->get_random_point(i));
+					}
+				} else {
+					component.species->copy_numbers[i] += nmols;
+
+				}
+			}
+			BOOST_FOREACH(ReactionComponent component, eq.lhs) {
+				component.species->copy_numbers[i] -= nfire*component.multiplier;
+#ifdef DEBUG
+				count[component.species->id] -= nfire*component.multiplier;
+#endif
+			}
+		}
+	}
+#ifdef DEBUG
+	for (it = count.begin();it!=count.end();it++) {
+		LOG(2,"Created/Deleted "<<it->second<<" molecules of species ("<<it->first<<")");
+	}
+#endif
 }
 
 class bindingreaction_rootf {
