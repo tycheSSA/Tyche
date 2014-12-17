@@ -300,7 +300,6 @@ void Species_set_pde(Species& self,boost::python::numeric::array array) {
 	if (self.grid!=NULL) {
 		Vect3i grid_size = self.grid->get_cells_along_axes();
 		npy_intp size[3] = {grid_size[0],grid_size[1],grid_size[2]};
-
 		CHECK(PyArray_NDIM(in)==3,"Python array dimensions does not match compartments");
 		CHECK((PyArray_DIMS(in)[0]==size[0])&&(PyArray_DIMS(in)[1]==size[1])&&(PyArray_DIMS(in)[2]==size[2]),"shape of Python array dimensions does not match compartments");
 		const StructuredGrid *sgrid = dynamic_cast<const StructuredGrid*>(self.grid);
@@ -313,7 +312,7 @@ void Species_set_pde(Species& self,boost::python::numeric::array array) {
 				}
 			}
 		} else {
-			ERROR("set_compartments not implemented for oct-tree grids");
+			ERROR("set_pde not implemented for oct-tree grids");
 		}
 	}
 }
