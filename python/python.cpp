@@ -76,9 +76,9 @@ struct ReactionEquation_from_python_list
 			if (get_species.check()) {
 				lhs = lhs + *(get_species());
 			} else {
-				extract<SpeciesType*> get_species_type(PyList_GetItem(reactants,i));
+				extract<SpeciesType> get_species_type(PyList_GetItem(reactants,i));
 				if (get_species_type.check()) {
-					lhs = lhs + *(get_species_type());
+					lhs = lhs + (get_species_type());
 				} else {
 					ERROR("cannot convert from python list to reaction equation (for reactant "<<i<<")");
 				}
@@ -90,9 +90,9 @@ struct ReactionEquation_from_python_list
 			if (get_species.check()) {
 				rhs = rhs + *(get_species());
 			} else {
-				extract<SpeciesType*> get_species_type(PyList_GetItem(reactants,i));
+				extract<SpeciesType> get_species_type(PyList_GetItem(products,i));
 				if (get_species_type.check()) {
-					rhs = rhs + *(get_species_type());
+					rhs = rhs + (get_species_type());
 				} else {
 					ERROR("cannot convert from python list to reaction equation (for product "<<i<<")");
 				}
@@ -251,6 +251,64 @@ void Species_set_compartments(Species& self,boost::python::numeric::array array)
 				for (int j = 0; j < grid_size[1]; ++j) {
 					for (int k = 0; k < grid_size[2]; ++k) {
 						self.copy_numbers[sgrid->vect_to_index(i,j,k)] = *((int *)PyArray_GETPTR3(in,i,j,k));
+					}
+				}
+			}
+		} else {
+			ERROR("set_compartments not implemented for oct-tree grids");
+		}
+	}
+}
+
+boost::python::numeric::array Species_get_pde(Species& self) {
+  if (self.grid!=NULL) {
+    Vect3i grid_size = self.grid->get_cells_along_axes();
+    npy_intp size[3] = {grid_size[0],grid_size[1],grid_size[2]};
+    PyObject *out = PyArray_SimpleNew(3, size, NPY_DOUBLE);
+    const StructuredGrid *sgrid = dynamic_cast<const StructuredGrid*>(self.grid);
+    if (sgrid!=NULL) {
+      for (int i = 0; i < grid_size[0]; ++i) {
+	for (int j = 0; j < grid_size[1]; ++j) {
+	  for (int k = 0; k < grid_size[2]; ++k) {
+	    *((double *)PyArray_GETPTR3(out, i, j, k)) = self.concentrations[sgrid->vect_to_index(i,j,k)];
+	  }
+	}
+      }
+    } else {
+      const OctreeGrid *ogrid = dynamic_cast<const OctreeGrid*>(self.grid);
+      for (int i = 0; i < grid_size[0]; ++i) {
+	for (int j = 0; j < grid_size[1]; ++j) {
+	  for (int k = 0; k < grid_size[2]; ++k) {
+	    int num = 0;
+	    for (auto ind : ogrid->get_leaf_indices(Vect3i(i,j,k)))
+	      num += self.concentrations[ind];
+	    *((double *)PyArray_GETPTR3(out, i, j, k)) = num;
+	  }
+	}
+      }
+    }
+
+    boost::python::handle<> handle(out);
+    boost::python::numeric::array arr(handle);
+    return arr;
+  }
+  return boost::python::numeric::array(0);
+}
+
+void Species_set_pde(Species& self,boost::python::numeric::array array) {
+	PyObject *in = array.ptr();
+	if (self.grid!=NULL) {
+		Vect3i grid_size = self.grid->get_cells_along_axes();
+		npy_intp size[3] = {grid_size[0],grid_size[1],grid_size[2]};
+
+		CHECK(PyArray_NDIM(in)==3,"Python array dimensions does not match compartments");
+		CHECK((PyArray_DIMS(in)[0]==size[0])&&(PyArray_DIMS(in)[1]==size[1])&&(PyArray_DIMS(in)[2]==size[2]),"shape of Python array dimensions does not match compartments");
+		const StructuredGrid *sgrid = dynamic_cast<const StructuredGrid*>(self.grid);
+		if (sgrid!=NULL) {
+			for (int i = 0; i < grid_size[0]; ++i) {
+				for (int j = 0; j < grid_size[1]; ++j) {
+					for (int k = 0; k < grid_size[2]; ++k) {
+						self.concentrations[sgrid->vect_to_index(i,j,k)] = *((double *)PyArray_GETPTR3(in,i,j,k));
 					}
 				}
 			}
@@ -486,6 +544,10 @@ BOOST_PYTHON_MODULE(pyTyche) {
 	Vect3_from_python_list<int>();
 	Vect3_from_python_list<bool>();
 	ReactionEquation_from_python_list();
+	
+	class_<SpeciesType>("SpeciesType",boost::python::no_init)
+			;
+
 
 	/*
 	 * Species
@@ -496,6 +558,7 @@ BOOST_PYTHON_MODULE(pyTyche) {
 			.def("fill_uniform",Species_fill_uniform_interface)
 			.def("get_concentration",Species_get_concentration1)
 			.def("get_vtk",&Species::get_vtk)
+			.def("set_grid",&Species::set_grid)
 			.def("lattice",&Species::lattice)
 			.def("off_lattice",&Species::off_lattice)
 			.def("pde",&Species::pde)
@@ -503,6 +566,10 @@ BOOST_PYTHON_MODULE(pyTyche) {
 					"Returns numpy (3-dimensional) array with a copy of the current copy numbers in each compartment")
 			.def("set_compartments",Species_set_compartments,args("input"),
 					"Sets the compartment copy numbers for this species equal to the input numpy array. Note: use NextSubvolumeMethod.reset_all_propensities() to recaculate propensities and next reaction times")
+			.def("get_pde",Species_get_pde,
+					"Returns numpy (3-dimensional) array with a copy of the current pde concentrations in each cell")
+			.def("set_pde",Species_set_pde,args("input"),
+					"Sets the pde concentraionts for this species equal to the input numpy array")
 			.def("get_particles",Species_get_particles)
 			.def(self_ns::str(self_ns::self))
 			;

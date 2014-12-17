@@ -127,8 +127,8 @@ void UniMolecularReaction::integrate(const double dt) {
 
 ZeroOrderMolecularReactionLattice::ZeroOrderMolecularReactionLattice(const double rate,const ReactionEquation& eq):
 	geometry(NULL),eq(eq),Reaction(rate) {
-	BOOST_FOREACH(ReactionComponent i, eq.rhs) {
-		CHECK(i.compartment_index == SpeciesType::LATTICE, "Reaction equation lhs is not completely lattice!");
+	BOOST_FOREACH(ReactionComponent i, eq.lhs) {
+		CHECK(i.compartment_index == SpeciesType::LATTICE || i.compartment_index == SpeciesType::PDE, "Reaction equation lhs is not completely lattice! (compartment_index = "<<i.compartment_index<<")");
 		this->add_species(*(i.species));
 		CHECK(i.species->grid==get_species()[0]->grid, "LHS species have different grids!");
 	}
