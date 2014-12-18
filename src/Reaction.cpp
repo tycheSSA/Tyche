@@ -107,9 +107,11 @@ void UniMolecularReaction::integrate(const double dt) {
 						new_pos = -new_pos;
 					}
 				} else if (component.compartment_index == SpeciesType::LATTICE) {
+					const int index = component.species->grid->get_cell_index(mols.r[i]);
 					component.species->copy_numbers[i] += component.multiplier;
 				} else {
-					component.species->concentrations[i] += component.multiplier/component.species->grid->get_cell_volume(i);
+					const int index = component.species->grid->get_cell_index(mols.r[i]);
+					component.species->concentrations[index] += component.multiplier/component.species->grid->get_cell_volume(index);
 				}
 			}
 			mols.mark_for_deletion(i);

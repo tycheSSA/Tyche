@@ -261,38 +261,38 @@ void Species_set_compartments(Species& self,boost::python::numeric::array array)
 }
 
 boost::python::numeric::array Species_get_pde(Species& self) {
-  if (self.grid!=NULL) {
-    Vect3i grid_size = self.grid->get_cells_along_axes();
-    npy_intp size[3] = {grid_size[0],grid_size[1],grid_size[2]};
-    PyObject *out = PyArray_SimpleNew(3, size, NPY_DOUBLE);
-    const StructuredGrid *sgrid = dynamic_cast<const StructuredGrid*>(self.grid);
-    if (sgrid!=NULL) {
-      for (int i = 0; i < grid_size[0]; ++i) {
-	for (int j = 0; j < grid_size[1]; ++j) {
-	  for (int k = 0; k < grid_size[2]; ++k) {
-	    *((double *)PyArray_GETPTR3(out, i, j, k)) = self.concentrations[sgrid->vect_to_index(i,j,k)];
-	  }
-	}
-      }
-    } else {
-      const OctreeGrid *ogrid = dynamic_cast<const OctreeGrid*>(self.grid);
-      for (int i = 0; i < grid_size[0]; ++i) {
-	for (int j = 0; j < grid_size[1]; ++j) {
-	  for (int k = 0; k < grid_size[2]; ++k) {
-	    int num = 0;
-	    for (auto ind : ogrid->get_leaf_indices(Vect3i(i,j,k)))
-	      num += self.concentrations[ind];
-	    *((double *)PyArray_GETPTR3(out, i, j, k)) = num;
-	  }
-	}
-      }
-    }
+	if (self.grid!=NULL) {
+		Vect3i grid_size = self.grid->get_cells_along_axes();
+		npy_intp size[3] = {grid_size[0],grid_size[1],grid_size[2]};
+		PyObject *out = PyArray_SimpleNew(3, size, NPY_DOUBLE);
+		const StructuredGrid *sgrid = dynamic_cast<const StructuredGrid*>(self.grid);
+		if (sgrid!=NULL) {
+			for (int i = 0; i < grid_size[0]; ++i) {
+				for (int j = 0; j < grid_size[1]; ++j) {
+					for (int k = 0; k < grid_size[2]; ++k) {
+						*((double *)PyArray_GETPTR3(out, i, j, k)) = self.concentrations[sgrid->vect_to_index(i,j,k)];
+					}
+				}
+			}
+		} else {
+			const OctreeGrid *ogrid = dynamic_cast<const OctreeGrid*>(self.grid);
+			for (int i = 0; i < grid_size[0]; ++i) {
+				for (int j = 0; j < grid_size[1]; ++j) {
+					for (int k = 0; k < grid_size[2]; ++k) {
+						int num = 0;
+						for (auto ind : ogrid->get_leaf_indices(Vect3i(i,j,k)))
+							num += self.concentrations[ind];
+						*((double *)PyArray_GETPTR3(out, i, j, k)) = num;
+					}
+				}
+			}
+		}
 
-    boost::python::handle<> handle(out);
-    boost::python::numeric::array arr(handle);
-    return arr;
-  }
-  return boost::python::numeric::array(0);
+		boost::python::handle<> handle(out);
+		boost::python::numeric::array arr(handle);
+		return arr;
+	}
+	return boost::python::numeric::array(0);
 }
 
 void Species_set_pde(Species& self,boost::python::numeric::array array) {
