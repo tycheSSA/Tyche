@@ -48,6 +48,7 @@ protected:
 	virtual void integrate(const double dt);
 	virtual void print(std::ostream& out) const {
 		out << "\tDiffusion";
+		Operator::print(out);
 	}
 	Vect3d calc_step_length(Species &s, const double dt) {
 		return (2.0*s.D*dt).cwiseSqrt();

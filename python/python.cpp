@@ -396,10 +396,13 @@ void BindingReaction_set_state_changed_cb(BindingReaction& self, boost::python::
 
 std::auto_ptr<Operator> group(const boost::python::list& ops) {
 	OperatorList* result = new OperatorList();
-	const int n = len(ops);
+	const int n = boost::python::len(ops);
 	for (int i = 0; i < n; ++i) {
-		Operator *s = extract<Operator*>(ops[i]);
-		result->push_back(s);
+		extract<Operator*> extracted(ops[i]);
+		if (extracted.check()) {
+			Operator *s = extracted();
+			result->push_back(s);
+		}
 	}
 	return std::auto_ptr<Operator>(result);
 }
@@ -607,7 +610,9 @@ BOOST_PYTHON_MODULE(pyTyche) {
 	def("new_zcylinder",zcylinder::New);
 	def("new_vtkGeometry",vtkGeometry::New);
 
-	class_<Geometry, boost::noncopyable, typename std::auto_ptr<Geometry> >("Geometry", boost::python::no_init);
+	class_<Geometry, boost::noncopyable, typename std::auto_ptr<Geometry> >("Geometry", boost::python::no_init)
+					.def(self_ns::str(self_ns::self))
+					;
 
 	class_<xplane, bases<Geometry>,typename std::auto_ptr<xplane> >("Xplane",boost::python::no_init);
 	class_<yplane, bases<Geometry>,typename std::auto_ptr<yplane> >("Yplane",boost::python::no_init);

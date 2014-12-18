@@ -77,7 +77,8 @@ public:
 
 protected:
 	virtual void print(std::ostream& out) const  {
-		out << "\tBoundary at "<< this->geometry;
+		out << " at "<< this->geometry;
+		Operator::print(out);
 	}
 };
 
@@ -269,7 +270,8 @@ protected:
 
 	virtual void integrate(const double dt);
 	virtual void print(std::ostream& out) const {
-		out << "\tReflective Boundary at "<< this->geometry;
+		out << "\tReflective Boundary";
+		Boundary<T>::print(out);
 	}
 };
 

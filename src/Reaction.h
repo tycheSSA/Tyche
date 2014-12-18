@@ -152,7 +152,6 @@ protected:
 	}
 private:
 	ReactionEquation eq;
-	double rate;
 	Geometry *geometry;
 };
 

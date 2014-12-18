@@ -128,7 +128,11 @@ void Operator::integrate(const double dt) {
 
 }
 void Operator::print(std::ostream& out) const {
-	out << "Default Operator";
+	out << " acting on species:";
+	const int n = all_species.size();
+	for (int i = 0; i < n; ++i) {
+		out <<" "<<*(all_species[i]);
+	}
 }
 
 

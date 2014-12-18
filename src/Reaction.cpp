@@ -24,9 +24,11 @@ void UniMolecularReaction::calculate_probabilities(const Vect3d pos,const double
 		probabilities[i] = total_rate;
 	}
 	total_probability = (1.0-exp(-dt*total_rate));
-	const double ratio = total_probability/total_rate;
-	for (int i = 0; i < n; ++i) {
-		probabilities[i] *= ratio;
+	if (total_rate != 0) {
+		const double ratio = total_probability/total_rate;
+		for (int i = 0; i < n; ++i) {
+			probabilities[i] *= ratio;
+		}
 	}
 	ASSERT(probabilities[n-1]==total_probability,
 			"total_probability = "<<total_probability<<" should be equal to last entry of cummulative sum (="
@@ -146,16 +148,19 @@ void ZeroOrderMolecularReactionLattice::integrate(const double dt) {
 	boost::uniform_real<> uni_dist(0.0,1.0);
 	boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni(generator, uni_dist);
 	const int n = eq.lhs[0].species->copy_numbers.size();
+	//std::cout <<"running ZeroOrderMolecularReactionLattice"<<std::endl;
 	for (int i = 0; i < n; ++i) {
 		if ((geometry != NULL) &&
 				(!geometry->is_in(eq.lhs[0].species->grid->get_cell_centre(i))))
 			continue;
 
 		const double cell_volume = eq.lhs[0].species->grid->get_cell_volume(i);
+		//std::cout << "mass action for cell "<<i<<" is "<<calc_mass_action(i)<<" rate = "<<rate<<" cell volume = "<<cell_volume<<std::endl;
 		boost::poisson_distribution<int> poisson_dist(rate*cell_volume*calc_mass_action(i)*dt);
 		boost::variate_generator<base_generator_type&, boost::poisson_distribution<int> > poisson(generator, poisson_dist);
 
 		const int nfire = poisson();
+		//std::cout <<" firing "<<nfire<<" reactions"<<std::endl;
 		if (nfire > 0) {
 			BOOST_FOREACH(ReactionComponent component, eq.rhs) {
 				const int nmols = nfire*component.multiplier;
@@ -170,7 +175,9 @@ void ZeroOrderMolecularReactionLattice::integrate(const double dt) {
 #endif
 				if (component.compartment_index == SpeciesType::OFF_LATTICE) {
 					for (int j = 0; j < nmols; ++j) {
-						component.species->mols.add_molecule(component.species->grid->get_random_point(i));
+						const Vect3d newpos = component.species->grid->get_random_point(i);
+						if ((newpos[0]<0)) std::cout <<newpos<<std::endl;
+						component.species->mols.add_molecule(newpos,component.species->grid->get_cell_centre(i));
 					}
 				} else if (component.compartment_index == SpeciesType::LATTICE) {
 					component.species->copy_numbers[i] += nmols;
