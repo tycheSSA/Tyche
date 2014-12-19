@@ -103,15 +103,30 @@ protected:
 		}
 	}
 private:
-	void calculate_probabilities(const Vect3d pos, const double dt);
+	double calc_mass_action(ReactionEquation& eq, int i) {
+		double action = 1.0;
+		for (std::vector<ReactionComponent>::iterator rc=eq.lhs.begin();rc!=eq.lhs.end();rc++) {
+			if (rc->compartment_index == SpeciesType::LATTICE) {
+				action *= pow(rc->species->copy_numbers[i]/rc->species->grid->get_cell_volume(i)
+								,rc->multiplier);
+			} else if (rc->compartment_index == SpeciesType::PDE) {
+				action *= pow(rc->species->concentrations[i]
+												,rc->multiplier);
+			}
+		}
+		ASSERT(action >= 0, "calculated action is less than zero!!");
+		return action;
+	}
+	void calculate_probabilities(const int cell_index, const Vect3d pos, const double dt);
 	ReactionSide& get_random_reaction(const double rand);
-	std::vector<ReactionSide> product_list;
+	std::vector<ReactionEquation> eqs;
 	std::vector<double> probabilities;
 	std::vector<double> rates;
 	std::vector<double> init_radii;
 	std::vector<Geometry *> geometries;
 	double total_probability;
 	double total_rate;
+	std::vector<bool> do_mass_action;
 };
 
 class ZeroOrderMolecularReactionLattice: public Reaction {
@@ -130,18 +145,17 @@ protected:
 	virtual void integrate(const double dt);
 	double calc_mass_action(int i) {
 		double action = 1.0;
-		int beta = 0;
 		//for (auto& rc : rs.lhs) {
 		for (std::vector<ReactionComponent>::iterator rc=eq.lhs.begin();rc!=eq.lhs.end();rc++) {
-			double concentration;
 			if (rc->compartment_index == SpeciesType::LATTICE) {
 				concentration = rc->species->copy_numbers[i]/rc->species->grid->get_cell_volume(i);
+				action *= pow(rc->species->copy_numbers[i]/rc->species->grid->get_cell_volume(i)
+												,rc->multiplier);
 			} else {
 				ASSERT(rc->compartment_index == SpeciesType::PDE,"SpeciesType cannot be OFF_LATTICE");
-				concentration = rc->species->concentrations[i];
-
+				action *= pow(rc->species->concentrations[i]
+												,rc->multiplier);
 			}
-			action *= pow(concentration,rc->multiplier);
 		}
 		ASSERT(action >= 0, "calculated action is less than zero!!");
 		return action;

@@ -14,12 +14,16 @@ extern "C" {
 #include <boost/math/tools/roots.hpp>
 
 namespace Tyche {
-void UniMolecularReaction::calculate_probabilities(const Vect3d pos,const double dt) {
+void UniMolecularReaction::calculate_probabilities(const int cell_index, const Vect3d pos,const double dt) {
 	total_rate = 0;
 	const int n = probabilities.size();
 	for (int i = 0; i < n; ++i) {
 		if ((geometries[i] == NULL) || (geometries[i]->is_in(pos))) {
-			total_rate += rates[i];
+			if (do_mass_action[i]) {
+				total_rate += rates[i]*calc_mass_action(eqs[i],cell_index);
+			} else {
+				total_rate += rates[i];
+			}
 		}
 		probabilities[i] = total_rate;
 	}
@@ -46,26 +50,34 @@ ReactionSide& UniMolecularReaction::get_random_reaction(const double rand) {
 }
 
 UniMolecularReaction::UniMolecularReaction(const double rate,const ReactionEquation& eq):Reaction(rate) {
-	CHECK((eq.lhs.size()==1) && (eq.lhs[0].multiplier == 1), "Reaction equation "<<eq<<" is not unimolecular!");
-	this->add_species(*(eq.lhs[0].species));
-	product_list.push_back(eq.rhs);
-	probabilities.push_back(0);
-	init_radii.push_back(0);
-	geometries.push_back(NULL);
-	total_rate = rate;
-	rates.push_back(rate);
+	add_reaction(rate,eq);
 };
 
 size_t UniMolecularReaction::add_reaction(const double rate, const ReactionEquation& eq) {
-		CHECK((eq.lhs.size()==1) && (eq.lhs[0].multiplier == 1), "Reaction equation is not unimolecular!");
-		CHECK(eq.lhs[0].species == get_species()[0], "Reactant is different from previous equation");
-		product_list.push_back(eq.rhs);
-		probabilities.push_back(0);
-		rates.push_back(rate);
-		init_radii.push_back(0);
-		total_rate += rate;
-		return init_radii.size()-1;
+	bool has_any_offlattice_reactant = false;
+	bool has_any_non_offlattice_reactants = false;
+	BOOST_FOREACH(ReactionComponent i, eq.lhs) {
+		CHECK((i.compartment_index == SpeciesType::LATTICE && !has_any_offlattice_reactant)
+				|| i.compartment_index == SpeciesType::LATTICE
+				|| i.compartment_index == SpeciesType::PDE
+				,
+				"Reaction equation lhs has more than one off-lattice species! (compartment_index = "<<i.compartment_index<<")");
+		if (i.compartment_index == SpeciesType::OFF_LATTICE) {
+			this->add_species(*(i.species));
+		}
+		has_any_non_offlattice_reactants |= i.compartment_index == SpeciesType::LATTICE
+				|| i.compartment_index == SpeciesType::PDE;
+		has_any_offlattice_reactant |= i.compartment_index == SpeciesType::OFF_LATTICE;
+		CHECK(i.species->grid==get_species()[0]->grid, "LHS species have different grids!");
 	}
+	eqs.push_back(eq);
+	geometries.push_back(NULL);
+	probabilities.push_back(0);
+	rates.push_back(rate);
+	init_radii.push_back(0);
+	total_rate += rate;
+	return init_radii.size()-1;
+}
 
 void UniMolecularReaction::integrate(const double dt) {
 
@@ -81,7 +93,8 @@ void UniMolecularReaction::integrate(const double dt) {
 	Molecules &mols = get_species()[0]->mols;
 	const int n = mols.size();
 	for (int i = 0; i < n; ++i) {
-		calculate_probabilities(mols.r[i], dt);
+		const int cell_index = get_species()[0]->grid->get_cell_index(mols.r[i]);
+		calculate_probabilities(cell_index,mols.r[i], dt);
 		//if (mols.saved_index[i] == SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE) continue;
 		const double rand = uni();
 		if (rand < total_probability) {
@@ -107,11 +120,9 @@ void UniMolecularReaction::integrate(const double dt) {
 						new_pos = -new_pos;
 					}
 				} else if (component.compartment_index == SpeciesType::LATTICE) {
-					const int index = component.species->grid->get_cell_index(mols.r[i]);
-					component.species->copy_numbers[i] += component.multiplier;
+					component.species->copy_numbers[cell_index] += component.multiplier;
 				} else {
-					const int index = component.species->grid->get_cell_index(mols.r[i]);
-					component.species->concentrations[index] += component.multiplier/component.species->grid->get_cell_volume(index);
+					component.species->concentrations[cell_index] += component.multiplier/component.species->grid->get_cell_volume(cell_index);
 				}
 			}
 			mols.mark_for_deletion(i);

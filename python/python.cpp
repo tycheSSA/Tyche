@@ -202,7 +202,7 @@ std::auto_ptr<Operator> new_bi_reaction2(const double rate, const ReactionEquati
 BOOST_PYTHON_FUNCTION_OVERLOADS(new_bi_reaction_overloads2, new_bi_reaction2, 6, 7);
 
 
-boost::python::numeric::array Species_get_compartments(Species& self) {
+boost::python::numeric::array Species_get_lattice(Species& self) {
   if (self.grid!=NULL) {
     Vect3i grid_size = self.grid->get_cells_along_axes();
     npy_intp size[3] = {grid_size[0],grid_size[1],grid_size[2]};
@@ -237,7 +237,7 @@ boost::python::numeric::array Species_get_compartments(Species& self) {
   return boost::python::numeric::array(0);
 }
 
-void Species_set_compartments(Species& self,boost::python::numeric::array array) {
+void Species_set_lattice(Species& self,boost::python::numeric::array array) {
 	PyObject *in = array.ptr();
 	if (self.grid!=NULL) {
 		Vect3i grid_size = self.grid->get_cells_along_axes();
@@ -564,9 +564,9 @@ BOOST_PYTHON_MODULE(pyTyche) {
 			.def("lattice",&Species::lattice)
 			.def("off_lattice",&Species::off_lattice)
 			.def("pde",&Species::pde)
-			.def("get_compartments",Species_get_compartments,
+			.def("get_lattice",Species_get_lattice,
 					"Returns numpy (3-dimensional) array with a copy of the current copy numbers in each compartment")
-			.def("set_compartments",Species_set_compartments,args("input"),
+			.def("set_lattice",Species_set_lattice,args("input"),
 					"Sets the compartment copy numbers for this species equal to the input numpy array. Note: use NextSubvolumeMethod.reset_all_propensities() to recaculate propensities and next reaction times")
 			.def("get_pde",Species_get_pde,
 					"Returns numpy (3-dimensional) array with a copy of the current pde concentrations in each cell")
