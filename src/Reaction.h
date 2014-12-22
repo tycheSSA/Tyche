@@ -98,8 +98,8 @@ protected:
 	virtual void integrate(const double dt);
 	virtual void print(std::ostream& out) const {
 		out << "\tUnimolecular Reaction with reactions:";
-		BOOST_FOREACH(ReactionSide side, product_list) {
-			out << "\t1("<<get_species()[0]->id<<") >> "<<side<<" (rate = "<<rate<<")";
+		BOOST_FOREACH(ReactionEquation eq, eqs) {
+			out << eq<<" (rate = "<<rate<<")";
 		}
 	}
 private:
@@ -118,7 +118,7 @@ private:
 		return action;
 	}
 	void calculate_probabilities(const int cell_index, const Vect3d pos, const double dt);
-	ReactionSide& get_random_reaction(const double rand);
+	ReactionEquation& get_random_reaction(const double rand);
 	std::vector<ReactionEquation> eqs;
 	std::vector<double> probabilities;
 	std::vector<double> rates;
@@ -148,7 +148,6 @@ protected:
 		//for (auto& rc : rs.lhs) {
 		for (std::vector<ReactionComponent>::iterator rc=eq.lhs.begin();rc!=eq.lhs.end();rc++) {
 			if (rc->compartment_index == SpeciesType::LATTICE) {
-				concentration = rc->species->copy_numbers[i]/rc->species->grid->get_cell_volume(i);
 				action *= pow(rc->species->copy_numbers[i]/rc->species->grid->get_cell_volume(i)
 												,rc->multiplier);
 			} else {

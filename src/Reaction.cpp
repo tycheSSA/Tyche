@@ -40,13 +40,13 @@ void UniMolecularReaction::calculate_probabilities(const int cell_index, const V
 }
 
 
-ReactionSide& UniMolecularReaction::get_random_reaction(const double rand) {
+ReactionEquation& UniMolecularReaction::get_random_reaction(const double rand) {
 	const int n_minus_one = probabilities.size()-1;
 	ASSERT((rand < total_probability) && (rand < probabilities[n_minus_one]),"rand is outside allowed range");
 	for (int i = 0; i < n_minus_one; ++i) {
-		if (rand < probabilities[i]) return product_list[i];
+		if (rand < probabilities[i]) return eqs[i];
 	}
-	return product_list[n_minus_one];
+	return eqs[n_minus_one];
 }
 
 UniMolecularReaction::UniMolecularReaction(const double rate,const ReactionEquation& eq):Reaction(rate) {
@@ -57,7 +57,7 @@ size_t UniMolecularReaction::add_reaction(const double rate, const ReactionEquat
 	bool has_any_offlattice_reactant = false;
 	bool has_any_non_offlattice_reactants = false;
 	BOOST_FOREACH(ReactionComponent i, eq.lhs) {
-		CHECK((i.compartment_index == SpeciesType::LATTICE && !has_any_offlattice_reactant)
+		CHECK((i.compartment_index == SpeciesType::OFF_LATTICE && !has_any_offlattice_reactant)
 				|| i.compartment_index == SpeciesType::LATTICE
 				|| i.compartment_index == SpeciesType::PDE
 				,
@@ -73,6 +73,7 @@ size_t UniMolecularReaction::add_reaction(const double rate, const ReactionEquat
 	eqs.push_back(eq);
 	geometries.push_back(NULL);
 	probabilities.push_back(0);
+	do_mass_action.push_back(has_any_non_offlattice_reactants);
 	rates.push_back(rate);
 	init_radii.push_back(0);
 	total_rate += rate;
@@ -95,10 +96,11 @@ void UniMolecularReaction::integrate(const double dt) {
 	for (int i = 0; i < n; ++i) {
 		const int cell_index = get_species()[0]->grid->get_cell_index(mols.r[i]);
 		calculate_probabilities(cell_index,mols.r[i], dt);
+
 		//if (mols.saved_index[i] == SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE) continue;
 		const double rand = uni();
 		if (rand < total_probability) {
-			ReactionSide& products = get_random_reaction(rand);
+			ReactionSide& products = get_random_reaction(rand).rhs;
 			const double angle = 2.0*PI*uni();
 			const double angle2 = 2.0*PI*uni();
 			Vect3d new_pos(0.5*init_radii[0]*sin(angle)*cos(angle2),
@@ -168,48 +170,50 @@ void ZeroOrderMolecularReactionLattice::integrate(const double dt) {
 			continue;
 
 		const double cell_volume = eq.lhs[0].species->grid->get_cell_volume(i);
+		const double mass_action = calc_mass_action(i);
+		if (mass_action == 0) continue;
 		//std::cout << "mass action for cell "<<i<<" is "<<calc_mass_action(i)<<" rate = "<<rate<<" cell volume = "<<cell_volume<<std::endl;
 		boost::poisson_distribution<int> poisson_dist(rate*cell_volume*calc_mass_action(i)*dt);
 		boost::variate_generator<base_generator_type&, boost::poisson_distribution<int> > poisson(generator, poisson_dist);
 
 		const int nfire = poisson();
+		if (nfire == 0) continue;
 		//std::cout <<" firing "<<nfire<<" reactions"<<std::endl;
-		if (nfire > 0) {
-			BOOST_FOREACH(ReactionComponent component, eq.rhs) {
-				const int nmols = nfire*component.multiplier;
+		BOOST_FOREACH(ReactionComponent component, eq.rhs) {
+			const int nmols = nfire*component.multiplier;
 #ifdef DEBUG
-				//LOG(2,"adding molecule of species "<<component.species->id);
-				it = count.find(component.species->id);
-				if (it==count.end()) {
-					count.insert(std::pair<int,int>(component.species->id,nmols));
-				} else {
-					it->second += nmols;
-				}
-#endif
-				if (component.compartment_index == SpeciesType::OFF_LATTICE) {
-					for (int j = 0; j < nmols; ++j) {
-						const Vect3d newpos = component.species->grid->get_random_point(i);
-						if ((newpos[0]<0)) std::cout <<newpos<<std::endl;
-						component.species->mols.add_molecule(newpos,component.species->grid->get_cell_centre(i));
-					}
-				} else if (component.compartment_index == SpeciesType::LATTICE) {
-					component.species->copy_numbers[i] += nmols;
-				} else {
-					component.species->concentrations[i] += nmols/cell_volume;
-				}
+			//LOG(2,"adding molecule of species "<<component.species->id);
+			it = count.find(component.species->id);
+			if (it==count.end()) {
+				count.insert(std::pair<int,int>(component.species->id,nmols));
+			} else {
+				it->second += nmols;
 			}
-//			BOOST_FOREACH(ReactionComponent component, eq.lhs) {
-//				const int nmols = nfire*component.multiplier;
-//				if (component.compartment_index == SpeciesType::LATTICE) {
-//					component.species->copy_numbers[i] -= nmols;
-//				} else {
-//					component.species->concentrations[i] -= nmols/component.species->grid->get_cell_volume(i);
-//				}
-//#ifdef DEBUG
-//				count[component.species->id] -= nmols;
-//#endif
-//			}
+#endif
+			if (component.compartment_index == SpeciesType::OFF_LATTICE) {
+				for (int j = 0; j < nmols; ++j) {
+					const Vect3d newpos = component.species->grid->get_random_point(i);
+					if ((newpos[0]<0)) std::cout <<newpos<<std::endl;
+					component.species->mols.add_molecule(newpos,component.species->grid->get_cell_centre(i));
+				}
+			} else if (component.compartment_index == SpeciesType::LATTICE) {
+				component.species->copy_numbers[i] += nmols;
+			} else {
+				component.species->concentrations[i] += nmols/cell_volume;
+			}
 		}
+		//			BOOST_FOREACH(ReactionComponent component, eq.lhs) {
+		//				const int nmols = nfire*component.multiplier;
+		//				if (component.compartment_index == SpeciesType::LATTICE) {
+		//					component.species->copy_numbers[i] -= nmols;
+		//				} else {
+		//					component.species->concentrations[i] -= nmols/component.species->grid->get_cell_volume(i);
+		//				}
+		//#ifdef DEBUG
+		//				count[component.species->id] -= nmols;
+		//#endif
+		//			}
+
 	}
 #ifdef DEBUG
 	for (it = count.begin();it!=count.end();it++) {
@@ -894,7 +898,7 @@ void BiMolecularReaction<T>::report_dt_suitability(const double dt) {
 }
 
 void UniMolecularReaction::report_dt_suitability(const Vect3d pos, const double dt) {
-	calculate_probabilities(pos,dt);
+	calculate_probabilities(0,pos,dt);
 	LOG(1,"probability of reaction (per timestep) = "<<
 			     total_probability);
 }
