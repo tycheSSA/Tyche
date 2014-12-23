@@ -67,8 +67,9 @@ void Operator::operator ()(const double dt) {
 
 double Operator::integrate_for_time(const double itime, const double dt) {
 	const int timesteps = itime/dt;
+	const double dt_actual = itime/timesteps;
 	for (int i = 0; i < timesteps; ++i) {
-		(*this)(dt);
+		(*this)(dt_actual);
 	}
 	return time;
 }

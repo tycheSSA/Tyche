@@ -143,8 +143,6 @@ void Species::get_concentrations(const StructuredGrid& calc_grid,
 	for (int i = 0; i < nmol; ++i) {
 		if (calc_grid.is_in(mols.r[i])) {
 			mol_concentrations[calc_grid.get_cell_index(mols.r[i])]++;
-		} else {
-			std::cout <<"missing mol at "<<mols.r[i]<<" from "<<mols.r0[i]<<std::endl;
 		}
 	}
 
