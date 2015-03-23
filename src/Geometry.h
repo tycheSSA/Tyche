@@ -187,7 +187,7 @@ public:
 		return std::auto_ptr<AxisAlignedPlane<DIM> >(new AxisAlignedPlane<DIM>(coord,normal));
 	}
 
-	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, Vect3d *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
+	bool lineXsurface(const Vect3d& p1, const Vect3d& p2, double *intersect_point=NULL, Vect3d *intersect_normal=NULL) const {
 		if (((p2[DIM]>=coord)&&(p1[DIM]<coord))||((p2[DIM]<coord)&&(p1[DIM]>=coord))) {
 			if (intersect_point != NULL) {
 				(*intersect_point) = (coord-p1[DIM])/(p2[DIM]-p1[DIM]);
