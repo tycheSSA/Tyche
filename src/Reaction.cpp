@@ -14,46 +14,71 @@ extern "C" {
 #include <boost/math/tools/roots.hpp>
 
 namespace Tyche {
-void UniMolecularReaction::calculate_probabilities(const double dt) {
-	total_probability = (1.0-exp(-dt*total_rate));
+void UniMolecularReaction::calculate_probabilities(const int cell_index, const Vect3d pos,const double dt) {
+	total_rate = 0;
 	const int n = probabilities.size();
-	probabilities[0] = (rates[0]/total_rate)*total_probability;
-	for (int i = 1; i < n; ++i) {
-		probabilities[i] = probabilities[i-1] + (rates[i]/total_rate)*total_probability;
+	for (int i = 0; i < n; ++i) {
+		if ((geometries[i] == NULL) || (geometries[i]->is_in(pos))) {
+			if (do_mass_action[i]) {
+				total_rate += rates[i]*calc_mass_action(eqs[i],cell_index);
+			} else {
+				total_rate += rates[i];
+			}
+		}
+		probabilities[i] = total_rate;
+	}
+	total_probability = (1.0-exp(-dt*total_rate));
+	if (total_rate != 0) {
+		const double ratio = total_probability/total_rate;
+		for (int i = 0; i < n; ++i) {
+			probabilities[i] *= ratio;
+		}
 	}
 	ASSERT(probabilities[n-1]==total_probability,
 			"total_probability = "<<total_probability<<" should be equal to last entry of cummulative sum (="
 			<<probabilities[n-1]<<")");
 }
 
-ReactionSide& UniMolecularReaction::get_random_reaction(const double rand) {
+
+ReactionEquation& UniMolecularReaction::get_random_reaction(const double rand) {
 	const int n_minus_one = probabilities.size()-1;
 	ASSERT((rand < total_probability) && (rand < probabilities[n_minus_one]),"rand is outside allowed range");
 	for (int i = 0; i < n_minus_one; ++i) {
-		if (rand < probabilities[i]) return product_list[i];
+		if (rand < probabilities[i]) return eqs[i];
 	}
-	return product_list[n_minus_one];
+	return eqs[n_minus_one];
 }
 
-UniMolecularReaction::UniMolecularReaction(const double rate,const ReactionEquation& eq, const double init_radius):Reaction(rate) {
-	CHECK((eq.lhs.size()==1) && (eq.lhs[0].multiplier == 1), "Reaction equation "<<eq<<" is not unimolecular!");
-	this->add_species(*(eq.lhs[0].species));
-	product_list.push_back(eq.rhs);
-	probabilities.push_back(0);
-	init_radii.push_back(init_radius);
-	total_rate = rate;
-	rates.push_back(rate);
+UniMolecularReaction::UniMolecularReaction(const double rate,const ReactionEquation& eq):Reaction(rate) {
+	add_reaction(rate,eq);
 };
 
-void UniMolecularReaction::add_reaction(const double rate, const ReactionEquation& eq, const double init_radius) {
-		CHECK((eq.lhs.size()==1) && (eq.lhs[0].multiplier == 1), "Reaction equation is not unimolecular!");
-		CHECK(eq.lhs[0].species == get_species()[0], "Reactant is different from previous equation");
-		product_list.push_back(eq.rhs);
-		probabilities.push_back(0);
-		rates.push_back(rate);
-		init_radii.push_back(init_radius);
-		total_rate += rate;
+size_t UniMolecularReaction::add_reaction(const double rate, const ReactionEquation& eq) {
+	bool has_any_offlattice_reactant = false;
+	bool has_any_non_offlattice_reactants = false;
+	BOOST_FOREACH(ReactionComponent i, eq.lhs) {
+		CHECK((i.compartment_index == SpeciesType::OFF_LATTICE && !has_any_offlattice_reactant)
+				|| i.compartment_index == SpeciesType::LATTICE
+				|| i.compartment_index == SpeciesType::PDE
+				,
+				"Reaction equation lhs has more than one off-lattice species! (compartment_index = "<<i.compartment_index<<")");
+		if (i.compartment_index == SpeciesType::OFF_LATTICE) {
+			this->add_species(*(i.species));
+		}
+		has_any_non_offlattice_reactants |= i.compartment_index == SpeciesType::LATTICE
+				|| i.compartment_index == SpeciesType::PDE;
+		has_any_offlattice_reactant |= i.compartment_index == SpeciesType::OFF_LATTICE;
+		CHECK(i.species->grid==get_species()[0]->grid, "LHS species have different grids!");
 	}
+	eqs.push_back(eq);
+	geometries.push_back(NULL);
+	probabilities.push_back(0);
+	do_mass_action.push_back(has_any_non_offlattice_reactants);
+	rates.push_back(rate);
+	init_radii.push_back(0);
+	total_rate += rate;
+	return init_radii.size()-1;
+}
 
 void UniMolecularReaction::integrate(const double dt) {
 
@@ -62,35 +87,44 @@ void UniMolecularReaction::integrate(const double dt) {
 	count[all_species[0]->id] = 0;
 	std::map<int,int>::iterator it;
 #endif
-	calculate_probabilities(dt);
+	;
 	boost::uniform_real<> uni_dist(0.0,1.0);
 	boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni(generator, uni_dist);
+
 	Molecules &mols = get_species()[0]->mols;
 	const int n = mols.size();
 	for (int i = 0; i < n; ++i) {
+		const int cell_index = get_species()[0]->grid->get_cell_index(mols.r[i]);
+		calculate_probabilities(cell_index,mols.r[i], dt);
+
 		//if (mols.saved_index[i] == SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE) continue;
 		const double rand = uni();
 		if (rand < total_probability) {
-			ReactionSide& products = get_random_reaction(rand);
+			ReactionSide& products = get_random_reaction(rand).rhs;
 			const double angle = 2.0*PI*uni();
 			const double angle2 = 2.0*PI*uni();
 			Vect3d new_pos(0.5*init_radii[0]*sin(angle)*cos(angle2),
 					0.5*init_radii[0]*sin(angle)*sin(angle2),
 					0.5*init_radii[0]*cos(angle));
 			BOOST_FOREACH(ReactionComponent component, products) {
-				for (int j = 0; j < component.multiplier; ++j) {
-					component.species->mols.add_molecule(mols.r[i] + new_pos,mols.r[i]);
-					new_pos = -new_pos;
-
 #ifdef DEBUG
-					//LOG(2,"adding molecule of species "<<component.species->id);
-					it = count.find(component.species->id);
-					if (it==count.end()) {
-						count.insert(std::pair<int,int>(component.species->id,1));
-					} else {
-						it->second++;
-					}
+				//LOG(2,"adding molecule of species "<<component.species->id);
+				it = count.find(component.species->id);
+				if (it==count.end()) {
+					count.insert(std::pair<int,int>(component.species->id,component.multiplier));
+				} else {
+					it->second += component.multiplier;
+				}
 #endif
+				if (component.compartment_index == SpeciesType::OFF_LATTICE) {
+					for (int j = 0; j < component.multiplier; ++j) {
+						component.species->mols.add_molecule(mols.r[i] + new_pos,mols.r[i]);
+						new_pos = -new_pos;
+					}
+				} else if (component.compartment_index == SpeciesType::LATTICE) {
+					component.species->copy_numbers[cell_index] += component.multiplier;
+				} else {
+					component.species->concentrations[cell_index] += component.multiplier/component.species->grid->get_cell_volume(cell_index);
 				}
 			}
 			mols.mark_for_deletion(i);
@@ -106,6 +140,86 @@ void UniMolecularReaction::integrate(const double dt) {
 	}
 #endif
 
+}
+
+ZeroOrderMolecularReactionLattice::ZeroOrderMolecularReactionLattice(const double rate,const ReactionEquation& eq):
+	geometry(NULL),eq(eq),Reaction(rate) {
+	BOOST_FOREACH(ReactionComponent i, eq.lhs) {
+		CHECK(i.compartment_index == SpeciesType::LATTICE || i.compartment_index == SpeciesType::PDE, "Reaction equation lhs is not completely lattice! (compartment_index = "<<i.compartment_index<<")");
+		this->add_species(*(i.species));
+		CHECK(i.species->grid==get_species()[0]->grid, "LHS species have different grids!");
+	}
+
+
+}
+
+void ZeroOrderMolecularReactionLattice::integrate(const double dt) {
+
+#ifdef DEBUG
+	std::map<int,int> count;
+	count[all_species[0]->id] = 0;
+	std::map<int,int>::iterator it;
+#endif
+	boost::uniform_real<> uni_dist(0.0,1.0);
+	boost::variate_generator<base_generator_type&, boost::uniform_real<> > uni(generator, uni_dist);
+	const int n = eq.lhs[0].species->copy_numbers.size();
+	//std::cout <<"running ZeroOrderMolecularReactionLattice"<<std::endl;
+	for (int i = 0; i < n; ++i) {
+		if ((geometry != NULL) &&
+				(!geometry->is_in(eq.lhs[0].species->grid->get_cell_centre(i))))
+			continue;
+
+		const double cell_volume = eq.lhs[0].species->grid->get_cell_volume(i);
+		const double mass_action = calc_mass_action(i);
+		if (mass_action == 0) continue;
+		//std::cout << "mass action for cell "<<i<<" is "<<calc_mass_action(i)<<" rate = "<<rate<<" cell volume = "<<cell_volume<<std::endl;
+		boost::poisson_distribution<int> poisson_dist(rate*cell_volume*calc_mass_action(i)*dt);
+		boost::variate_generator<base_generator_type&, boost::poisson_distribution<int> > poisson(generator, poisson_dist);
+
+		const int nfire = poisson();
+		if (nfire == 0) continue;
+		//std::cout <<" firing "<<nfire<<" reactions"<<std::endl;
+		BOOST_FOREACH(ReactionComponent component, eq.rhs) {
+			const int nmols = nfire*component.multiplier;
+#ifdef DEBUG
+			//LOG(2,"adding molecule of species "<<component.species->id);
+			it = count.find(component.species->id);
+			if (it==count.end()) {
+				count.insert(std::pair<int,int>(component.species->id,nmols));
+			} else {
+				it->second += nmols;
+			}
+#endif
+			if (component.compartment_index == SpeciesType::OFF_LATTICE) {
+				for (int j = 0; j < nmols; ++j) {
+					const Vect3d newpos = component.species->grid->get_random_point(i);
+					if ((newpos[0]<0)) std::cout <<newpos<<std::endl;
+					component.species->mols.add_molecule(newpos,component.species->grid->get_cell_centre(i));
+				}
+			} else if (component.compartment_index == SpeciesType::LATTICE) {
+				component.species->copy_numbers[i] += nmols;
+			} else {
+				component.species->concentrations[i] += nmols/cell_volume;
+			}
+		}
+		//			BOOST_FOREACH(ReactionComponent component, eq.lhs) {
+		//				const int nmols = nfire*component.multiplier;
+		//				if (component.compartment_index == SpeciesType::LATTICE) {
+		//					component.species->copy_numbers[i] -= nmols;
+		//				} else {
+		//					component.species->concentrations[i] -= nmols/component.species->grid->get_cell_volume(i);
+		//				}
+		//#ifdef DEBUG
+		//				count[component.species->id] -= nmols;
+		//#endif
+		//			}
+
+	}
+#ifdef DEBUG
+	for (it = count.begin();it!=count.end();it++) {
+		LOG(2,"Created/Deleted "<<it->second<<" molecules of species ("<<it->first<<")");
+	}
+#endif
 }
 
 class bindingreaction_rootf {
@@ -783,8 +897,8 @@ void BiMolecularReaction<T>::report_dt_suitability(const double dt) {
 	}
 }
 
-void UniMolecularReaction::report_dt_suitability(const double dt) {
-	calculate_probabilities(dt);
+void UniMolecularReaction::report_dt_suitability(const Vect3d pos, const double dt) {
+	calculate_probabilities(0,pos,dt);
 	LOG(1,"probability of reaction (per timestep) = "<<
 			     total_probability);
 }

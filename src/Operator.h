@@ -90,9 +90,9 @@ public:
 	OperatorList(std::initializer_list<Operator*> arg) {
 		for (auto i: arg) {
 			list.push_back(i);
-			for (auto s: i->get_species()) {
-				add_species(*s);
-			}
+//			for (auto s: i->get_species()) {
+//				add_species(*s);
+//			}
 		}
 
 	}
@@ -104,16 +104,16 @@ public:
 
 	void push_back(Operator* const i) {
 		list.push_back(i);
-		for (auto s: i->get_species()) {
-			add_species(*s);
-		}
+//		for (auto s: i->get_species()) {
+//			add_species(*s);
+//		}
 	}
 	void push_back(const OperatorList& i) {
 		for (Operator* j: i.list) {
 			list.push_back(j);
-			for (auto s: j->get_species()) {
-				add_species(*s);
-			}
+//			for (auto s: j->get_species()) {
+//				add_species(*s);
+//			}
 		}
 	}
 

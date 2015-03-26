@@ -72,33 +72,100 @@ private:
 
 class UniMolecularReaction: public Reaction {
 public:
-	UniMolecularReaction(const double rate,const ReactionEquation& eq, const double init_radius=0.0);
+	UniMolecularReaction(const double rate,const ReactionEquation& eq);
 //	UniMolecularReaction(const double rate, const std::vector<Species*>& reactants,const std::vector<Species*>& products, const double init_radius=0.0):Reaction(rate) {
 //		UniMolecularReaction(rate,ReactionSide(reactants)>>ReactionSide(products),init_radius);
 //	}
 
-	static std::auto_ptr<Operator> New(const double rate, const ReactionEquation& eq, const double init_radius=0.0) {
-		return std::auto_ptr<Operator>(new UniMolecularReaction(rate,eq,init_radius));
+	static std::auto_ptr<Operator> New(const double rate, const ReactionEquation& eq) {
+		return std::auto_ptr<Operator>(new UniMolecularReaction(rate,eq));
 	}
-	void add_reaction(const double rate, const ReactionEquation& eq, const double init_radius=0.0);
-	void report_dt_suitability(const double dt);
+	size_t add_reaction(const double rate, const ReactionEquation& eq);
+	void report_dt_suitability(const Vect3d pos, const double dt);
+	void set_geometry(size_t index, Geometry *g) {
+		geometries[index] = g;
+	}
+	std::auto_ptr<Geometry> get_geometry(size_t index) {
+		return std::auto_ptr<Geometry>(geometries[index]);
+	}
+	void set_init_radius(size_t index, double r) {
+		init_radii[index] = r;
+	}
+	double get_init_radius(size_t index) {
+		return init_radii[index];
+	}
 protected:
 	virtual void integrate(const double dt);
 	virtual void print(std::ostream& out) const {
 		out << "\tUnimolecular Reaction with reactions:";
-		BOOST_FOREACH(ReactionSide side, product_list) {
-			out << "\t1("<<get_species()[0]->id<<") >> "<<side<<" (rate = "<<rate<<")";
+		BOOST_FOREACH(ReactionEquation eq, eqs) {
+			out << eq<<" (rate = "<<rate<<")";
 		}
 	}
 private:
-	void calculate_probabilities(const double dt);
-	ReactionSide& get_random_reaction(const double rand);
-	std::vector<ReactionSide> product_list;
+	double calc_mass_action(ReactionEquation& eq, int i) {
+		double action = 1.0;
+		for (std::vector<ReactionComponent>::iterator rc=eq.lhs.begin();rc!=eq.lhs.end();rc++) {
+			if (rc->compartment_index == SpeciesType::LATTICE) {
+				action *= pow(rc->species->copy_numbers[i]/rc->species->grid->get_cell_volume(i)
+								,rc->multiplier);
+			} else if (rc->compartment_index == SpeciesType::PDE) {
+				action *= pow(rc->species->concentrations[i]
+												,rc->multiplier);
+			}
+		}
+		ASSERT(action >= 0, "calculated action is less than zero!!");
+		return action;
+	}
+	void calculate_probabilities(const int cell_index, const Vect3d pos, const double dt);
+	ReactionEquation& get_random_reaction(const double rand);
+	std::vector<ReactionEquation> eqs;
 	std::vector<double> probabilities;
 	std::vector<double> rates;
 	std::vector<double> init_radii;
+	std::vector<Geometry *> geometries;
 	double total_probability;
 	double total_rate;
+	std::vector<bool> do_mass_action;
+};
+
+class ZeroOrderMolecularReactionLattice: public Reaction {
+public:
+	ZeroOrderMolecularReactionLattice(const double rate,const ReactionEquation& eq);
+	static std::auto_ptr<Operator> New(const double rate, const ReactionEquation& eq) {
+		return std::auto_ptr<Operator>(new ZeroOrderMolecularReactionLattice(rate,eq));
+	}
+	void set_geometry(Geometry *g) {
+		geometry = g;
+	}
+	std::auto_ptr<Geometry> get_geometry() {
+		return std::auto_ptr<Geometry>(geometry);
+	}
+protected:
+	virtual void integrate(const double dt);
+	double calc_mass_action(int i) {
+		double action = 1.0;
+		//for (auto& rc : rs.lhs) {
+		for (std::vector<ReactionComponent>::iterator rc=eq.lhs.begin();rc!=eq.lhs.end();rc++) {
+			if (rc->compartment_index == SpeciesType::LATTICE) {
+				action *= pow(rc->species->copy_numbers[i]/rc->species->grid->get_cell_volume(i)
+												,rc->multiplier);
+			} else {
+				ASSERT(rc->compartment_index == SpeciesType::PDE,"SpeciesType cannot be OFF_LATTICE");
+				action *= pow(rc->species->concentrations[i]
+												,rc->multiplier);
+			}
+		}
+		ASSERT(action >= 0, "calculated action is less than zero!!");
+		return action;
+	}
+	virtual void print(std::ostream& out) const {
+		out << "\tReaction Lattice with reaction:";
+		out << "\t1"<<eq<<" (rate = "<<rate<<")";
+	}
+private:
+	ReactionEquation eq;
+	Geometry *geometry;
 };
 
 

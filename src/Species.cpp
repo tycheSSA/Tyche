@@ -139,9 +139,10 @@ void Species::get_concentrations(const StructuredGrid& calc_grid,
 		std::vector<double>& compartment_concentrations) const {
 
 	mol_concentrations.assign(calc_grid.size(),0);
-	BOOST_FOREACH(Vect3d r,mols.r) {
-		if (calc_grid.is_in(r)) {
-			mol_concentrations[calc_grid.get_cell_index(r)]++;
+	const int nmol = mols.size();
+	for (int i = 0; i < nmol; ++i) {
+		if (calc_grid.is_in(mols.r[i])) {
+			mol_concentrations[calc_grid.get_cell_index(mols.r[i])]++;
 		}
 	}
 

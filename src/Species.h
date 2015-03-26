@@ -66,6 +66,19 @@ private:
 
 const int SPECIES_SAVED_INDEX_FOR_NEW_PARTICLE = -1;
 
+class Species;
+
+struct SpeciesType {
+	enum Type {OFF_LATTICE,LATTICE,PDE};
+	SpeciesType(Species *s, enum Type type):
+		s(s),type(type) {}
+	SpeciesType(Species& s):
+		s(&s),type(OFF_LATTICE) {}
+	SpeciesType(Species* s):
+		s(s),type(OFF_LATTICE) {}
+	Species *s;
+	enum Type type;
+};
 
 static const StructuredGrid empty_grid;
 
@@ -93,13 +106,32 @@ public:
 	static std::auto_ptr<Species> New(Vect3d D) {
 		return std::auto_ptr<Species>(new Species(D));
 	}
+
+	SpeciesType lattice() {
+		return SpeciesType(this,SpeciesType::LATTICE);
+	}
+
+	SpeciesType off_lattice() {
+		return SpeciesType(this,SpeciesType::OFF_LATTICE);
+	}
+
+	SpeciesType pde() {
+		return SpeciesType(this,SpeciesType::PDE);
+	}
+
 	void clear() {
 		mols.clear();
-		if (grid!=NULL) copy_numbers.assign(grid->size(),0);
+		if (grid!=NULL) {
+			copy_numbers.assign(grid->size(),0);
+			concentrations.assign(grid->size(),0);
+		}
 	}
 	void set_grid(const Grid* new_grid) {
 		grid = new_grid;
-		if (grid!=NULL) copy_numbers.assign(grid->size(),0);
+		if (grid!=NULL) {
+			copy_numbers.assign(grid->size(),0);
+			concentrations.assign(grid->size(),0);
+		}
 	}
 	void fill_uniform(const Vect3d low, const Vect3d high, const unsigned int N);
 	void fill_uniform(const Vect3d low, const Vect3d high, const Box &interface, const unsigned int N);
@@ -112,16 +144,20 @@ public:
 		return out << b.get_status_string();
 	}
 
+
 	Vect3d D;
 	Molecules mols;
 	std::vector<int> copy_numbers;
 	std::vector<int> mol_copy_numbers;
+	std::vector<double> concentrations;
 	const Grid* grid;
 	int id;
 	std::vector<double> tmpx,tmpy,tmpz;
 private:
 	static int species_count;
 };
+
+
 
 
 extern Species null_species;

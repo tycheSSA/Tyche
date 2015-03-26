@@ -263,6 +263,15 @@ public:
 	}
 	void add_diffusion_between(Species &s, const double rate, std::vector<int>& from, std::vector<int>& to);
 
+
+	void set_diffusion_between(Species &s, const double rate, Geometry& geometry_from, Geometry& geometry_to) {
+		std::vector<int> from,to;
+		subvolumes.get_slice(geometry_from,from);
+		subvolumes.get_slice(geometry_to,to);
+		set_diffusion_between(s,rate,from,to);
+	}
+	void set_diffusion_between(Species &s, const double rate, std::vector<int>& from, std::vector<int>& to);
+
 	template<typename T>
 	void absorption_across(Species &s, T& geometry, const double probability) {
 		std::vector<int> slice;
@@ -305,6 +314,16 @@ public:
 				}
 			}
 			reset_priority(slice[i]);
+		}
+	}
+
+	template<typename T>
+	void scale_diffusion_across(T& geometry, const double scaling_factor) {
+		const std::vector<Species*> diffusing_species = get_species();
+		const int ns = diffusing_species.size();
+		for (int is = 0; is < ns; ++is) {
+			Species& s = *diffusing_species[is];
+			scale_diffusion_across(s, geometry, scaling_factor);
 		}
 	}
 
@@ -354,9 +373,10 @@ public:
 		}
 	}
 	void fill_uniform(Species& s, const Vect3d low, const Vect3d high, const unsigned int N);
-
+	void set_compartment(Species& s, const Vect3d pos, const unsigned int N);
 	void reset_all_priorities();
 	void reset_priority(const int i);
+	void reset_priority(const Vect3i& i);
 	void recalc_priority(const int i);
 	double get_next_event_time() {
 		if (!heap.empty()) {

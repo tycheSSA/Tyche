@@ -67,8 +67,9 @@ void Operator::operator ()(const double dt) {
 
 double Operator::integrate_for_time(const double itime, const double dt) {
 	const int timesteps = itime/dt;
+	const double dt_actual = itime/timesteps;
 	for (int i = 0; i < timesteps; ++i) {
-		(*this)(dt);
+		(*this)(dt_actual);
 	}
 	return time;
 }
@@ -128,7 +129,11 @@ void Operator::integrate(const double dt) {
 
 }
 void Operator::print(std::ostream& out) const {
-	out << "Default Operator";
+	out << " acting on species:";
+	const int n = all_species.size();
+	for (int i = 0; i < n; ++i) {
+		out <<" "<<*(all_species[i]);
+	}
 }
 
 

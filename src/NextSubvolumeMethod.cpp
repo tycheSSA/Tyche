@@ -292,6 +292,7 @@ void NextSubvolumeMethod::reset_all_priorities() {
 	}
 }
 
+
 void NextSubvolumeMethod::reset_priority(const int i) {
 	const bool in_queue = subvolume_reactions[i].get_propensity()!=0;
 
@@ -410,6 +411,41 @@ void NextSubvolumeMethod::set_interface_reactions(
 	}
 }
 
+void NextSubvolumeMethod::set_diffusion_between(Species &s, const double rate,
+		std::vector<int>& from_indicies, std::vector<int>& to_indicies) {
+	const unsigned int n = from_indicies.size();
+	ASSERT(n==to_indicies.size(),"from and to indicies vectors have different size");
+
+	for (unsigned int ii = 0; ii < n; ++ii) {
+		const int i = from_indicies[ii];
+		const int j = to_indicies[ii];
+		ReactionSide lhs;
+		lhs.push_back(ReactionComponent(1.0,s,i));
+		ReactionSide rhs;
+		rhs.push_back(ReactionComponent(1.0,s,j));
+
+		/*
+		 * delete diffusion reaction if exists
+		 */
+		double rate = subvolume_reactions[i].delete_reaction(ReactionEquation(lhs,rhs));
+
+		/*
+		 * add new diffusion reaction
+		 */
+//		const Vect3d centre = subvolumes.get_cell_centre(i);
+//		const Rectangle face = subvolumes.get_face_between(i,j);
+//		const double h = 2.0*(face.get_low()-centre).dot(face.get_normal());
+
+		//std::cout << "new interface rate = rate * 2*"<<subvolumes.get_distance_between(i,j)<<" div sqrt(pi*d*dt)"<<std::endl;
+		//rate *= 0.5;
+		subvolume_reactions[i].add_reaction(rate,ReactionEquation(lhs,rhs));
+		reset_priority(i);
+
+		//			std::cout << "reactions for i,j = "<<i<<","<<j<<std::endl;
+		//			subvolume_reactions[i].list_reactions();
+	}
+}
+
 void NextSubvolumeMethod::fill_uniform(Species& s, const Vect3d low, const Vect3d high, const unsigned int N) {
 	add_species(s);
 	LOG(2,"Adding "<<N<<" molecules of Species ("<<s.id<<") within the rectangle defined by "<<low<<" and "<<high);
@@ -428,6 +464,17 @@ void NextSubvolumeMethod::fill_uniform(Species& s, const Vect3d low, const Vect3
 	for(auto ind : dirty_indices)
 	  recalc_priority(ind);
 }
+
+void NextSubvolumeMethod::set_compartment(Species& s, const Vect3d pos, const unsigned int N) {
+	add_species(s);
+	LOG(2,"Setting "<<N<<" molecules of Species ("<<s.id<<") to the compartment at "<<pos);
+	if (subvolumes.is_in(pos)) {
+		int comp_ind = subvolumes.get_cell_index(pos);
+		s.copy_numbers[comp_ind] = N;
+		recalc_priority(comp_ind);
+	}
+}
+
 
 void NextSubvolumeMethod::unset_interface_reactions(
 		std::vector<int>& from_indicies,
