@@ -25,7 +25,18 @@
 #ifndef LOG_H_
 #define LOG_H_
 
+#ifdef _WIN32
+#include <winbase.h>
+#else
 #include <signal.h>
+#endif
+
+#ifdef _WIN32
+#define DEBUG_BREAK DebugBreak()
+#else
+#define DEBUG_BREAK raise(SIGTRAP)
+#endif
+ 
 
 #ifndef NDEBUG
 #   define ASSERT(condition, message) \
@@ -33,8 +44,8 @@
         if (! (condition)) { \
             std::cerr << "Assertion `" #condition "` failed in " << __FILE__ \
                       << " line " << __LINE__ << ": " << message << std::endl; \
-            raise(SIGTRAP); \
-        } \
+            DEBUG_BREAK; \
+       } \
     } while (false)
 #else
 #   define ASSERT(condition, message) do { } while (false)
@@ -44,15 +55,14 @@
 		if (! (condition)) { \
             std::cerr << "Assertion `" #condition "` failed in " << __FILE__ \
                       << " line " << __LINE__ << ": " << message << std::endl; \
-            raise(SIGTRAP); \
+            DEBUG_BREAK; \
         }
 
 #define ERROR(message) \
             std::cerr << "Error at " << __FILE__ \
                       << " line " << __LINE__ << ": " << message << std::endl; \
-            raise(SIGTRAP);
+            DEBUG_BREAK;
 
-//std::exit(EXIT_FAILURE);
 
 #ifndef LOG_LEVEL
 #	ifdef NDEBUG
